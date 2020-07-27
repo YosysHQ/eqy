@@ -1,0 +1,21 @@
+[options]
+
+[gold]
+read -formal gold.sv
+prep
+
+[gate]
+read -formal gate.sv
+prep
+
+[recode]
+
+[match]
+
+[partition]
+
+[strategy foo]
+foodledoo
+
+[strategy bar]
+bardledoo
