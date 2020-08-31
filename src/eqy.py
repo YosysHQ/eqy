@@ -19,7 +19,8 @@
 #
 import argparse, types, re
 import os, sys, tempfile, shutil
-import time
+
+from eqy_job import EqyJob, EqyTask
 
 def exit_with_error(error, retcode=1):
     print("ERROR:", error, file=sys.stderr)
@@ -79,6 +80,21 @@ def parse_args():
             help="configure which executable to use for the respective tool")
 
     args = parser.parse_args()
+
+    exe_paths = {
+        "yosys": os.getenv("YOSYS", "yosys"),
+        "abc": os.getenv("ABC", "yosys-abc"),
+        "smtbmc": os.getenv("SMTBMC", "yosys-smtbmc"),
+        "suprove": os.getenv("SUPROVE", "suprove"),
+        "aigbmc": os.getenv("AIGBMC", "aigbmc"),
+        "avy": os.getenv("AVY", "avy"),
+        "btormc": os.getenv("BTORMC", "btormc"),
+        "pono": os.getenv("PONO", "pono"),
+    }
+    for k, v in args.exe_paths.items():
+        exe_paths[k] = v
+
+    args.exe_paths = exe_paths
 
     if args.init_config_file is not None:
         assert args.eqyfile is None
@@ -205,13 +221,33 @@ def setup_workdir(args):
             if os.path.exists(args.workdir + "/" + f):
                 os.remove(args.workdir + "/" + f)
 
+def build_gate_gold(args, cfg):
+    with open(args.workdir + "/gold.ys", "w") as f:
+        for line in cfg.gold:
+            print(line, file=f)
+        print("write_ilang {}/gold.il".format(args.workdir), file=f)
+    with open(args.workdir + "/gate.ys", "w") as f:
+        for line in cfg.gate:
+            print(line, file=f)
+        print("write_ilang {}/gate.il".format(args.workdir), file=f)
+
+    build_job = EqyJob(args, cfg, [])
+    gold_task = EqyTask(build_job, "read_gold", [], "{yosys} -ql {workdir}/gold.log {workdir}/gold.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+    gate_task = EqyTask(build_job, "read_gate", [], "{yosys} -ql {workdir}/gate.log {workdir}/gate.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+
+    build_job.run()
+
+
 def main():
     args = parse_args()
     cfg = read_config(args.eqyfile)
     validate_config(args, cfg)
     setup_workdir(args)
+    if (args.setupmode):
+        exit(0)
     print("args =", args)
     print("cfg =", cfg)
+    build_gate_gold(args, cfg)
 
 if __name__ == '__main__':
     main()
