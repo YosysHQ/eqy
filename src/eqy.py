@@ -241,9 +241,13 @@ def build_gate_gold(args, cfg, job):
         print("write_ilang {}/gate.il".format(args.workdir), file=f)
 
     gold_task = EqyTask(job, "read_gold", [], "{yosys} -ql {workdir}/gold.log {workdir}/gold.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+    gold_task.checkretcode = True
     gate_task = EqyTask(job, "read_gate", [], "{yosys} -ql {workdir}/gate.log {workdir}/gate.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+    gate_task.checkretcode = True
 
     job.run()
+    if (job.status == "ERROR"):
+        exit_with_error("Reading sources failed.")
 
 def build_combined(args, cfg, job):
     plugin_path = root_path() + '/../share/yosys/plugins' # for install
@@ -252,8 +256,12 @@ def build_combined(args, cfg, job):
     with open(args.workdir + "/combine.ys", "w") as f:
         print("plugin -i {}/eqy_combine.so".format(plugin_path), file=f)
         print("read_ilang {}/gold.il".format(args.workdir), file=f)
+        print("uniquify", file=f)
+        print("hierarchy", file=f)
         print("design -stash gold", file=f)
         print("read_ilang {}/gate.il".format(args.workdir), file=f)
+        print("uniquify", file=f)
+        print("hierarchy", file=f)
         print("design -stash gate", file=f)
         print("eqy_combine", file=f)
         print("write_ilang {}/combined.il".format(args.workdir), file=f)
