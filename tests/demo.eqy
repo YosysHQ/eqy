@@ -2,11 +2,11 @@
 
 [gold]
 read -formal gold.sv
-prep
+prep -top test
 
 [gate]
 read -formal gate.sv
-prep
+prep -top test
 
 [recode]
 

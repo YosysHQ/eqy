@@ -27,6 +27,11 @@ def exit_with_error(error, retcode=1):
     print("ERROR:", error, file=sys.stderr)
     exit(retcode)
 
+def root_path():
+    fn = getattr(sys.modules['__main__'], '__file__')
+    root_path = os.path.abspath(os.path.dirname(fn))
+    return root_path
+
 class DictAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         assert isinstance(getattr(namespace, self.dest), dict), "Use ArgumentParser.set_defaults() to initialize {} to dict()".format(self.dest)
@@ -129,6 +134,9 @@ prep
     return args
 
 def read_config(configfile):
+    if configfile is None:
+        exit_with_error("No config file given")
+
     cfg = types.SimpleNamespace()
     cfg_sections = ["options", "gold", "gate", "recode", "match", "partition"]
     named_sections = ["strategy"]
@@ -238,7 +246,21 @@ def build_gate_gold(args, cfg, job):
     job.run()
 
 def build_combined(args, cfg, job):
-    pass
+    plugin_path = root_path() + '/../share/yosys/plugins' # for install
+    if (not os.path.exists(plugin_path)):
+        plugin_path = root_path() # for development
+    with open(args.workdir + "/combine.ys", "w") as f:
+        print("plugin -i {}/eqy_combine.so".format(plugin_path), file=f)
+        print("read_ilang {}/gold.il".format(args.workdir), file=f)
+        print("design -stash gold", file=f)
+        print("read_ilang {}/gate.il".format(args.workdir), file=f)
+        print("design -stash gate", file=f)
+        print("eqy_combine", file=f)
+        print("write_ilang {}/combined.il".format(args.workdir), file=f)
+
+    combine_task = EqyTask(job, "combine", [], "{yosys} -ql {workdir}/combine.log {workdir}/combine.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+
+    job.run()
 
 def main():
     args = parse_args()
@@ -251,6 +273,7 @@ def main():
     print("cfg =", cfg)
     job = EqyJob(args, cfg, [])
     build_gate_gold(args, cfg, job)
+    build_combined(args, cfg, job)
 
 if __name__ == '__main__':
     main()
