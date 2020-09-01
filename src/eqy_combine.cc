@@ -81,7 +81,7 @@ struct EqyCombinePass : public Pass
 		{
 			for (auto cell : mod->cells())
 			{
-				IdString new_type = "\\gold." + unescape_id(cell->type);
+				IdString new_type = mod->name.str().substr(0, 6) + unescape_id(cell->type); //no comment
 				if (mod->design->module(new_type))
 					cell->type = new_type;
 			}
