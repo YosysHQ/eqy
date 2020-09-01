@@ -19,6 +19,7 @@
 #
 import argparse, types, re
 import os, sys, tempfile, shutil
+##yosys-sys-path##
 
 from eqy_job import EqyJob, EqyTask
 
@@ -221,7 +222,7 @@ def setup_workdir(args):
             if os.path.exists(args.workdir + "/" + f):
                 os.remove(args.workdir + "/" + f)
 
-def build_gate_gold(args, cfg):
+def build_gate_gold(args, cfg, job):
     with open(args.workdir + "/gold.ys", "w") as f:
         for line in cfg.gold:
             print(line, file=f)
@@ -231,12 +232,13 @@ def build_gate_gold(args, cfg):
             print(line, file=f)
         print("write_ilang {}/gate.il".format(args.workdir), file=f)
 
-    build_job = EqyJob(args, cfg, [])
-    gold_task = EqyTask(build_job, "read_gold", [], "{yosys} -ql {workdir}/gold.log {workdir}/gold.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
-    gate_task = EqyTask(build_job, "read_gate", [], "{yosys} -ql {workdir}/gate.log {workdir}/gate.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+    gold_task = EqyTask(job, "read_gold", [], "{yosys} -ql {workdir}/gold.log {workdir}/gold.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+    gate_task = EqyTask(job, "read_gate", [], "{yosys} -ql {workdir}/gate.log {workdir}/gate.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
 
-    build_job.run()
+    job.run()
 
+def build_combined(args, cfg, job):
+    pass
 
 def main():
     args = parse_args()
@@ -247,7 +249,8 @@ def main():
         exit(0)
     print("args =", args)
     print("cfg =", cfg)
-    build_gate_gold(args, cfg)
+    job = EqyJob(args, cfg, [])
+    build_gate_gold(args, cfg, job)
 
 if __name__ == '__main__':
     main()
