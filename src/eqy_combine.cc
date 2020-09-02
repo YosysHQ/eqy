@@ -1,15 +1,20 @@
-/* A simple Yosys plugin. (Copy&paste from http://stackoverflow.com/questions/32093541/how-does-the-yosys-consteval-api-work)
+/*
+Equivalence Checking with Yosys (eqy)
 
-Usage example:
+Copyright (C) 2020 Claire Wolf <claire@symbioticeda.com>
+Copyright (C) 2020 N. Engelhardt <nak@symbioticeda.com>
 
-$ cat > evaldemo.v <<EOT
-module main(input [1:0] A, input [7:0] B, C, D, output [7:0] Y);
-  assign Y = A == 0 ? B : A == 1 ? C : A == 2 ? D : 42;
-endmodule
-EOT
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
 
-$ yosys-config --build evaldemo.so evaldemo.cc
-$ yosys -m evaldemo.so -p evaldemo evaldemo.v
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
 #include "kernel/yosys.h"
@@ -20,7 +25,25 @@ PRIVATE_NAMESPACE_BEGIN
 
 struct EqyCombinePass : public Pass
 {
-	EqyCombinePass() : Pass("eqy_combine") { }
+	EqyCombinePass() : Pass("eqy_combine", "combine gate and gold designs for eqy") { }
+
+	void help() override
+	{
+	//   |---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|
+	log("\n");
+	log("    eqy_combine -gold_ids file -gate_ids file\n");
+	log("\n");
+	log("Combine gate and gold designs, partially flattening each design until their\n");
+	log("hierarchies match. Designs \"gate\" and \"gold\" need to have been previously\n");
+	log("saved under these names. For use by EQY.\n");
+	log("\n");
+	log("    -gold_ids <filename>\n");
+	log("        Dump IDs of public cells and wires in gold module to file\n");
+	log("\n");
+	log("    -gate_ids <filename>\n");
+	log("        Dump IDs of public cells and wires in gate module to file\n");
+	log("\n");
+}
 
 	void co_flatten_worker(RTLIL::Selection &sel, Design *work, Design *other, Module *mod)
 	{
@@ -43,9 +66,64 @@ struct EqyCombinePass : public Pass
 		Pass::call(work, "hierarchy");
 	}
 
-	void execute(vector<string>, Design *design) override
+	void print_ids(FILE *file, Module *m)
 	{
-		//TODO: error handling
+		for (auto c : m->cells())
+			if (c->name.begins_with("\\"))
+			{
+				fprintf(file, "%s %s c=%s", unescape_id(m->name).c_str(), unescape_id(c->name).c_str(), unescape_id(c->type).c_str());
+				for (string name : c->get_hdlname_attribute())
+					if (unescape_id(c->name) != name)
+						fprintf(file, " N=%s", name.c_str());
+				for (auto &a : c->attributes)
+					if (a.second.flags == RTLIL::CONST_FLAG_STRING)
+						fprintf(file, " A=%s:\"%s\"", unescape_id(a.first).c_str(), a.second.decode_string().c_str());
+					else
+						fprintf(file, " A=%s:%s", unescape_id(a.first).c_str(), a.second.as_string().c_str());
+				fprintf(file, "\n");
+			}
+		for (auto w : m->wires())
+			if (w->name.begins_with("\\"))
+			{
+				fprintf(file, "%s %s w=%d:%d", unescape_id(m->name).c_str(), unescape_id(w->name).c_str(), w->width - 1 + w->start_offset, w->start_offset);
+				for (string name : w->get_hdlname_attribute())
+					if (unescape_id(w->name) != name)
+						fprintf(file, " N=%s", name.c_str());
+				for (auto &a : w->attributes)
+					if (a.second.flags == RTLIL::CONST_FLAG_STRING)
+						fprintf(file, " A=%s:\"%s\"", unescape_id(a.first).c_str(), a.second.decode_string().c_str());
+					else
+						fprintf(file, " A=%s:%s", unescape_id(a.first).c_str(), a.second.as_string().c_str());
+				fprintf(file, "\n");
+			}
+	}
+
+	void execute(std::vector<std::string> args, Design *design) override
+	{
+		FILE *gold_ids = nullptr;
+		FILE *gate_ids = nullptr;
+
+		size_t argidx;
+		for (argidx = 1; argidx < args.size(); argidx++)
+		{
+			if ((args[argidx] == "-gold_ids") && argidx+1 < args.size()) {
+				gold_ids = fopen(args[++argidx].c_str(), "w");
+				if (!gold_ids) log_cmd_error("Can't create file %s.\n", args[argidx].c_str());
+				continue;
+			}
+			if ((args[argidx] == "-gate_ids") && argidx+1 < args.size()) {
+				gate_ids = fopen(args[++argidx].c_str(), "w");
+				if (!gate_ids) log_cmd_error("Can't create file %s.\n", args[argidx].c_str());
+				continue;
+			}
+			break;
+		}
+		extra_args(args, argidx, design, false);
+
+		if (saved_designs.find("gold") == saved_designs.end())
+			log_error("Design \"gold\" not found in saved designs.");
+		if (saved_designs.find("gate") == saved_designs.end())
+			log_error("Design \"gate\" not found in saved designs.");
 		Design *gold_design = saved_designs.at("gold");
 		Design *gate_design = saved_designs.at("gate");
 
@@ -69,12 +147,14 @@ struct EqyCombinePass : public Pass
 			gate_m->attributes.erase("\\top");
 			gate_m->name = "\\gate." + unescape_id(gate_m->name);
 			design->add(gate_m);
+			if (gold_ids) print_ids(gold_ids, m);
 		}
 
 		for (auto m : gate_design->modules())
 		{
 			if (!gold_design->module(m->name))
 				log_error("Unmatched module exists in gate that does not exist in gold. This should not happen. Please report this bug.\n");
+			if (gate_ids) print_ids(gate_ids, m);
 		}
 
 		for (auto mod : design->modules())

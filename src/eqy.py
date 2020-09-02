@@ -263,7 +263,7 @@ def build_combined(args, cfg, job):
         print("uniquify", file=f)
         print("hierarchy", file=f)
         print("design -stash gate", file=f)
-        print("eqy_combine", file=f)
+        print("eqy_combine -gold_ids {wd}/gold.ids -gate_ids {wd}/gate.ids".format(wd=args.workdir), file=f)
         print("write_ilang {}/combined.il".format(args.workdir), file=f)
 
     combine_task = EqyTask(job, "combine", [], "{yosys} -ql {workdir}/combine.log {workdir}/combine.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
