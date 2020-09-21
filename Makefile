@@ -10,9 +10,12 @@ ifeq ($(OS), Windows_NT)
 PYTHON = $(shell cygpath -w -m $(PREFIX)/bin/python3)
 endif
 
-build: src/eqy_combine.so
+build: src/eqy_combine.so src/eqy_partition.so
 
 src/eqy_combine.so: src/eqy_combine.cc
+	yosys-config --build $@ $^
+
+src/eqy_partition.so: src/eqy_partition.cc
 	yosys-config --build $@ $^
 
 install: src/eqy_combine.so
@@ -35,4 +38,4 @@ html:
 
 clean:
 	$(MAKE) -C docs clean
-	rm -rf docs/build src/eqy_combine.so src/__pycache__
+	rm -rf docs/build src/eqy_combine.so src/eqy_partition.so src/__pycache__

@@ -40,10 +40,10 @@ class DictAction(argparse.Action):
 
 def parse_args():
     parser = argparse.ArgumentParser(prog="eqy",
-            usage="%(prog)s [options] <jobname>.eqy")
+            usage="%(prog)s [options] <config>.eqy")
     parser.set_defaults(exe_paths=dict())
 
-    parser.add_argument("eqyfile", metavar="<jobname>.eqy", nargs="?", type=argparse.FileType('r'),
+    parser.add_argument("eqyfile", metavar="<config>.eqy", type=argparse.FileType('r'),
             help=".eqy configuration file (use - for stdin)")
 
     dirargs = parser.add_mutually_exclusive_group()
@@ -270,6 +270,21 @@ def build_combined(args, cfg, job):
 
     job.run()
 
+def make_partitions(args, cfg, job):
+    plugin_path = root_path() + '/../share/yosys/plugins' # for install
+    if (not os.path.exists(plugin_path)):
+        plugin_path = root_path() # for development
+    with open(args.workdir + "/partition.ys", "w") as f:
+        print("plugin -i {}/eqy_partition.so".format(plugin_path), file=f)
+        print("read_ilang combined.il".format(args.workdir), file=f)
+        print("eqy_partition", file=f)
+    if not os.path.isdir(args.workdir + "/partitions"):
+        os.mkdir(args.workdir + "/partitions")
+
+    partition_task = EqyTask(job, "partition", [], "cd {workdir}; {yosys} -ql partition.log partition.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+
+    job.run()
+
 def main():
     args = parse_args()
     cfg = read_config(args.eqyfile)
@@ -282,6 +297,7 @@ def main():
     job = EqyJob(args, cfg, [])
     build_gate_gold(args, cfg, job)
     build_combined(args, cfg, job)
+    make_partitions(args, cfg, job)
 
 if __name__ == '__main__':
     main()

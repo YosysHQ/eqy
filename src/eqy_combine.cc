@@ -18,7 +18,6 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
 #include "kernel/yosys.h"
-#include "kernel/consteval.h"
 
 USING_YOSYS_NAMESPACE
 PRIVATE_NAMESPACE_BEGIN
@@ -47,29 +46,37 @@ struct EqyCombinePass : public Pass
 
 	void co_flatten_worker(RTLIL::Selection &sel, Design *work, Design *other, Module *mod)
 	{
+		// TODO: check that the interfaces of both modules are compatible
+		// recoding should be done before this so the interfaces match already
 		for (auto cell : mod->cells())
 		{
 			Module *work_submod = work->module(cell->type);
 			Module *other_submod = other->module(cell->type);
-			if (work_submod && other_submod)
-				co_flatten_worker(sel, work, other, work_submod);
-			else
-				sel.select(mod, cell);
+			if (work_submod)
+			{
+				if(other_submod)
+					co_flatten_worker(sel, work, other, work_submod);
+				else
+					sel.select(mod, cell);
+			}
 		}
 	}
 
-	void co_flatten(Design *work, Design *other)
+	bool co_flatten(Design *work, Design *other)
 	{
 		RTLIL::Selection sel(false);
 		co_flatten_worker(sel, work, other, work->top_module());
+		if (sel.empty())
+			return false;
 		Pass::call_on_selection(work, sel, "flatten");
 		Pass::call(work, "hierarchy");
+		return true;
 	}
 
 	void print_ids(FILE *file, Module *m)
 	{
 		for (auto c : m->cells())
-			if (c->name.begins_with("\\"))
+			if (c->name.isPublic())
 			{
 				fprintf(file, "%s %s c=%s", unescape_id(m->name).c_str(), unescape_id(c->name).c_str(), unescape_id(c->type).c_str());
 				for (string name : c->get_hdlname_attribute())
@@ -83,7 +90,7 @@ struct EqyCombinePass : public Pass
 				fprintf(file, "\n");
 			}
 		for (auto w : m->wires())
-			if (w->name.begins_with("\\"))
+			if (w->name.isPublic())
 			{
 				fprintf(file, "%s %s w=%d:%d", unescape_id(m->name).c_str(), unescape_id(w->name).c_str(), w->width - 1 + w->start_offset, w->start_offset);
 				for (string name : w->get_hdlname_attribute())
@@ -132,8 +139,12 @@ struct EqyCombinePass : public Pass
 		if (gold_top != gate_top)
 			log_error("Top modules of gold and gate do not have the same name.\n");
 
-		co_flatten(gold_design, gate_design);
-		co_flatten(gate_design, gold_design);
+		bool did_something = true;
+		while (did_something)
+		{
+			did_something = co_flatten(gold_design, gate_design);
+			did_something |= co_flatten(gate_design, gold_design);
+		}
 
 		for (auto m : gold_design->modules())
 		{
@@ -161,7 +172,7 @@ struct EqyCombinePass : public Pass
 		{
 			for (auto cell : mod->cells())
 			{
-				IdString new_type = mod->name.str().substr(0, 6) + unescape_id(cell->type); //no comment
+				IdString new_type = mod->name.substr(0, 6) + unescape_id(cell->type); //no comment
 				if (mod->design->module(new_type))
 					cell->type = new_type;
 			}
