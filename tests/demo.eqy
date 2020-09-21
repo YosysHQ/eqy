@@ -11,6 +11,7 @@ prep -top top
 [recode]
 
 [match]
+gold-match top i2ab i2ba
 
 [partition]
 

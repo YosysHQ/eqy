@@ -24,12 +24,15 @@ endmodule
 
 module top (
 	input i1,
-	input i2,
+	input i2a,
+	input i2b,
+	input i2c,
 	output o
 );
+	wire i2ba = i2a && i2b;
 
 	submod m_i (
-		.i1(i2),
+		.i1(i2ba && i2c),
 		.i2(i1),
 		.o(o)
 	);
