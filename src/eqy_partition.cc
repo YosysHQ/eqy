@@ -69,24 +69,44 @@ struct EqyPartitionPass : public Pass
 			log_error("Mismatched number of gate and gold modules. Was this design created with eqy_combine?\n");
 	}
 
+	dict<std::string, std::vector<std::pair<std::string, std::string>>> read_matched_ids(std::string filename)
+	{
+		dict<std::string, std::vector<std::pair<std::string, std::string>>> matched_ids;
+		std::ifstream matched_file(filename.c_str());
+		if (!matched_file)
+			log_error("Cannot open file '%s'\n", filename.c_str());
+		std::string line;
+		for (std::string line; std::getline(matched_file, line); )
+    {
+			std::vector<std::string> things = split_tokens(line);
+			if (things.size() != 3)
+				log_error("Malformed file %s\n", filename.c_str());
+			matched_ids[things[0]].push_back(std::make_pair(things[1], things[2]));
+		}
+		return matched_ids;
+	}
+
 	void execute(std::vector<std::string> args, Design *design) override
 	{
-
-		// size_t argidx;
-		// for (argidx = 1; argidx < args.size(); argidx++)
-		// {
-		// 	if ((args[argidx] == "-gold_ids") && argidx+1 < args.size()) {
-		// 		gold_ids = fopen(args[++argidx].c_str(), "w");
-		// 		if (!gold_ids) log_cmd_error("Can't create file %s.\n", args[argidx].c_str());
-		// 		continue;
-		// 	break;
-		// }
-		// extra_args(args, argidx, design, false);
-
+		std::string matched_ids_filename;
+		size_t argidx;
+		for (argidx = 1; argidx < args.size(); argidx++)
+		{
+			if ((args[argidx] == "-matched_ids") && argidx+1 < args.size()) {
+				matched_ids_filename = args[++argidx];
+				continue;
+			}
+			break;
+		}
+		extra_args(args, argidx, design, false);
+		auto matched_ids = read_matched_ids(matched_ids_filename);
+		for (auto i : matched_ids)
+			for (auto j : i.second)
+				log_debug("Found ID match: %s %s %s\n", i.first.c_str(), j.first.c_str(), j.second.c_str());
 		partition_worker(design);
 
 	}
 
-} EqyCombinePass;
+} EqyPartitionPass;
 
 PRIVATE_NAMESPACE_END

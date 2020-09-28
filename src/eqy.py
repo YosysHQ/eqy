@@ -286,7 +286,7 @@ def make_partitions(args, cfg, job):
     with open(args.workdir + "/partition.ys", "w") as f:
         print("plugin -i {}/eqy_partition.so".format(plugin_path), file=f)
         print("read_ilang combined.il".format(args.workdir), file=f)
-        print("eqy_partition", file=f)
+        print("eqy_partition -matched_ids matched.ids", file=f)
     if not os.path.isdir(args.workdir + "/partitions"):
         os.mkdir(args.workdir + "/partitions")
 
