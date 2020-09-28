@@ -84,9 +84,9 @@ struct EqyCombinePass : public Pass
 						fprintf(file, " N=%s", name.c_str());
 				for (auto &a : c->attributes)
 					if (a.second.flags == RTLIL::CONST_FLAG_STRING)
-						fprintf(file, " A=%s:\"%s\"", unescape_id(a.first).c_str(), a.second.decode_string().c_str());
+						fprintf(file, " A:%s=\"%s\"", unescape_id(a.first).c_str(), a.second.decode_string().c_str());
 					else
-						fprintf(file, " A=%s:%s", unescape_id(a.first).c_str(), a.second.as_string().c_str());
+						fprintf(file, " A:%s=%s", unescape_id(a.first).c_str(), a.second.as_string().c_str());
 				fprintf(file, "\n");
 			}
 		for (auto w : m->wires())
@@ -98,9 +98,9 @@ struct EqyCombinePass : public Pass
 						fprintf(file, " N=%s", name.c_str());
 				for (auto &a : w->attributes)
 					if (a.second.flags == RTLIL::CONST_FLAG_STRING)
-						fprintf(file, " A=%s:\"%s\"", unescape_id(a.first).c_str(), a.second.decode_string().c_str());
+						fprintf(file, " A:%s=\"%s\"", unescape_id(a.first).c_str(), a.second.decode_string().c_str());
 					else
-						fprintf(file, " A=%s:%s", unescape_id(a.first).c_str(), a.second.as_string().c_str());
+						fprintf(file, " A:%s=%s", unescape_id(a.first).c_str(), a.second.as_string().c_str());
 				fprintf(file, "\n");
 			}
 	}

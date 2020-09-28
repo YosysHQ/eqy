@@ -19,6 +19,7 @@
 #
 import argparse, types, re
 import os, sys, tempfile, shutil
+import shlex
 ##yosys-sys-path##
 
 from eqy_job import EqyJob, EqyTask
@@ -149,6 +150,7 @@ def read_config(configfile):
 
     section = None
     sectionarg = None
+    match_default = True
     linenr = 0
     for line in configfile:
         linenr += 1
@@ -176,11 +178,18 @@ def read_config(configfile):
             cfg.strategy[sectionarg].append(line)
             continue
 
+        if section == "match" and line == "nodefault":
+            match_default = False
+            continue
+
         if section in cfg_sections:
             getattr(cfg, section).append(line)
             continue
 
         exit_with_error("syntax error in {} line {}".format(configfile.name, linenr))
+
+    if match_default:
+        cfg.match.append("gold-match * *")
 
     return cfg
 
@@ -285,6 +294,100 @@ def make_partitions(args, cfg, job):
 
     job.run()
 
+def read_ids(filename):
+    ids = dict()
+    with open(filename) as f:
+        for lineno, line in enumerate(f):
+            line = shlex.split(line)
+            if len(line) == 0 or line[0].startswith("#"):
+                continue
+            if len(line) < 3:
+                exit_with_error("Syntax error in line {}".format(lineno))
+            modname = line[0]
+            objname = line[1]
+            opts = line[2:]
+            if modname not in ids:
+                ids[modname] = dict()
+            ids[modname][objname] = dict()
+            for opt in opts:
+                optkey, optval = opt.split("=", maxsplit=1)
+                if optkey == "N":
+                    if optkey not in ids[modname][objname]:
+                        ids[modname][objname][optkey] = list()
+                    ids[modname][objname][optkey].append(optval)
+                else:
+                    ids[modname][objname][optkey] = optval
+            if 'w' not in ids[modname][objname] and 'c' not in ids[modname][objname]:
+                exit_with_error("Missing type in line {}".format(lineno))
+    print(ids)
+    return ids
+
+def match_module_re(ids, module_re):
+    matches = []
+    if module_re == "*":
+        module_re = ".*"
+    p = re.compile(module_re)
+    for key in ids:
+        match = p.fullmatch(key)
+        if match is not None:
+            matches.append(key)
+    return matches
+
+def match_entity_re(ids, entity_re, other_entity_expr):
+    matches = []
+    if entity_re == "*":
+        entity_re = ".*"
+    p = re.compile(entity_re)
+    for key in ids:
+        match = p.fullmatch(key)
+        if match is not None:
+            val = key
+            if other_entity_expr is not None:
+                val = match.expand(other_entity_expr)
+            matches.append((key, val))
+    return matches
+
+def match_ids(args, cfg):
+    gold_ids = read_ids(args.workdir + "/gold.ids")
+    gate_ids = read_ids(args.workdir + "/gate.ids")
+    used_gold_ids = set()
+    used_gate_ids = set()
+    with open(args.workdir + "/matched.ids", 'w') as f:
+        for line in cfg.match:
+            line = line.split()
+            if len(line) == 0:
+                continue
+            if line[0] == "gold-match" and len(line) in [3, 4]:
+                for module_match in match_module_re(gold_ids, line[1]):
+                    for entity_match in match_entity_re(gold_ids[module_match], line[2], line[3] if len(line) == 4 else None):
+                        if (module_match, entity_match[0]) in used_gold_ids:
+                            continue
+                        if (module_match, entity_match[1]) in used_gate_ids:
+                            continue
+                        print(module_match, entity_match[0], entity_match[1], file=f)
+                        used_gold_ids.add((module_match, entity_match[0]))
+                        used_gate_ids.add((module_match, entity_match[1]))
+            elif line[0] == "gate-match" and len(line) in [3, 4]:
+                for module_match in match_module_re(gate_ids, line[1]):
+                    for entity_match in match_entity_re(gate_ids[module_match], line[2], line[3] if len(line) == 4 else None):
+                        if (module_match, entity_match[0]) in used_gate_ids:
+                            continue
+                        if (module_match, entity_match[1]) in used_gold_ids:
+                            continue
+                        print(module_match, entity_match[1], entity_match[0], file=f)
+                        used_gate_ids.add((module_match, entity_match[0]))
+                        used_gold_ids.add((module_match, entity_match[1]))
+            elif line[0] == "gold-nomatch" and len(line) == 3:
+                for module_match in match_module_re(gold_ids, line[1]):
+                    for entity_match in match_entity_re(gold_ids[module_match], line[2], None):
+                        used_gold_ids.add((module_match, entity_match[0]))
+            elif line[0] == "gate-nomatch" and len(line) == 3:
+                for module_match in match_module_re(gate_ids, line[1]):
+                    for entity_match in match_entity_re(gate_ids[module_match], line[2], None):
+                        used_gate_ids.add((module_match, entity_match[0]))
+            else:
+                exit_with_error(f"Syntax error in match command \"{line[0]}\"")
+
 def main():
     args = parse_args()
     cfg = read_config(args.eqyfile)
@@ -297,6 +400,7 @@ def main():
     job = EqyJob(args, cfg, [])
     build_gate_gold(args, cfg, job)
     build_combined(args, cfg, job)
+    match_ids(args, cfg)
     make_partitions(args, cfg, job)
 
 if __name__ == '__main__':
