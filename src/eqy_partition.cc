@@ -18,9 +18,168 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
 #include "kernel/yosys.h"
+#include "kernel/sigtools.h"
 
 USING_YOSYS_NAMESPACE
 PRIVATE_NAMESPACE_BEGIN
+
+struct EqyPartitionWorker
+{
+	Module *gold, *gate;
+	SigMap gold_sigmap;
+	SigMap gate_sigmap;
+
+	dict<SigBit, tuple<Cell*, IdString, int>> gold_drivers;
+	dict<SigBit, tuple<Cell*, IdString, int>> gate_drivers;
+
+	dict<SigBit, SigBit> gold_matches;
+	dict<SigBit, SigBit> gate_matches;
+
+	void register_drivers(Module *m, SigMap &sm, dict<SigBit, tuple<Cell*, IdString, int>> &db)
+	{
+		for (auto cell : m->cells()) {
+			for (auto &conn : cell->connections()) {
+				if (cell->input(conn.first))
+					continue;
+				for (int i = 0; i < GetSize(conn.second); i++) {
+					SigBit bit = sm(conn.second[i]);
+					if (db.count(bit) != 0)
+						log_error("Multiple drivers for %s.\n", log_signal(bit));
+					db[bit] = tuple<Cell*, IdString, int>(cell, conn.first, i);
+				}
+			}
+		}
+	}
+
+	EqyPartitionWorker(Module *gold, Module *gate) : gold(gold), gate(gate), gold_sigmap(gold), gate_sigmap(gate)
+	{
+		register_drivers(gold, gold_sigmap, gold_drivers);
+		register_drivers(gate, gate_sigmap, gate_drivers);
+	}
+
+	void add_match(SigBit gold_bit, SigBit gate_bit)
+	{
+		gold_bit = gold_sigmap(gold_bit);
+		gate_bit = gate_sigmap(gate_bit);
+
+		gold_matches[gold_bit] = gate_bit;
+		gate_matches[gate_bit] = gold_bit;
+	}
+
+	void add_match(SigSpec gold_sig, SigSpec gate_sig)
+	{
+		for (int i = 0; i < GetSize(gold_sig) && i < GetSize(gate_sig); i++)
+			add_match(gold_sig[i], gate_sig[i]);
+	}
+
+	void add_match(IdString gold_id, IdString gate_id)
+	{
+		Cell *gold_cell = gold->cell(gold_id);
+		Cell *gate_cell = gate->cell(gate_id);
+
+		if (gold_cell || gate_cell)
+		{
+			if (!gold_cell)
+				log_error("Can't find cell %s in gold circuit.\n", log_id(gold_id));
+			if (!gate_cell)
+				log_error("Can't find cell %s in gate circuit.\n", log_id(gate_id));
+
+			return;
+		}
+	}
+
+	Design *make_partition(IdString partname, pool<SigBit> gold_outbits)
+	{
+		Design *partition = new Design();
+
+		Module *mod_gold = partition->addModule("\\gold." + partname.substr(1));
+		Module *mod_gate = partition->addModule("\\gate." + partname.substr(1));
+
+		int primary_io_idx = 1;
+		dict<SigBit, SigBit> mapped_gold_bits;
+		dict<SigBit, SigBit> mapped_gate_bits;
+
+		std::function<SigBit(SigBit,bool,bool)> add_bit_f;
+		std::function<Cell*(Cell*,bool)> add_cell_f;
+
+		add_bit_f = [&](SigBit bit, bool in_gold, bool primary_output)->SigBit
+		{
+			auto mod_gg = in_gold ? mod_gold : mod_gate;
+			auto mod_xx = !in_gold ? mod_gold : mod_gate;
+
+			auto &mapped_gg_bits = in_gold ? mapped_gold_bits : mapped_gate_bits;
+			auto &mapped_xx_bits = !in_gold ? mapped_gold_bits : mapped_gate_bits;
+
+			auto &gg_sigmap = in_gold ? gold_sigmap : gate_sigmap;
+			auto &gg_drivers = in_gold ? gold_drivers : gate_drivers;
+			auto &gg_matches = in_gold ? gold_matches : gate_matches;
+
+			bit = gg_sigmap(bit);
+
+			if (mapped_gg_bits.count(bit) == 0)
+			{
+				mapped_gg_bits[bit] = mod_gg->addWire(NEW_ID);
+
+				if (gg_matches.count(bit))
+				{
+					if (mapped_xx_bits.count(gg_matches.at(bit)))
+					{
+						auto gg_bit = mapped_gg_bits.at(bit);
+						auto xx_bit = add_bit_f(gg_matches.at(bit), !in_gold, primary_output);
+
+						if (primary_output)
+						{
+							Wire *gg_wire = mod_gg->addWire(stringf("\\__po_%d", primary_io_idx));
+							Wire *xx_wire = mod_xx->addWire(stringf("\\__po_%d", primary_io_idx));
+							primary_io_idx++;
+
+							gg_wire->port_output = true;
+							xx_wire->port_output = true;
+
+							mod_gg->connect(gg_wire, gg_bit);
+							mod_xx->connect(xx_wire, xx_bit);
+						}
+						else
+						{
+							Wire *gg_wire = mod_gg->addWire(stringf("\\__pi_%d", primary_io_idx));
+							Wire *xx_wire = mod_xx->addWire(stringf("\\__pi_%d", primary_io_idx));
+							primary_io_idx++;
+
+							gg_wire->port_input = true;
+							xx_wire->port_input = true;
+
+							mod_gg->connect(gg_bit, gg_wire);
+							mod_xx->connect(xx_bit, xx_wire);
+						}
+					}
+				}
+				else
+				{
+					// TBD
+				}
+			}
+
+			return mapped_gg_bits.at(bit);
+		};
+
+		add_cell_f = [&](Cell *cell, bool in_gold)->Cell*
+		{
+			// TBD
+			return nullptr;
+		};
+
+		for (auto gold_bit : gold_outbits)
+		{
+			gold_bit = gold_sigmap(gold_bit);
+			SigBit gate_bit = gold_matches.at(gold_bit);
+
+			SigBit actual_gold_bit = add_bit_f(gold_bit, true, true);
+			SigBit actual_gate_bit = add_bit_f(gate_bit, false, true);
+		}
+
+		return partition;
+	}
+};
 
 struct EqyPartitionPass : public Pass
 {
