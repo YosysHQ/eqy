@@ -72,6 +72,13 @@ struct EqyPartitionWorker
 			add_match(gold_sig[i], gate_sig[i]);
 	}
 
+	void add_match(Cell *gold_cell, Cell *gate_cell)
+	{
+		for (auto &conn : gold_cell->connections())
+			if (gate_cell->connections().count(conn.first))
+				add_match(conn.second, gate_cell->connections().at(conn.first));
+	}
+
 	void add_match(IdString gold_id, IdString gate_id)
 	{
 		Cell *gold_cell = gold->cell(gold_id);
@@ -84,6 +91,21 @@ struct EqyPartitionWorker
 			if (!gate_cell)
 				log_error("Can't find cell %s in gate circuit.\n", log_id(gate_id));
 
+			add_match(gold_cell, gate_cell);
+			return;
+		}
+
+		Wire *gold_wire = gold->wire(gold_id);
+		Wire *gate_wire = gate->wire(gate_id);
+
+		if (gold_wire || gate_wire)
+		{
+			if (!gold_wire)
+				log_error("Can't find wire %s in gold circuit.\n", log_id(gold_id));
+			if (!gate_wire)
+				log_error("Can't find wire %s in gate circuit.\n", log_id(gate_id));
+
+			add_match(SigSpec(gold_wire), SigSpec(gate_wire));
 			return;
 		}
 	}
@@ -98,6 +120,9 @@ struct EqyPartitionWorker
 		int primary_io_idx = 1;
 		dict<SigBit, SigBit> mapped_gold_bits;
 		dict<SigBit, SigBit> mapped_gate_bits;
+
+		dict<Cell*, Cell*> mapped_gold_cells;
+		dict<Cell*, Cell*> mapped_gate_cells;
 
 		std::function<SigBit(SigBit,bool,bool)> add_bit_f;
 		std::function<Cell*(Cell*,bool)> add_cell_f;
@@ -152,10 +177,18 @@ struct EqyPartitionWorker
 							mod_xx->connect(xx_bit, xx_wire);
 						}
 					}
+
+					if (primary_output)
+						goto add_input_cone;
 				}
-				else
+				else add_input_cone:
+				if (gg_drivers.count(bit))
 				{
-					// TBD
+					const auto &drv = gg_drivers.at(bit);
+					Cell *cell = add_cell_f(std::get<0>(drv), in_gold);
+					SigSpec s = cell->getPort(std::get<1>(drv));
+					s[std::get<2>(drv)] = mapped_gg_bits.at(bit);
+					cell->setPort(std::get<1>(drv), s);
 				}
 			}
 
@@ -164,8 +197,33 @@ struct EqyPartitionWorker
 
 		add_cell_f = [&](Cell *cell, bool in_gold)->Cell*
 		{
-			// TBD
-			return nullptr;
+			auto mod_gg = in_gold ? mod_gold : mod_gate;
+			auto &mapped_gg_cells = in_gold ? mapped_gold_cells : mapped_gate_cells;
+
+			if (!mapped_gg_cells.count(cell))
+			{
+				Cell *c = mod_gg->addCell(NEW_ID, cell->type);
+				mapped_gg_cells[cell] = c;
+
+				c->parameters = cell->parameters;
+
+				for (auto &conn : cell->connections())
+				{
+					if (cell->input(conn.first))
+					{
+						SigSpec s;
+						for (auto bit : conn.second)
+							s.append(add_bit_f(bit, in_gold, false));
+						c->setPort(conn.first, s);
+					}
+					else
+					{
+						c->setPort(conn.first, mod_gg->addWire(NEW_ID, GetSize(conn.second)));
+					}
+				}
+			}
+
+			return mapped_gg_cells.at(cell);
 		};
 
 		for (auto gold_bit : gold_outbits)
@@ -173,8 +231,8 @@ struct EqyPartitionWorker
 			gold_bit = gold_sigmap(gold_bit);
 			SigBit gate_bit = gold_matches.at(gold_bit);
 
-			SigBit actual_gold_bit = add_bit_f(gold_bit, true, true);
-			SigBit actual_gate_bit = add_bit_f(gate_bit, false, true);
+			add_bit_f(gold_bit, true, true);
+			add_bit_f(gate_bit, false, true);
 		}
 
 		return partition;
@@ -194,7 +252,7 @@ struct EqyPartitionPass : public Pass
 	log("\n");
 	}
 
-	void partition_module_worker(Module *gold, Module *gate)
+	void partition_full_module_worker(Module *gold, Module *gate)
 	{
 		std::ofstream ofile;
 		std::string filename = "partitions/" + gold->name.substr(6) + ".0.il";
@@ -209,17 +267,36 @@ struct EqyPartitionPass : public Pass
 		delete partition;
 	}
 
-	void partition_worker(Design *design)
+	void partition_worker(Design *design, bool full_module_mode = true)
 	{
 		int num_gold_modules = 0;
-		for (auto gold: design->modules())
+		for (auto gold : design->modules())
 		{
 			if (gold->name.begins_with("\\gold."))
 			{
 				num_gold_modules++;
 				Module *gate = design->module("\\gate." + gold->name.substr(6));
 				if (!gate) log_error("Could not find matching gate for module %s\n", log_id(gold));
-				partition_module_worker(gold, gate);
+				if (full_module_mode) {
+					partition_full_module_worker(gold, gate);
+				} else {
+					EqyPartitionWorker worker(gold, gate);
+					// TBD: Register match points
+					// TBD: Consolidate partitions
+					int partidx = 0;
+					for (auto &it : worker.gold_matches) {
+						std::ofstream ofile;
+						std::string filename = stringf("partitions/%s.%d.il", gold->name.substr(6).c_str(), partidx);
+						IdString partname = stringf("\\%s.%d", gold->name.substr(6).c_str(), partidx++);
+						pool<SigBit> gold_outbits = {it.first};
+						Design *partition = worker.make_partition(partname, gold_outbits);
+						ofile.open(filename.c_str(), std::ofstream::trunc);
+						if (ofile.fail())
+							log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
+						Backend::backend_call(partition, &ofile, filename, "rtlil");
+						delete partition;
+					}
+				}
 			}
 			else if (!gold->name.begins_with("\\gate.") && gold->name != "\\miter")
 				log_error("Found module %s that is neither gate nor gold nor miter. Was this design created with eqy_combine?\n", log_id(gold));

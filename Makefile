@@ -24,6 +24,7 @@ install: src/eqy_combine.so
 	mkdir -p $(DESTDIR)$(PREFIX)/share/yosys/plugins
 	cp src/eqy_job.py $(DESTDIR)$(PREFIX)/share/yosys/python3/
 	cp src/eqy_combine.so $(DESTDIR)$(PREFIX)/share/yosys/plugins/
+	cp src/eqy_partition.so $(DESTDIR)$(PREFIX)/share/yosys/plugins/
 ifeq ($(OS), Windows_NT)
 	sed -e 's|##yosys-sys-path##|sys.path += [os.path.dirname(__file__) + p for p in ["/share/python3", "/../share/yosys/python3"]]|;' \
 		-e "s|#!/usr/bin/env python3|#!$(PYTHON)|" < src/eqy.py > $(DESTDIR)$(PREFIX)/bin/eqy-script.py
