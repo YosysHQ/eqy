@@ -67,6 +67,9 @@ def parse_args():
     parser.add_argument("--setup", action="store_true", dest="setupmode",
             help="set up the working directory and exit")
 
+    parser.add_argument("-g", "--debug", action="store_true", dest="debugmode",
+            help="enable debug mode")
+
     exes = parser.add_argument_group("path arguments")
     exes.add_argument("--yosys", metavar="<path_to_executable>",
             action=DictAction, dest="exe_paths")
@@ -272,7 +275,7 @@ def build_combined(args, cfg, job):
         print("uniquify", file=f)
         print("hierarchy", file=f)
         print("design -stash gate", file=f)
-        print("eqy_combine -gold_ids {wd}/gold.ids -gate_ids {wd}/gate.ids".format(wd=args.workdir), file=f)
+        print("{dbg}eqy_combine -gold_ids {wd}/gold.ids -gate_ids {wd}/gate.ids".format(dbg="debug " if args.debugmode else "", wd=args.workdir), file=f)
         print("write_ilang {}/combined.il".format(args.workdir), file=f)
 
     combine_task = EqyTask(job, "combine", [], "{yosys} -ql {workdir}/combine.log {workdir}/combine.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
@@ -286,7 +289,7 @@ def make_partitions(args, cfg, job):
     with open(args.workdir + "/partition.ys", "w") as f:
         print("plugin -i {}/eqy_partition.so".format(plugin_path), file=f)
         print("read_ilang combined.il".format(args.workdir), file=f)
-        print("eqy_partition -matched_ids matched.ids", file=f)
+        print("{dbg}eqy_partition -matched_ids matched.ids".format(dbg="debug " if args.debugmode else ""), file=f)
     if not os.path.isdir(args.workdir + "/partitions"):
         os.mkdir(args.workdir + "/partitions")
 
