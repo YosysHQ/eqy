@@ -15,6 +15,9 @@ gold-match top i2ab i2ba
 gate-nomatch top i\dc?
 
 [partition]
+name top i2.* inputs
+nosplit top m_i
+output-cone top.m_i i2 3
 
 [strategy foo]
 foodledoo

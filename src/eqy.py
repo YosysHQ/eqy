@@ -282,21 +282,6 @@ def build_combined(args, cfg, job):
 
     job.run()
 
-def make_partitions(args, cfg, job):
-    plugin_path = root_path() + '/../share/yosys/plugins' # for install
-    if (not os.path.exists(plugin_path)):
-        plugin_path = root_path() # for development
-    with open(args.workdir + "/partition.ys", "w") as f:
-        print("plugin -i {}/eqy_partition.so".format(plugin_path), file=f)
-        print("read_ilang combined.il".format(args.workdir), file=f)
-        print("{dbg}eqy_partition -matched_ids matched.ids".format(dbg="debug " if args.debugmode else ""), file=f)
-    if not os.path.isdir(args.workdir + "/partitions"):
-        os.mkdir(args.workdir + "/partitions")
-
-    partition_task = EqyTask(job, "partition", [], "cd {workdir}; {yosys} -ql partition.log partition.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
-
-    job.run()
-
 def read_ids(filename):
     ids = dict()
     with open(filename) as f:
@@ -389,7 +374,47 @@ def match_ids(args, cfg):
                     for entity_match in match_entity_re(gate_ids[module_match], line[2], None):
                         used_gate_ids.add((module_match, entity_match[0]))
             else:
-                exit_with_error(f"Syntax error in match command \"{line[0]}\"")
+                exit_with_error(f"Syntax error in match command \"{' '.join(line)}\"")
+
+def partition_ids(args, cfg):
+    gold_ids = read_ids(args.workdir + "/gold.ids")
+
+
+    with open(args.workdir + "/partition_names.ids", "w") as name_f, open(args.workdir + "/partition_nosplit.ids", "w") as nosplit_f, open(args.workdir + "/partition_inputcone.ids", "w") as inputcone_f, open(args.workdir + "/partition_outputcone.ids", "w") as outputcone_f:
+        for line in cfg.partition:
+            line = line.split()
+            if len(line) == 0:
+                continue
+            elif line[0] == "name" and len(line) == 4:
+                for module_match in match_module_re(gold_ids, line[1]):
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], line[2], None):
+                        print(line[0], module_match, entity_match, line[3], file=name_f)
+            elif line[0] == "nosplit" and len(line) == 3:
+                for module_match in match_module_re(gold_ids, line[1]):
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], line[2], None):
+                        print(line[0], module_match, entity_match, file=nosplit_f)
+            elif line[0] in ["input-cone", "output-cone"] and len(line) in [3, 4]:
+                for module_match in match_module_re(gold_ids, line[1]):
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], line[2], None):
+                        print(line[0], module_match, entity_match, line[3], file=inputcone_f if line[0]=="input-cone" else outputcone_f)
+            else:
+                exit_with_error(f"Syntax error in partition command \"{' '.join(line)}\"")
+
+def make_partitions(args, cfg, job):
+    partition_ids(args, cfg)
+    plugin_path = root_path() + '/../share/yosys/plugins' # for install
+    if (not os.path.exists(plugin_path)):
+        plugin_path = root_path() # for development
+    with open(args.workdir + "/partition.ys", "w") as f:
+        print("plugin -i {}/eqy_partition.so".format(plugin_path), file=f)
+        print("read_ilang combined.il".format(args.workdir), file=f)
+        print("{dbg}eqy_partition -matched_ids matched.ids -partition_names partition_names.ids -nosplit_ids partition_nosplit.ids".format(dbg="debug " if args.debugmode else ""), file=f)
+    if not os.path.isdir(args.workdir + "/partitions"):
+        os.mkdir(args.workdir + "/partitions")
+
+    partition_task = EqyTask(job, "partition", [], "cd {workdir}; {yosys} -ql partition.log partition.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+
+    job.run()
 
 def main():
     args = parse_args()
