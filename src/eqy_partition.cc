@@ -63,7 +63,11 @@ struct EqyPartitionWorker
 		gold_bit = gold_sigmap(gold_bit);
 		gate_bit = gate_sigmap(gate_bit);
 
-		queue.insert(gold_bit);
+		log_debug("match: %s <-> %s\n", log_signal(gold_bit), log_signal(gate_bit));
+
+		if (gold_drivers.count(gold_bit))
+			queue.insert(gold_bit);
+
 		gold_matches[gold_bit] = gate_bit;
 		gate_matches[gate_bit] = gold_bit;
 	}
@@ -136,6 +140,8 @@ struct EqyPartitionWorker
 
 		add_bit_f = [&](SigBit bit, bool in_gold, bool isoutput)->void
 		{
+			log_debug("+add_bit_f %s %s%s\n", log_signal(bit), in_gold ? "gold" : "gate", isoutput ? " [output]" : "");
+
 			auto &gg_sigmap = in_gold ? gold_sigmap : gate_sigmap;
 			auto &gg_drivers = in_gold ? gold_drivers : gate_drivers;
 			auto &gg_matches = in_gold ? gold_matches : gate_matches;
@@ -187,10 +193,14 @@ struct EqyPartitionWorker
 					add_cell_f(driver_cell, in_gold);
 				}
 			}
+
+			log_debug("-add_bit_f\n");
 		};
 
 		add_cell_f = [&](Cell *cell, bool in_gold)->void
 		{
+			log_debug("+add_cell_f %s %s\n", log_id(cell), in_gold ? "gold" : "gate");
+
 			auto &part_gg_cells = in_gold ? part_gold_cells : part_gate_cells;
 
 			if (!part_gg_cells.count(cell))
@@ -202,8 +212,11 @@ struct EqyPartitionWorker
 						for (auto bit : conn.second)
 							add_bit_f(bit, in_gold, false);
 			}
+
+			log_debug("-add_cell_f\n");
 		};
 
+		log("Adding bit %s to current partition.\n", log_signal(gold_bit));
 		add_bit_f(gold_bit, true, true);
 	}
 
@@ -212,15 +225,95 @@ struct EqyPartitionWorker
 		log_assert(partition_open);
 		partition_open = false;
 
+		log("Finalizing partition %s.\n", log_id(partname));
+
 		Design *partition = new Design();
 
 		Module *mod_gold = partition->addModule("\\gold." + partname.substr(1));
 		Module *mod_gate = partition->addModule("\\gate." + partname.substr(1));
 
-		// TBD: Copy relavant parts to the partition modules
+		auto copy_mod_contents = [&](bool in_gold)->void
+		{
+			// Module *in_mod = in_gold ? gold : gate;
+			Module *out_mod = in_gold ? mod_gold : mod_gate;
+			auto &sigmap = in_gold ? gold_sigmap : gate_sigmap;
 
-		(void)mod_gold;
-		(void)mod_gate;
+			auto &part_gg_bits = in_gold ? part_gold_bits : part_gate_bits;
+			auto &part_gg_cells = in_gold ? part_gold_cells : part_gate_cells;
+
+			dict<SigBit,SigBit> mapped_bits;
+			dict<Wire*,Wire*> mapped_wires;
+
+			SigSpec pi, po;
+
+			for (auto bit : part_gg_bits) {
+				Wire *w = bit.wire;
+				if (!w) continue;
+				if (!mapped_wires.count(w)) {
+					Wire *ww = out_mod->addWire(w->name, GetSize(w));
+					log_debug("%s partition wire: %s\n", in_gold ? "gold" : "gate", log_id(ww));
+					// TBD: Copy some of the wire metadata
+					mapped_wires[w] = ww;
+				}
+				mapped_bits[bit] = SigBit(mapped_wires.at(w), bit.offset);
+			}
+
+			for (auto bit : part_inbits)
+			{
+				log_debug("%s partition pi bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
+				if (!in_gold)
+					bit = gold_matches.at(bit);
+				pi.append(bit);
+			}
+
+			for (auto bit : part_outbits)
+			{
+				log_debug("%s partition po bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
+				if (!in_gold)
+					bit = gold_matches.at(bit);
+				po.append(bit);
+			}
+
+			for (auto &it : mapped_wires) {
+				Wire *w = it.first, *ww = it.second;
+				for (int i = 0; i < GetSize(w); i++)
+					if (!mapped_bits.count(SigBit(w, i)))
+						out_mod->connect(SigBit(ww, i), State::Sz);
+			}
+
+			for (auto c : part_gg_cells)
+			{
+				Cell *cc = out_mod->addCell(c->name, c->type);
+				cc->parameters = c->parameters;
+				log_debug("%s partition cell: %s\n", in_gold ? "gold" : "gate", log_id(cc));
+
+				for (auto &conn : c->connections()) {
+					SigSpec s;
+					for (auto bit : sigmap(conn.second)) {
+						if (mapped_bits.count(bit))
+							s.append(mapped_bits.at(bit));
+						else
+							s.append(out_mod->addWire(NEW_ID));
+					}
+					cc->setPort(conn.first, s);
+				}
+			}
+
+			Wire *piw = out_mod->addWire("\\__pi", GetSize(pi));
+			piw->port_input = true;
+			piw->port_id = 1;
+			out_mod->connect(pi, piw);
+
+			Wire *pow = out_mod->addWire("\\__po", GetSize(po));
+			pow->port_output = true;
+			pow->port_id = 2;
+			out_mod->connect(pow, po);
+
+			// TBD: Create blackbox modules as needed
+		};
+
+		copy_mod_contents(true);
+		copy_mod_contents(false);
 
 		part_inbits.clear();
 		part_outbits.clear();
@@ -279,14 +372,10 @@ struct EqyPartitionPass : public Pass
 					// TBD: Register match points
 					// TBD: Consolidate partitions
 
-					// Force output ports to be match points
+					// Force ports to be match points
 					for (auto w : gold->wires())
-					{
-						if (!w->port_output) continue;
-						auto ww = gate->wire(w->name);
-						if (!ww) continue;
-						worker.add_match(SigSpec(w), SigSpec(ww));
-					}
+						if (w->port_id)
+							worker.add_match(w->name, w->name);
 
 					int partidx = 0;
 					while (!worker.queue.empty())
@@ -301,6 +390,7 @@ struct EqyPartitionPass : public Pass
 						if (ofile.fail())
 							log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
 						Backend::backend_call(partition, &ofile, filename, "rtlil");
+						log_spacer();
 						delete partition;
 					}
 				}
