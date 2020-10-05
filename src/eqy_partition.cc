@@ -65,9 +65,11 @@ struct EqyPartitionWorker
 
 		log_debug("match: %s <-> %s\n", log_signal(gold_bit), log_signal(gate_bit));
 
+		// TBD: Do not queue output ports of matched cell
 		if (gold_drivers.count(gold_bit))
 			queue.insert(gold_bit);
 
+		// TBD: Detect conflicting match points
 		gold_matches[gold_bit] = gate_bit;
 		gate_matches[gate_bit] = gold_bit;
 	}
@@ -354,7 +356,10 @@ struct EqyPartitionPass : public Pass
 		delete partition;
 	}
 
-	void partition_worker(Design *design, bool full_module_mode)
+	void partition_worker(Design *design, bool full_module_mode,
+			const dict<std::string, std::vector<std::pair<std::string, std::string>>> &matched_ids,
+			const dict<std::string, dict<std::string, pool<std::string>>> & /* partition_names */,
+			const dict<std::string, pool<std::string>> & /* nosplit_ids */)
 	{
 		int num_gold_modules = 0;
 		for (auto gold : design->modules())
@@ -369,8 +374,14 @@ struct EqyPartitionPass : public Pass
 					partition_full_module_worker(gold, gate);
 				} else {
 					EqyPartitionWorker worker(gold, gate);
-					// TBD: Register match points
-					// TBD: Consolidate partitions
+
+					// Register match points
+					if (!matched_ids.count(gold->name.substr(6)))
+						log_error("No matched IDs for module %s.\n", gold->name.substr(6).c_str());
+					for (auto &it : matched_ids.at(gold->name.substr(6)))
+						worker.add_match(IdString(RTLIL::escape_id(it.first)), IdString(RTLIL::escape_id(it.second)));
+
+					// TBD: Register partition names
 
 					// Force ports to be match points
 					for (auto w : gold->wires())
@@ -506,7 +517,7 @@ struct EqyPartitionPass : public Pass
 		}
 
 		log_push();
-		partition_worker(design, full_module_mode);
+		partition_worker(design, full_module_mode, matched_ids, partition_names, nosplit_ids);
 		log_pop();
 	}
 
