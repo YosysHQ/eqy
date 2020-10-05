@@ -18,7 +18,7 @@ src/eqy_combine.so: src/eqy_combine.cc
 src/eqy_partition.so: src/eqy_partition.cc
 	yosys-config --build $@ $^
 
-install: src/eqy_combine.so
+install: src/eqy_combine.so src/eqy_partition.so
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	mkdir -p $(DESTDIR)$(PREFIX)/share/yosys/python3
 	mkdir -p $(DESTDIR)$(PREFIX)/share/yosys/plugins

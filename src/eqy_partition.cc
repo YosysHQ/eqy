@@ -32,6 +32,7 @@ struct EqyPartitionWorker
 	dict<SigBit, tuple<Cell*, IdString, int>> gold_drivers;
 	dict<SigBit, tuple<Cell*, IdString, int>> gate_drivers;
 
+	pool<SigBit> queue;
 	dict<SigBit, SigBit> gold_matches;
 	dict<SigBit, SigBit> gate_matches;
 
@@ -62,6 +63,7 @@ struct EqyPartitionWorker
 		gold_bit = gold_sigmap(gold_bit);
 		gate_bit = gate_sigmap(gate_bit);
 
+		queue.insert(gold_bit);
 		gold_matches[gold_bit] = gate_bit;
 		gate_matches[gate_bit] = gold_bit;
 	}
@@ -110,130 +112,122 @@ struct EqyPartitionWorker
 		}
 	}
 
-	Design *make_partition(IdString partname, pool<SigBit> gold_outbits)
+	bool partition_open = false;
+	pool<SigBit> part_inbits, part_outbits;
+	pool<SigBit> part_gold_bits, part_gate_bits;
+	pool<Cell*> part_gold_cells, part_gate_cells;
+
+	void partition_begin()
 	{
+		log_assert(!partition_open);
+		partition_open = true;
+	}
+
+	void partition_add(SigBit gold_bit)
+	{
+		gold_bit = gold_sigmap(gold_bit);
+
+		log_assert(partition_open);
+		log_assert(queue.count(gold_bit));
+		queue.erase(gold_bit);
+
+		std::function<void(SigBit,bool,bool)> add_bit_f;
+		std::function<void(Cell*,bool)> add_cell_f;
+
+		add_bit_f = [&](SigBit bit, bool in_gold, bool isoutput)->void
+		{
+			auto &gg_sigmap = in_gold ? gold_sigmap : gate_sigmap;
+			auto &gg_drivers = in_gold ? gold_drivers : gate_drivers;
+			auto &gg_matches = in_gold ? gold_matches : gate_matches;
+			auto &part_gg_bits = in_gold ? part_gold_bits : part_gate_bits;
+
+			bit = gg_sigmap(bit);
+
+			bool insert_bit = !part_gg_bits.count(bit);
+
+			if (!insert_bit && isoutput && gg_matches.count(bit)) {
+				SigBit gold_bit = in_gold ? bit : gg_matches.at(bit);
+				if (!part_outbits.count(gold_bit))
+					insert_bit = true;
+			}
+
+			if (insert_bit)
+			{
+				bool isinput = false;
+
+				part_gg_bits.insert(bit);
+
+				if (gg_matches.count(bit))
+				{
+					SigBit xx_bit = gg_matches.at(bit);
+					SigBit gold_bit = in_gold ? bit : xx_bit;
+					bool run_other = false;
+
+					if (isoutput) {
+						run_other = !part_outbits.count(gold_bit);
+						part_outbits.insert(gold_bit);
+					} else {
+						isinput = true;
+						run_other = !part_inbits.count(gold_bit);
+						part_inbits.insert(gold_bit);
+					}
+
+					if (run_other)
+						add_bit_f(xx_bit, !in_gold, isoutput);
+				}
+				else
+				{
+					log_assert(!isoutput);
+				}
+
+				if (!isinput && gg_drivers.count(bit))
+				{
+					auto const &driver = gg_drivers.at(bit);
+					auto driver_cell = std::get<0>(driver);
+					add_cell_f(driver_cell, in_gold);
+				}
+			}
+		};
+
+		add_cell_f = [&](Cell *cell, bool in_gold)->void
+		{
+			auto &part_gg_cells = in_gold ? part_gold_cells : part_gate_cells;
+
+			if (!part_gg_cells.count(cell))
+			{
+				part_gg_cells.insert(cell);
+
+				for (auto &conn : cell->connections())
+					if (cell->input(conn.first))
+						for (auto bit : conn.second)
+							add_bit_f(bit, in_gold, false);
+			}
+		};
+
+		add_bit_f(gold_bit, true, true);
+	}
+
+	Design *partition_finalize(IdString partname)
+	{
+		log_assert(partition_open);
+		partition_open = false;
+
 		Design *partition = new Design();
 
 		Module *mod_gold = partition->addModule("\\gold." + partname.substr(1));
 		Module *mod_gate = partition->addModule("\\gate." + partname.substr(1));
 
-		int primary_io_idx = 1;
-		dict<SigBit, SigBit> mapped_gold_bits;
-		dict<SigBit, SigBit> mapped_gate_bits;
+		// TBD: Copy relavant parts to the partition modules
 
-		dict<Cell*, Cell*> mapped_gold_cells;
-		dict<Cell*, Cell*> mapped_gate_cells;
+		(void)mod_gold;
+		(void)mod_gate;
 
-		std::function<SigBit(SigBit,bool,bool)> add_bit_f;
-		std::function<Cell*(Cell*,bool)> add_cell_f;
-
-		add_bit_f = [&](SigBit bit, bool in_gold, bool primary_output)->SigBit
-		{
-			auto mod_gg = in_gold ? mod_gold : mod_gate;
-			auto mod_xx = !in_gold ? mod_gold : mod_gate;
-
-			auto &mapped_gg_bits = in_gold ? mapped_gold_bits : mapped_gate_bits;
-			auto &mapped_xx_bits = !in_gold ? mapped_gold_bits : mapped_gate_bits;
-
-			auto &gg_sigmap = in_gold ? gold_sigmap : gate_sigmap;
-			auto &gg_drivers = in_gold ? gold_drivers : gate_drivers;
-			auto &gg_matches = in_gold ? gold_matches : gate_matches;
-
-			bit = gg_sigmap(bit);
-
-			if (mapped_gg_bits.count(bit) == 0)
-			{
-				mapped_gg_bits[bit] = mod_gg->addWire(NEW_ID);
-
-				if (gg_matches.count(bit))
-				{
-					if (mapped_xx_bits.count(gg_matches.at(bit)))
-					{
-						auto gg_bit = mapped_gg_bits.at(bit);
-						auto xx_bit = add_bit_f(gg_matches.at(bit), !in_gold, primary_output);
-
-						if (primary_output)
-						{
-							Wire *gg_wire = mod_gg->addWire(stringf("\\__po_%d", primary_io_idx));
-							Wire *xx_wire = mod_xx->addWire(stringf("\\__po_%d", primary_io_idx));
-							primary_io_idx++;
-
-							gg_wire->port_output = true;
-							xx_wire->port_output = true;
-
-							mod_gg->connect(gg_wire, gg_bit);
-							mod_xx->connect(xx_wire, xx_bit);
-						}
-						else
-						{
-							Wire *gg_wire = mod_gg->addWire(stringf("\\__pi_%d", primary_io_idx));
-							Wire *xx_wire = mod_xx->addWire(stringf("\\__pi_%d", primary_io_idx));
-							primary_io_idx++;
-
-							gg_wire->port_input = true;
-							xx_wire->port_input = true;
-
-							mod_gg->connect(gg_bit, gg_wire);
-							mod_xx->connect(xx_bit, xx_wire);
-						}
-					}
-
-					if (primary_output)
-						goto add_input_cone;
-				}
-				else add_input_cone:
-				if (gg_drivers.count(bit))
-				{
-					const auto &drv = gg_drivers.at(bit);
-					Cell *cell = add_cell_f(std::get<0>(drv), in_gold);
-					SigSpec s = cell->getPort(std::get<1>(drv));
-					s[std::get<2>(drv)] = mapped_gg_bits.at(bit);
-					cell->setPort(std::get<1>(drv), s);
-				}
-			}
-
-			return mapped_gg_bits.at(bit);
-		};
-
-		add_cell_f = [&](Cell *cell, bool in_gold)->Cell*
-		{
-			auto mod_gg = in_gold ? mod_gold : mod_gate;
-			auto &mapped_gg_cells = in_gold ? mapped_gold_cells : mapped_gate_cells;
-
-			if (!mapped_gg_cells.count(cell))
-			{
-				Cell *c = mod_gg->addCell(NEW_ID, cell->type);
-				mapped_gg_cells[cell] = c;
-
-				c->parameters = cell->parameters;
-
-				for (auto &conn : cell->connections())
-				{
-					if (cell->input(conn.first))
-					{
-						SigSpec s;
-						for (auto bit : conn.second)
-							s.append(add_bit_f(bit, in_gold, false));
-						c->setPort(conn.first, s);
-					}
-					else
-					{
-						c->setPort(conn.first, mod_gg->addWire(NEW_ID, GetSize(conn.second)));
-					}
-				}
-			}
-
-			return mapped_gg_cells.at(cell);
-		};
-
-		for (auto gold_bit : gold_outbits)
-		{
-			gold_bit = gold_sigmap(gold_bit);
-			SigBit gate_bit = gold_matches.at(gold_bit);
-
-			add_bit_f(gold_bit, true, true);
-			add_bit_f(gate_bit, false, true);
-		}
+		part_inbits.clear();
+		part_outbits.clear();
+		part_gold_bits.clear();
+		part_gate_bits.clear();
+		part_gold_cells.clear();
+		part_gate_cells.clear();
 
 		return partition;
 	}
@@ -245,11 +239,11 @@ struct EqyPartitionPass : public Pass
 
 	void help() override
 	{
-	//   |---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|
-	log("\n");
-	log("    eqy_partition\n");
-	log("\n");
-	log("\n");
+		//   |---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|
+		log("\n");
+		log("    eqy_partition\n");
+		log("\n");
+		log("\n");
 	}
 
 	void partition_full_module_worker(Module *gold, Module *gate)
@@ -267,7 +261,7 @@ struct EqyPartitionPass : public Pass
 		delete partition;
 	}
 
-	void partition_worker(Design *design, bool full_module_mode = true)
+	void partition_worker(Design *design, bool full_module_mode)
 	{
 		int num_gold_modules = 0;
 		for (auto gold : design->modules())
@@ -277,19 +271,32 @@ struct EqyPartitionPass : public Pass
 				num_gold_modules++;
 				Module *gate = design->module("\\gate." + gold->name.substr(6));
 				if (!gate) log_error("Could not find matching gate for module %s\n", log_id(gold));
+				log_header(design, "Processing module pair %s / %s.\n", log_id(gold), log_id(gate));
 				if (full_module_mode) {
 					partition_full_module_worker(gold, gate);
 				} else {
 					EqyPartitionWorker worker(gold, gate);
 					// TBD: Register match points
 					// TBD: Consolidate partitions
+
+					// Force output ports to be match points
+					for (auto w : gold->wires())
+					{
+						if (!w->port_output) continue;
+						auto ww = gate->wire(w->name);
+						if (!ww) continue;
+						worker.add_match(SigSpec(w), SigSpec(ww));
+					}
+
 					int partidx = 0;
-					for (auto &it : worker.gold_matches) {
+					while (!worker.queue.empty())
+					{
+						worker.partition_begin();
+						worker.partition_add(*worker.queue.begin());
 						std::ofstream ofile;
 						std::string filename = stringf("partitions/%s.%d.il", gold->name.substr(6).c_str(), partidx);
 						IdString partname = stringf("\\%s.%d", gold->name.substr(6).c_str(), partidx++);
-						pool<SigBit> gold_outbits = {it.first};
-						Design *partition = worker.make_partition(partname, gold_outbits);
+						Design *partition = worker.partition_finalize(partname);
 						ofile.open(filename.c_str(), std::ofstream::trunc);
 						if (ofile.fail())
 							log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
@@ -312,8 +319,7 @@ struct EqyPartitionPass : public Pass
 		if (!matched_file)
 			log_error("Cannot open file '%s'\n", filename.c_str());
 		std::string line;
-		for (std::string line; std::getline(matched_file, line); )
-    {
+		for (std::string line; std::getline(matched_file, line); ) {
 			std::vector<std::string> things = split_tokens(line);
 			if (things.size() != 3)
 				log_error("Malformed file %s\n", filename.c_str());
@@ -325,6 +331,8 @@ struct EqyPartitionPass : public Pass
 	void execute(std::vector<std::string> args, Design *design) override
 	{
 		std::string matched_ids_filename;
+		bool full_module_mode = false;
+
 		size_t argidx;
 		for (argidx = 1; argidx < args.size(); argidx++)
 		{
@@ -332,15 +340,24 @@ struct EqyPartitionPass : public Pass
 				matched_ids_filename = args[++argidx];
 				continue;
 			}
+			if ((args[argidx] == "-fullmods")) {
+				full_module_mode = true;
+				continue;
+			}
 			break;
 		}
 		extra_args(args, argidx, design, false);
+
+		log_header(design, "Executing EQY PARTITION task.\n");
+
 		auto matched_ids = read_matched_ids(matched_ids_filename);
 		for (auto i : matched_ids)
 			for (auto j : i.second)
 				log_debug("Found ID match: %s %s %s\n", i.first.c_str(), j.first.c_str(), j.second.c_str());
-		partition_worker(design);
 
+		log_push();
+		partition_worker(design, full_module_mode);
+		log_pop();
 	}
 
 } EqyPartitionPass;
