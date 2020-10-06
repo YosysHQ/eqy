@@ -307,7 +307,6 @@ def read_ids(filename):
                     ids[modname][objname][optkey] = optval
             if 'w' not in ids[modname][objname] and 'c' not in ids[modname][objname]:
                 exit_with_error("Missing type in line {}".format(lineno))
-    print(ids)
     return ids
 
 def match_module_re(ids, module_re):
@@ -430,6 +429,7 @@ def main():
     build_combined(args, cfg, job)
     match_ids(args, cfg)
     make_partitions(args, cfg, job)
+    job.final()
 
 if __name__ == '__main__':
     main()

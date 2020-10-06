@@ -640,6 +640,7 @@ class EqyJob:
 
         self.taskloop()
 
+    def final(self):
         total_clock_time = int(time() - self.start_clock_time)
 
         if os.name == "posix":
