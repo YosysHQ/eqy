@@ -35,6 +35,8 @@ struct EqyPartitionWorker
 	pool<SigBit> queue;
 	dict<SigBit, SigBit> gold_matches;
 	dict<SigBit, SigBit> gate_matches;
+	dict<Cell*, Cell*> gold_matched_cells;
+	dict<Cell*, Cell*> gate_matched_cells;
 
 	void register_drivers(Module *m, SigMap &sm, dict<SigBit, tuple<Cell*, IdString, int>> &db)
 	{
@@ -65,11 +67,24 @@ struct EqyPartitionWorker
 
 		log_debug("match: %s <-> %s\n", log_signal(gold_bit), log_signal(gate_bit));
 
-		// TBD: Do not queue output ports of matched cell
-		if (gold_drivers.count(gold_bit))
-			queue.insert(gold_bit);
+		if (gold_drivers.count(gold_bit)) {
+			auto &driver = gold_drivers.at(gold_bit);
+			if (gold_matched_cells.count(std::get<0>(driver)))
+				queue.erase(gold_bit);
+			else
+				queue.insert(gold_bit);
+		} else {
+			queue.erase(gold_bit);
+		}
 
-		// TBD: Detect conflicting match points
+		if (gold_matches.count(gold_bit) && gold_matches.at(gold_bit) != gate_bit)
+			log_error("conflicting matches for gold bit %s: %s vs %s\n", log_signal(gold_bit),
+					log_signal(gold_matches.at(gold_bit)), log_signal(gate_bit));
+
+		if (gate_matches.count(gate_bit) && gate_matches.at(gate_bit) != gold_bit)
+			log_error("conflicting matches for gate bit %s: %s vs %s\n", log_signal(gate_bit),
+					log_signal(gate_matches.at(gate_bit)), log_signal(gold_bit));
+
 		gold_matches[gold_bit] = gate_bit;
 		gate_matches[gate_bit] = gold_bit;
 	}
@@ -82,6 +97,9 @@ struct EqyPartitionWorker
 
 	void add_match(Cell *gold_cell, Cell *gate_cell)
 	{
+		gold_matched_cells[gold_cell] = gate_cell;
+		gate_matched_cells[gate_cell] = gold_cell;
+
 		for (auto &conn : gold_cell->connections())
 			if (gate_cell->connections().count(conn.first))
 				add_match(conn.second, gate_cell->connections().at(conn.first));
@@ -286,13 +304,16 @@ struct EqyPartitionWorker
 			for (auto c : part_gg_cells)
 			{
 				Cell *cc = out_mod->addCell(c->name, c->type);
-				cc->parameters = c->parameters;
 				log_debug("%s partition cell: %s\n", in_gold ? "gold" : "gate", log_id(cc));
+				// TBD: Copy some of the cell metadata
+				cc->parameters = c->parameters;
 
 				for (auto &conn : c->connections()) {
 					SigSpec s;
 					for (auto bit : sigmap(conn.second)) {
-						if (mapped_bits.count(bit))
+						if (bit. wire == nullptr)
+							s.append(bit);
+						else if (mapped_bits.count(bit))
 							s.append(mapped_bits.at(bit));
 						else
 							s.append(out_mod->addWire(NEW_ID));
@@ -310,8 +331,6 @@ struct EqyPartitionWorker
 			pow->port_output = true;
 			pow->port_id = 2;
 			out_mod->connect(pow, po);
-
-			// TBD: Create blackbox modules as needed
 		};
 
 		copy_mod_contents(true);
