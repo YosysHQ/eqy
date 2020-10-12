@@ -19,8 +19,6 @@ name top i2.* inputs
 nosplit top m_i
 output-cone top.m_i i2 3
 
-[strategy foo]
-foodledoo
-
-[strategy bar]
-bardledoo
+[strategy simple]
+use satseq
+option depth 10
