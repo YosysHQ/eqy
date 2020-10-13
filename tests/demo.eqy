@@ -23,6 +23,4 @@ output-cone top.m_i i2 3
 use satseq
 option depth 10
 
-[strategy complex]
-use satseq
-option depth 10
+[strategy dummy]

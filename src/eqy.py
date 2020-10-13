@@ -196,11 +196,6 @@ def read_config(configfile):
 
     return cfg
 
-def validate_config(args, cfg):
-    mandatory_cfg_sections = ["gold", "gate"]
-    for s in mandatory_cfg_sections:
-        if len(getattr(cfg, s)) == 0:
-            exit_with_error("section [{}] missing".format(s))
 
 
 def setup_workdir(args):
@@ -415,6 +410,38 @@ def make_partitions(args, cfg, job):
 
     job.run()
 
+def write_strategy_dummy(args, cfg, partition, strategy):
+    with open(f"{args.workdir}/strategies/{partition}/{strategy}/run.sh", "w") as run_f:
+        print("echo PASS > status", file=run_f)
+        print(f"echo \"Assumed equivalence of partition '{partition}' using strategy '{strategy}'\"", file=run_f)
+
+def write_strategy_simple(args, cfg, partition, strategy):
+    with open(f"{args.workdir}/strategies/{partition}/{strategy}/run.sh", "w") as run_f:
+        print( f"""yosys -ql run.log run.ys
+if grep "SAT proof finished - no model found: SUCCESS!" run.log > /dev/null ; then
+\techo PASS > status
+\techo "Proved equivalence of partition '{partition}' using strategy '{strategy}'"
+elif grep "SAT proof finished - model found: FAIL!" run.log > /dev/null ; then
+\techo UNKNOWN > status
+\techo "Could not prove equivalence of partition '{partition}' using strategy '{strategy}'"
+else
+\techo ERROR > status
+\techo "Execution of strategy '{strategy}' on partition '{partition}' encountered an error.\nDetails can be found in '{args.workdir}/strategies/{partition}/{strategy}/run.log'."
+\texit 1
+fi
+exit 0""" , file=run_f)
+    with open(f"{args.workdir}/strategies/{partition}/{strategy}/run.ys", "w") as ys_f:
+        print(f"read_ilang ../../../partitions/{partition}.il", file=ys_f)
+        # TODO: where to put scripts for different strategies
+        print(f"miter -equiv -make_assert -ignore_gold_x -flatten gold.{partition} gate.{partition} miter", file=ys_f)
+        print("sat -set-init-undef -seq 5 -prove-asserts miter", file=ys_f)
+
+strategies = {
+    "dummy": write_strategy_dummy,
+    "simple": write_strategy_simple,
+    # add strategies here
+}
+
 def make_scripts(args, cfg, job):
     partitions = []
     with open(args.workdir + "/partition.list") as f:
@@ -433,25 +460,10 @@ def make_scripts(args, cfg, job):
                 if not os.path.isdir(f"{args.workdir}/strategies/{partition}/{strategy}"):
                     os.mkdir(f"{args.workdir}/strategies/{partition}/{strategy}")
                 # TODO: ensure unchanged strategies don't get re-run but changed strategies do
-                with open(f"{args.workdir}/strategies/{partition}/{strategy}/run.sh", "w") as run_f:
-                    print( f"""yosys -ql run.log run.ys
-if grep "SAT proof finished - no model found: SUCCESS!" run.log > /dev/null ; then
-\techo PASS > status
-\techo "Proved equivalence of partition '{partition}' using strategy '{strategy}'"
-elif grep "SAT proof finished - model found: FAIL!" run.log > /dev/null ; then
-\techo UNKNOWN > status
-\techo "Could not prove equivalence of partition '{partition}' using strategy '{strategy}'"
-else
-\techo ERROR > status
-\techo "Execution of strategy '{strategy}' on partition '{partition}' encountered an error.\nDetails can be found in '{args.workdir}/strategies/{partition}/{strategy}/run.log'."
-\texit 1
-fi
-exit 0""" , file=run_f)
-                with open(f"{args.workdir}/strategies/{partition}/{strategy}/run.ys", "w") as ys_f:
-                    print(f"read_ilang ../../../partitions/{partition}.il", file=ys_f)
-                    # TODO: where to put scripts for different strategies
-                    print(f"miter -equiv -make_assert -ignore_gold_x -flatten gold.{partition} gate.{partition} miter", file=ys_f)
-                    print("sat -set-init-undef -seq 5 -prove-asserts miter", file=ys_f)
+                try:
+                    strategies[strategy](args, cfg, partition, strategy)
+                except KeyError:
+                    exit_with_error(f"Unknown strategy '{strategy}'.")
                 if prev_strategy:
                     print( f"""strategies/{partition}/{strategy}/status: {prev_strategy}
 \t@if grep PASS $^ >/dev/null ; then \\
@@ -470,6 +482,15 @@ exit 0""" , file=run_f)
 def run_scripts(args, cfg, job):
     run_task = EqyTask(job, "run", [], f"cd {args.workdir}; make -f strategies.mk")
     job.run()
+
+def validate_config(args, cfg):
+    mandatory_cfg_sections = ["gold", "gate"]
+    for s in mandatory_cfg_sections:
+        if len(getattr(cfg, s)) == 0:
+            exit_with_error("section [{}] missing".format(s))
+    for strategy in cfg.strategy:
+        if strategy not in strategies:
+            exit_with_error(f"Unknown strategy '{strategy}'.")
 
 def main():
     args = parse_args()
