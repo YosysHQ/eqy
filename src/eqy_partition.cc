@@ -378,7 +378,8 @@ struct EqyPartitionPass : public Pass
 	void partition_worker(Design *design, bool full_module_mode,
 			const dict<std::string, std::vector<std::pair<std::string, std::string>>> &matched_ids,
 			const dict<std::string, dict<std::string, pool<std::string>>> & /* partition_names */,
-			const dict<std::string, pool<std::string>> & /* nosplit_ids */)
+			const dict<std::string, pool<std::string>> & /* nosplit_ids */,
+			std::ofstream &partition_list_file)
 	{
 		int num_gold_modules = 0;
 		for (auto gold : design->modules())
@@ -420,6 +421,7 @@ struct EqyPartitionPass : public Pass
 						if (ofile.fail())
 							log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
 						Backend::backend_call(partition, &ofile, filename, "rtlil");
+						partition_list_file << unescape_id(partname) << "\n";
 						log_spacer();
 						delete partition;
 					}
@@ -483,7 +485,7 @@ struct EqyPartitionPass : public Pass
 
 	void execute(std::vector<std::string> args, Design *design) override
 	{
-		std::string matched_ids_filename, partition_names_filename, nosplit_ids_filename;
+		std::string matched_ids_filename, partition_names_filename, nosplit_ids_filename, partition_list_filename;
 		bool full_module_mode = false;
 
 		size_t argidx;
@@ -505,12 +507,17 @@ struct EqyPartitionPass : public Pass
 				full_module_mode = true;
 				continue;
 			}
+			if ((args[argidx] == "-create_partition_list") && argidx+1 < args.size()) {
+				partition_list_filename = args[++argidx];
+				continue;
+			}
 			break;
 		}
 		extra_args(args, argidx, design, false);
 
 		log_header(design, "Executing EQY PARTITION task.\n");
 
+		//TBD: handle absent arguments
 		auto matched_ids = read_matched_ids(matched_ids_filename);
 		for (auto i : matched_ids)
 			for (auto j : i.second)
@@ -535,8 +542,10 @@ struct EqyPartitionPass : public Pass
 			log_debug("\n");
 		}
 
+		std::ofstream partition_list_file (partition_list_filename, std::ofstream::out);
+
 		log_push();
-		partition_worker(design, full_module_mode, matched_ids, partition_names, nosplit_ids);
+		partition_worker(design, full_module_mode, matched_ids, partition_names, nosplit_ids, partition_list_file);
 		log_pop();
 	}
 

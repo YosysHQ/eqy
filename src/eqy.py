@@ -407,12 +407,68 @@ def make_partitions(args, cfg, job):
     with open(args.workdir + "/partition.ys", "w") as f:
         print("plugin -i {}/eqy_partition.so".format(plugin_path), file=f)
         print("read_ilang combined.il".format(args.workdir), file=f)
-        print("{dbg}eqy_partition -matched_ids matched.ids -partition_names partition_names.ids -nosplit_ids partition_nosplit.ids".format(dbg="debug " if args.debugmode else ""), file=f)
+        print("{dbg}eqy_partition -matched_ids matched.ids -partition_names partition_names.ids -nosplit_ids partition_nosplit.ids -create_partition_list partition.list".format(dbg="debug " if args.debugmode else ""), file=f)
     if not os.path.isdir(args.workdir + "/partitions"):
         os.mkdir(args.workdir + "/partitions")
 
     partition_task = EqyTask(job, "partition", [], "cd {workdir}; {yosys} -ql partition.log partition.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
 
+    job.run()
+
+def make_scripts(args, cfg, job):
+    partitions = []
+    with open(args.workdir + "/partition.list") as f:
+        for line in f:
+            partitions.append(line.strip())
+    if not os.path.isdir(args.workdir + "/strategies"):
+        os.mkdir(args.workdir + "/strategies")
+    with open(f"{args.workdir}/strategies.mk", "w") as make_f:
+        print(".DEFAULT_GOAL := all\n", file=make_f)
+        targets = []
+        for partition in partitions:
+            if not os.path.isdir(f"{args.workdir}/strategies/{partition}"):
+                os.mkdir(f"{args.workdir}/strategies/{partition}")
+            prev_strategy = None
+            for strategy in cfg.strategy:
+                if not os.path.isdir(f"{args.workdir}/strategies/{partition}/{strategy}"):
+                    os.mkdir(f"{args.workdir}/strategies/{partition}/{strategy}")
+                # TODO: ensure unchanged strategies don't get re-run but changed strategies do
+                with open(f"{args.workdir}/strategies/{partition}/{strategy}/run.sh", "w") as run_f:
+                    print( f"""yosys -ql run.log run.ys
+if grep "SAT proof finished - no model found: SUCCESS!" run.log > /dev/null ; then
+\techo PASS > status
+\techo "Proved equivalence of partition '{partition}' using strategy '{strategy}'"
+elif grep "SAT proof finished - model found: FAIL!" run.log > /dev/null ; then
+\techo UNKNOWN > status
+\techo "Could not prove equivalence of partition '{partition}' using strategy '{strategy}'"
+else
+\techo ERROR > status
+\techo "Execution of strategy '{strategy}' on partition '{partition}' encountered an error.\nDetails can be found in '{args.workdir}/strategies/{partition}/{strategy}/run.log'."
+\texit 1
+fi
+exit 0""" , file=run_f)
+                with open(f"{args.workdir}/strategies/{partition}/{strategy}/run.ys", "w") as ys_f:
+                    print(f"read_ilang ../../../partitions/{partition}.il", file=ys_f)
+                    # TODO: where to put scripts for different strategies
+                    print(f"miter -equiv -make_assert -ignore_gold_x -flatten gold.{partition} gate.{partition} miter", file=ys_f)
+                    print("sat -set-init-undef -seq 5 -prove-asserts miter", file=ys_f)
+                if prev_strategy:
+                    print( f"""strategies/{partition}/{strategy}/status: {prev_strategy}
+\t@if grep PASS $^ >/dev/null ; then \\
+\t\techo "PASS (cached)" > $@; \\
+\telse \\
+\t\tbash -c \"cd strategies/{partition}/{strategy}; source run.sh\"; \\
+\tfi\n""" , file=make_f)
+                else:
+                    print(f"strategies/{partition}/{strategy}/status:", file=make_f)
+                    print(f"\t@bash -c \"cd strategies/{partition}/{strategy}; source run.sh\"\n", file=make_f)
+                prev_strategy = f"strategies/{partition}/{strategy}/status"
+            targets.append(prev_strategy)
+        print(f".PHONY: all", file=make_f)
+        print(f"all: {' '.join(targets)}", file=make_f)
+
+def run_scripts(args, cfg, job):
+    run_task = EqyTask(job, "run", [], f"cd {args.workdir}; make -f strategies.mk")
     job.run()
 
 def main():
@@ -429,6 +485,8 @@ def main():
     build_combined(args, cfg, job)
     match_ids(args, cfg)
     make_partitions(args, cfg, job)
+    make_scripts(args, cfg, job)
+    run_scripts(args, cfg, job)
     job.final()
 
 if __name__ == '__main__':
