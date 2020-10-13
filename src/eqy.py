@@ -274,6 +274,10 @@ def build_combined(args, cfg, job):
         print("write_ilang {}/combined.il".format(args.workdir), file=f)
 
     combine_task = EqyTask(job, "combine", [], "{yosys} -ql {workdir}/combine.log {workdir}/combine.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+    def check_retcode(retcode):
+        if (retcode != 0):
+            exit_with_error(f"Failed to combine designs. For details see '{args.workdir}/combine.log'.")
+    combine_task.exit_callback = check_retcode
 
     job.run()
 
@@ -407,6 +411,10 @@ def make_partitions(args, cfg, job):
         os.mkdir(args.workdir + "/partitions")
 
     partition_task = EqyTask(job, "partition", [], "cd {workdir}; {yosys} -ql partition.log partition.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+    def check_retcode(retcode):
+        if (retcode != 0):
+            exit_with_error(f"Failed to partition design. For details see '{args.workdir}/partition.log'.")
+    partition_task.exit_callback = check_retcode
 
     job.run()
 
