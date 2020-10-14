@@ -678,3 +678,5 @@ class EqyJob:
         with open("{}/{}".format(self.workdir, self.status), "w") as f:
             for line in self.summary:
                 print(line, file=f)
+
+        self.log("DONE ({}, rc={})".format(self.status, self.retcode))

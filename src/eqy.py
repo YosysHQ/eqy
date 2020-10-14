@@ -486,9 +486,35 @@ def make_scripts(args, cfg, job):
             targets.append(prev_strategy)
         print(f".PHONY: all", file=make_f)
         print(f"all: {' '.join(targets)}", file=make_f)
+        print( f"""\t@rc=0 ; \\
+\tfor f in {' '.join(targets)} ; do \\
+\t\tif ! grep -q "PASS" $$f ; then \\
+\t\t\tp=$${{f#strategies/}} ; \\
+\t\t\tp=$${{p%/*/status}} ; \\
+\t\t\techo "Failed to prove equivalence of partition $$p" ; \\
+\t\t\trc=1 ; \\
+\t\tfi ; \\
+\tdone ; \\
+\tif [[ "$$rc" -eq 0 ]] ; then \\
+\t\techo "Successfully proved designs equivalent" ; \\
+\tfi""", file=make_f)
 
 def run_scripts(args, cfg, job):
     run_task = EqyTask(job, "run", [], f"cd {args.workdir}; make -f strategies.mk")
+    def check_output(line):
+        match = re.search(r"Failed to prove equivalence", line)
+        if match:
+            job.update_status("FAIL")
+        else:
+            match = re.search(r"Successfully proved designs equivalent", line)
+            if match:
+                job.update_status("PASS")
+        return line
+    run_task.output_callback = check_output
+    def check_retcode(retcode):
+        if (retcode != 0):
+            exit_with_error(f"A problem occurred during equivalence check.")
+    run_task.exit_callback = check_retcode
     job.run()
 
 def validate_config(args, cfg):
