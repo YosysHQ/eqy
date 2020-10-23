@@ -319,7 +319,7 @@ def match_module_re(ids, module_re):
             matches.append(key)
     return matches
 
-def match_entity_re(ids, entity_re, other_entity_expr):
+def match_entity_re(ids, other_ids, entity_re, other_entity_expr):
     matches = []
     if entity_re == "*":
         entity_re = ".*"
@@ -330,6 +330,10 @@ def match_entity_re(ids, entity_re, other_entity_expr):
             val = key
             if other_entity_expr is not None:
                 val = match.expand(other_entity_expr)
+            if other_ids and val not in other_ids:
+                if entity_re == ".*":
+                    continue
+                exit_with_error(f"Cannot find entity {val}")
             matches.append((key, val))
     return matches
 
@@ -345,31 +349,33 @@ def match_ids(args, cfg):
                 continue
             if line[0] == "gold-match" and len(line) in [3, 4]:
                 for module_match in match_module_re(gold_ids, line[1]):
-                    for entity_match in match_entity_re(gold_ids[module_match], line[2], line[3] if len(line) == 4 else None):
-                        if (module_match, entity_match[0]) in used_gold_ids:
-                            continue
-                        if (module_match, entity_match[1]) in used_gate_ids:
-                            continue
-                        print(module_match, entity_match[0], entity_match[1], file=f)
-                        used_gold_ids.add((module_match, entity_match[0]))
-                        used_gate_ids.add((module_match, entity_match[1]))
+                    if module_match in gate_ids: #TODO: is this the right way to deal with missing module hierarchy?
+                        for entity_match in match_entity_re(gold_ids[module_match], gate_ids[module_match], line[2], line[3] if len(line) == 4 else None):
+                            if (module_match, entity_match[0]) in used_gold_ids:
+                                continue
+                            if (module_match, entity_match[1]) in used_gate_ids:
+                                continue
+                            print(module_match, entity_match[0], entity_match[1], file=f)
+                            used_gold_ids.add((module_match, entity_match[0]))
+                            used_gate_ids.add((module_match, entity_match[1]))
             elif line[0] == "gate-match" and len(line) in [3, 4]:
                 for module_match in match_module_re(gate_ids, line[1]):
-                    for entity_match in match_entity_re(gate_ids[module_match], line[2], line[3] if len(line) == 4 else None):
-                        if (module_match, entity_match[0]) in used_gate_ids:
-                            continue
-                        if (module_match, entity_match[1]) in used_gold_ids:
-                            continue
-                        print(module_match, entity_match[1], entity_match[0], file=f)
-                        used_gate_ids.add((module_match, entity_match[0]))
-                        used_gold_ids.add((module_match, entity_match[1]))
+                    if module_match in gold_ids:
+                        for entity_match in match_entity_re(gate_ids[module_match], gold_ids[module_match], line[2], line[3] if len(line) == 4 else None):
+                            if (module_match, entity_match[0]) in used_gate_ids:
+                                continue
+                            if (module_match, entity_match[1]) in used_gold_ids:
+                                continue
+                            print(module_match, entity_match[1], entity_match[0], file=f)
+                            used_gate_ids.add((module_match, entity_match[0]))
+                            used_gold_ids.add((module_match, entity_match[1]))
             elif line[0] == "gold-nomatch" and len(line) == 3:
                 for module_match in match_module_re(gold_ids, line[1]):
-                    for entity_match in match_entity_re(gold_ids[module_match], line[2], None):
+                    for entity_match in match_entity_re(gold_ids[module_match], None, line[2], None):
                         used_gold_ids.add((module_match, entity_match[0]))
             elif line[0] == "gate-nomatch" and len(line) == 3:
                 for module_match in match_module_re(gate_ids, line[1]):
-                    for entity_match in match_entity_re(gate_ids[module_match], line[2], None):
+                    for entity_match in match_entity_re(gate_ids[module_match], None, line[2], None):
                         used_gate_ids.add((module_match, entity_match[0]))
             else:
                 exit_with_error(f"Syntax error in match command \"{' '.join(line)}\"")

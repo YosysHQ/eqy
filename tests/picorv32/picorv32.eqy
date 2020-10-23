@@ -1,0 +1,21 @@
+[options]
+
+[gold]
+read_verilog -formal picorv32.v
+prep -top picorv32
+
+[gate]
+read_verilog -formal picorv32_synth.v
+prep -top picorv32
+
+[recode]
+
+[match]
+
+
+
+[partition]
+
+[strategy simple]
+use satseq
+option depth 10
