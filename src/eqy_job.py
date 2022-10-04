@@ -96,8 +96,6 @@ class EqyTask:
             self.exit_callback(retcode)
 
     def terminate(self, timeout=False):
-        if self.job.opt_wait and not timeout:
-            return
         if self.running:
             if not self.silent:
                 self.job.log("{}: terminating process".format(self.info))
