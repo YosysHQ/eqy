@@ -391,15 +391,15 @@ def partition_ids(args, cfg):
                 continue
             elif line[0] == "name" and len(line) == 4:
                 for module_match in match_module_re(gold_ids, line[1]):
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], line[2], None):
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
                         print(line[0], module_match, entity_match, line[3], file=name_f)
             elif line[0] == "nosplit" and len(line) == 3:
                 for module_match in match_module_re(gold_ids, line[1]):
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], line[2], None):
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
                         print(line[0], module_match, entity_match, file=nosplit_f)
             elif line[0] in ["input-cone", "output-cone"] and len(line) in [3, 4]:
                 for module_match in match_module_re(gold_ids, line[1]):
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], line[2], None):
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
                         print(line[0], module_match, entity_match, line[3], file=inputcone_f if line[0]=="input-cone" else outputcone_f)
             else:
                 exit_with_error(f"Syntax error in partition command \"{' '.join(line)}\"")
