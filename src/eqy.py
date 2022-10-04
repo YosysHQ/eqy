@@ -495,7 +495,7 @@ def make_scripts(args, cfg, job):
 \t\t\trc=1 ; \\
 \t\tfi ; \\
 \tdone ; \\
-\tif [[ "$$rc" -eq 0 ]] ; then \\
+\tif [ "$$rc" -eq 0 ] ; then \\
 \t\techo "Successfully proved designs equivalent" ; \\
 \tfi""", file=make_f)
 
