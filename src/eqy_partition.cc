@@ -32,7 +32,7 @@ struct EqyPartitionWorker
 	dict<SigBit, tuple<Cell*, IdString, int>> gold_drivers;
 	dict<SigBit, tuple<Cell*, IdString, int>> gate_drivers;
 
-	pool<SigBit> queue;
+	pool<SigBit> queue, conflicts;
 	dict<SigBit, SigBit> gold_matches;
 	dict<SigBit, SigBit> gate_matches;
 	dict<Cell*, Cell*> gold_matched_cells;
@@ -65,6 +65,9 @@ struct EqyPartitionWorker
 		gold_bit = gold_sigmap(gold_bit);
 		gate_bit = gate_sigmap(gate_bit);
 
+		if (!gold_bit.wire || !gate_bit.wire)
+			return;
+
 		log_debug("match: %s <-> %s\n", log_signal(gold_bit), log_signal(gate_bit));
 
 		if (gold_drivers.count(gold_bit)) {
@@ -77,13 +80,18 @@ struct EqyPartitionWorker
 			queue.erase(gold_bit);
 		}
 
-		if (gold_matches.count(gold_bit) && gold_matches.at(gold_bit) != gate_bit)
-			log_error("conflicting matches for gold bit %s: %s vs %s\n", log_signal(gold_bit),
+		if (gold_matches.count(gold_bit) && gold_matches.at(gold_bit) != gate_bit) {
+			log("conflicting matches for gold bit %s: %s vs %s\n", log_signal(gold_bit),
 					log_signal(gold_matches.at(gold_bit)), log_signal(gate_bit));
+			conflicts.insert(gold_bit);
+		}
 
-		if (gate_matches.count(gate_bit) && gate_matches.at(gate_bit) != gold_bit)
-			log_error("conflicting matches for gate bit %s: %s vs %s\n", log_signal(gate_bit),
+		if (gate_matches.count(gate_bit) && gate_matches.at(gate_bit) != gold_bit) {
+			log("conflicting matches for gate bit %s: %s vs %s\n", log_signal(gate_bit),
 					log_signal(gate_matches.at(gate_bit)), log_signal(gold_bit));
+			conflicts.insert(gate_matches.at(gate_bit));
+			conflicts.insert(gold_bit);
+		}
 
 		gold_matches[gold_bit] = gate_bit;
 		gate_matches[gate_bit] = gold_bit;
@@ -97,16 +105,30 @@ struct EqyPartitionWorker
 
 	void add_match(Cell *gold_cell, Cell *gate_cell)
 	{
+		if (gold_matched_cells.count(gold_cell) && gold_matched_cells.at(gold_cell) != gate_cell)
+			log_error("conflicting matches for gold cell %s: %s vs %s\n", log_id(gold_cell),
+					log_id(gold_matched_cells.at(gold_cell)), log_id(gate_cell));
+
+		if (gate_matched_cells.count(gate_cell) && gate_matched_cells.at(gate_cell) != gold_cell)
+			log_error("conflicting matches for gate cell %s: %s vs %s\n", log_id(gate_cell),
+					log_id(gate_matched_cells.at(gate_cell)), log_id(gold_cell));
+
 		gold_matched_cells[gold_cell] = gate_cell;
 		gate_matched_cells[gate_cell] = gold_cell;
+
+		log_debug("cell match: %s <-> %s\n", log_id(gold_cell), log_id(gate_cell));
 
 		for (auto &conn : gold_cell->connections())
 			if (gate_cell->connections().count(conn.first))
 				add_match(conn.second, gate_cell->connections().at(conn.first));
+
+		log_debug("end of cell match.\n");
 	}
 
 	void add_match(IdString gold_id, IdString gate_id)
 	{
+		log_debug("id match: %s <-> %s\n", log_id(gold_id), log_id(gate_id));
+
 		Cell *gold_cell = gold->cell(gold_id);
 		Cell *gate_cell = gate->cell(gate_id);
 
@@ -134,6 +156,16 @@ struct EqyPartitionWorker
 			add_match(SigSpec(gold_wire), SigSpec(gate_wire));
 			return;
 		}
+	}
+
+	void resolve_conflicts()
+	{
+		for (auto bit : conflicts)
+			queue.erase(bit);
+		for (auto it = gold_matches.begin(); it != gold_matches.end(); ++it)
+			if (conflicts.count(it->first)) gold_matches.erase(it);
+		for (auto it = gate_matches.begin(); it != gate_matches.end(); ++it)
+			if (conflicts.count(it->second)) gate_matches.erase(it);
 	}
 
 	bool partition_open = false;
@@ -345,6 +377,27 @@ struct EqyPartitionWorker
 
 		return partition;
 	}
+
+	void create_partitions(std::ofstream &partition_list_file)
+	{
+		int partidx = 0;
+		while (!queue.empty())
+		{
+			partition_begin();
+			partition_add(*queue.begin());
+			std::ofstream ofile;
+			std::string filename = stringf("partitions/%s.%d.il", gold->name.substr(6).c_str(), partidx);
+			IdString partname = stringf("\\%s.%d", gold->name.substr(6).c_str(), partidx++);
+			Design *partition = partition_finalize(partname);
+			ofile.open(filename.c_str(), std::ofstream::trunc);
+			if (ofile.fail())
+				log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
+			Backend::backend_call(partition, &ofile, filename, "rtlil");
+			partition_list_file << unescape_id(partname) << "\n";
+			log_spacer();
+			delete partition;
+		}
+	}
 };
 
 struct EqyPartitionPass : public Pass
@@ -408,23 +461,8 @@ struct EqyPartitionPass : public Pass
 						if (w->port_id)
 							worker.add_match(w->name, w->name);
 
-					int partidx = 0;
-					while (!worker.queue.empty())
-					{
-						worker.partition_begin();
-						worker.partition_add(*worker.queue.begin());
-						std::ofstream ofile;
-						std::string filename = stringf("partitions/%s.%d.il", gold->name.substr(6).c_str(), partidx);
-						IdString partname = stringf("\\%s.%d", gold->name.substr(6).c_str(), partidx++);
-						Design *partition = worker.partition_finalize(partname);
-						ofile.open(filename.c_str(), std::ofstream::trunc);
-						if (ofile.fail())
-							log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
-						Backend::backend_call(partition, &ofile, filename, "rtlil");
-						partition_list_file << unescape_id(partname) << "\n";
-						log_spacer();
-						delete partition;
-					}
+					worker.resolve_conflicts();
+					worker.create_partitions(partition_list_file);
 				}
 			}
 			else if (!gold->name.begins_with("\\gate.") && gold->name != "\\miter")
