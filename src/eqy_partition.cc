@@ -32,7 +32,11 @@ struct EqyPartitionWorker
 	dict<SigBit, tuple<Cell*, IdString, int>> gold_drivers;
 	dict<SigBit, tuple<Cell*, IdString, int>> gate_drivers;
 
-	pool<SigBit> queue, conflicts;
+	dict<SigBit, pool<SigBit>> aliases;
+	dict<SigBit, SigBit> raliases;
+	dict<SigBit, State> constants;
+
+	pool<SigBit> queue;
 	dict<SigBit, SigBit> gold_matches;
 	dict<SigBit, SigBit> gate_matches;
 	dict<Cell*, Cell*> gold_matched_cells;
@@ -65,10 +69,20 @@ struct EqyPartitionWorker
 		gold_bit = gold_sigmap(gold_bit);
 		gate_bit = gate_sigmap(gate_bit);
 
-		if (!gold_bit.wire || !gate_bit.wire)
+		if (!gold_bit.wire)
 			return;
 
 		log_debug("match: %s <-> %s\n", log_signal(gold_bit), log_signal(gate_bit));
+
+		if (!gate_bit.wire) {
+			if (!constants.count(gold_bit))
+				log("found constant gate bit for gold bit %s: %s\n", log_signal(gold_bit), log_signal(gate_bit));
+			else if (constants.at(gold_bit) != State(gate_bit.data))
+				log("conflicting constants for gold bit %s: %s vs %s\n", log_signal(gold_bit),
+						log_signal(constants.at(gold_bit)), log_signal(gate_bit));
+			constants[gold_bit] = State(gate_bit.data);
+			return;
+		}
 
 		if (gold_drivers.count(gold_bit)) {
 			auto &driver = gold_drivers.at(gold_bit);
@@ -81,20 +95,26 @@ struct EqyPartitionWorker
 		}
 
 		if (gold_matches.count(gold_bit) && gold_matches.at(gold_bit) != gate_bit) {
-			log("conflicting matches for gold bit %s: %s vs %s\n", log_signal(gold_bit),
+			log_error("conflicting matches for gold bit %s: %s vs %s\n", log_signal(gold_bit),
 					log_signal(gold_matches.at(gold_bit)), log_signal(gate_bit));
-			conflicts.insert(gold_bit);
 		}
 
 		if (gate_matches.count(gate_bit) && gate_matches.at(gate_bit) != gold_bit) {
-			log("conflicting matches for gate bit %s: %s vs %s\n", log_signal(gate_bit),
-					log_signal(gate_matches.at(gate_bit)), log_signal(gold_bit));
-			conflicts.insert(gate_matches.at(gate_bit));
-			conflicts.insert(gold_bit);
+			SigBit master_gold_bit = gate_matches.at(gate_bit);
+			if (raliases.count(gold_bit) == 0)
+				log("found gold bit aliases via gate bit %s: %s vs %s\n", log_signal(gate_bit),
+						log_signal(master_gold_bit), log_signal(gold_bit));
+			else if (raliases.at(gold_bit) != master_gold_bit)
+				log_error("conflicting aliases for gold bit %s: %s vs %s\n", log_signal(gold_bit),
+						log_signal(raliases.at(gold_bit)), log_signal(master_gold_bit));
+			aliases[master_gold_bit].insert(master_gold_bit);
+			aliases[master_gold_bit].insert(gold_bit);
+			raliases[gold_bit] = master_gold_bit;
+		} else {
+			gate_matches[gate_bit] = gold_bit;
 		}
 
 		gold_matches[gold_bit] = gate_bit;
-		gate_matches[gate_bit] = gold_bit;
 	}
 
 	void add_match(SigSpec gold_sig, SigSpec gate_sig)
@@ -156,16 +176,6 @@ struct EqyPartitionWorker
 			add_match(SigSpec(gold_wire), SigSpec(gate_wire));
 			return;
 		}
-	}
-
-	void resolve_conflicts()
-	{
-		for (auto bit : conflicts)
-			queue.erase(bit);
-		for (auto it = gold_matches.begin(); it != gold_matches.end(); ++it)
-			if (conflicts.count(it->first)) gold_matches.erase(it);
-		for (auto it = gate_matches.begin(); it != gate_matches.end(); ++it)
-			if (conflicts.count(it->second)) gate_matches.erase(it);
 	}
 
 	bool partition_open = false;
@@ -384,18 +394,29 @@ struct EqyPartitionWorker
 		while (!queue.empty())
 		{
 			partition_begin();
-			partition_add(*queue.begin());
+
+			SigBit gold_bit = *queue.begin();
+			partition_add(gold_bit);
+
+			for (auto &it : aliases.at(raliases.at(gold_bit, gold_bit), {})) {
+				if (queue.count(it)) partition_add(it);
+			}
+
 			std::ofstream ofile;
 			std::string filename = stringf("partitions/%s.%d.il", gold->name.substr(6).c_str(), partidx);
+
 			IdString partname = stringf("\\%s.%d", gold->name.substr(6).c_str(), partidx++);
 			Design *partition = partition_finalize(partname);
+
 			ofile.open(filename.c_str(), std::ofstream::trunc);
 			if (ofile.fail())
 				log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
+
 			Backend::backend_call(partition, &ofile, filename, "rtlil");
 			partition_list_file << unescape_id(partname) << "\n";
-			log_spacer();
+
 			delete partition;
+			log_spacer();
 		}
 	}
 };
@@ -461,7 +482,6 @@ struct EqyPartitionPass : public Pass
 						if (w->port_id)
 							worker.add_match(w->name, w->name);
 
-					worker.resolve_conflicts();
 					worker.create_partitions(partition_list_file);
 				}
 			}
