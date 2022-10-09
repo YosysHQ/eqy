@@ -197,12 +197,13 @@ struct EqyPartitionWorker
 		log_assert(queue.count(gold_bit));
 		queue.erase(gold_bit);
 
-		std::function<void(SigBit,bool,bool)> add_bit_f;
-		std::function<void(Cell*,bool)> add_cell_f;
+		std::function<void(SigBit,bool,bool,int)> add_bit_f;
+		std::function<void(Cell*,bool,int)> add_cell_f;
 
-		add_bit_f = [&](SigBit bit, bool in_gold, bool isoutput)->void
+		add_bit_f = [&](SigBit bit, bool in_gold, bool isoutput, int indent)->void
 		{
-			log_debug("+add_bit_f %s %s%s\n", log_signal(bit), in_gold ? "gold" : "gate", isoutput ? " [output]" : "");
+			log_debug("%*sadd_bit_f %s %s%s\n", indent, "", log_signal(bit),
+					in_gold ? "gold" : "gate", isoutput ? " [output]" : "");
 
 			auto &gg_sigmap = in_gold ? gold_sigmap : gate_sigmap;
 			auto &gg_drivers = in_gold ? gold_drivers : gate_drivers;
@@ -241,7 +242,7 @@ struct EqyPartitionWorker
 					}
 
 					if (run_other)
-						add_bit_f(xx_bit, !in_gold, isoutput);
+						add_bit_f(xx_bit, !in_gold, isoutput, indent+2);
 				}
 				else
 				{
@@ -252,16 +253,14 @@ struct EqyPartitionWorker
 				{
 					auto const &driver = gg_drivers.at(bit);
 					auto driver_cell = std::get<0>(driver);
-					add_cell_f(driver_cell, in_gold);
+					add_cell_f(driver_cell, in_gold, indent+2);
 				}
 			}
-
-			log_debug("-add_bit_f\n");
 		};
 
-		add_cell_f = [&](Cell *cell, bool in_gold)->void
+		add_cell_f = [&](Cell *cell, bool in_gold, int indent)->void
 		{
-			log_debug("+add_cell_f %s %s\n", log_id(cell), in_gold ? "gold" : "gate");
+			log_debug("%*sadd_cell_f %s %s\n", indent, "", log_id(cell), in_gold ? "gold" : "gate");
 
 			auto &part_gg_cells = in_gold ? part_gold_cells : part_gate_cells;
 
@@ -272,20 +271,21 @@ struct EqyPartitionWorker
 				for (auto &conn : cell->connections())
 					if (cell->input(conn.first))
 						for (auto bit : conn.second)
-							add_bit_f(bit, in_gold, false);
+							add_bit_f(bit, in_gold, false, indent+2);
 			}
-
-			log_debug("-add_cell_f\n");
 		};
 
 		log("Adding bit %s to current partition.\n", log_signal(gold_bit));
-		add_bit_f(gold_bit, true, true);
+		add_bit_f(gold_bit, true, true, 2);
 	}
 
 	Design *partition_finalize(IdString partname)
 	{
 		log_assert(partition_open);
 		partition_open = false;
+
+		log("Collected %d primary input bits: %s\n", GetSize(part_inbits), log_signal(part_inbits));
+		log("Collected %d primary output bits: %s\n", GetSize(part_outbits), log_signal(part_outbits));
 
 		log("Finalizing partition %s.\n", log_id(partname));
 
