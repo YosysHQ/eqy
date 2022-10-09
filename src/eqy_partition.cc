@@ -202,9 +202,6 @@ struct EqyPartitionWorker
 
 		add_bit_f = [&](SigBit bit, bool in_gold, bool isoutput, int indent)->void
 		{
-			log_debug("%*sadd_bit_f %s %s%s\n", indent, "", log_signal(bit),
-					in_gold ? "gold" : "gate", isoutput ? " [output]" : "");
-
 			auto &gg_sigmap = in_gold ? gold_sigmap : gate_sigmap;
 			auto &gg_drivers = in_gold ? gold_drivers : gate_drivers;
 			auto &gg_matches = in_gold ? gold_matches : gate_matches;
@@ -220,59 +217,64 @@ struct EqyPartitionWorker
 					insert_bit = true;
 			}
 
-			if (insert_bit)
+			log_debug("%*sadd_bit_f %s %s%s: %s\n", indent, "", log_signal(bit),
+					in_gold ? "gold" : "gate", isoutput ? " [output]" : "", insert_bit ? "insert" : "skip");
+
+			if (!insert_bit)
+				return;
+
+			bool isinput = false;
+
+			part_gg_bits.insert(bit);
+
+			if (gg_matches.count(bit))
 			{
-				bool isinput = false;
+				SigBit xx_bit = gg_matches.at(bit);
+				SigBit gold_bit = in_gold ? bit : xx_bit;
+				bool run_other = false;
 
-				part_gg_bits.insert(bit);
-
-				if (gg_matches.count(bit))
-				{
-					SigBit xx_bit = gg_matches.at(bit);
-					SigBit gold_bit = in_gold ? bit : xx_bit;
-					bool run_other = false;
-
-					if (isoutput) {
-						run_other = !part_outbits.count(gold_bit);
-						part_outbits.insert(gold_bit);
-					} else {
-						isinput = true;
-						run_other = !part_inbits.count(gold_bit);
-						part_inbits.insert(gold_bit);
-					}
-
-					if (run_other)
-						add_bit_f(xx_bit, !in_gold, isoutput, indent+2);
-				}
-				else
-				{
-					log_assert(!isoutput);
+				if (isoutput) {
+					run_other = !part_outbits.count(gold_bit);
+					part_outbits.insert(gold_bit);
+				} else {
+					isinput = true;
+					run_other = !part_inbits.count(gold_bit);
+					part_inbits.insert(gold_bit);
 				}
 
-				if (!isinput && gg_drivers.count(bit))
-				{
-					auto const &driver = gg_drivers.at(bit);
-					auto driver_cell = std::get<0>(driver);
-					add_cell_f(driver_cell, in_gold, indent+2);
-				}
+				if (run_other)
+					add_bit_f(xx_bit, !in_gold, isoutput, indent+2);
+			}
+			else
+			{
+				log_assert(!isoutput);
+			}
+
+			if (!isinput && gg_drivers.count(bit))
+			{
+				auto const &driver = gg_drivers.at(bit);
+				auto driver_cell = std::get<0>(driver);
+				add_cell_f(driver_cell, in_gold, indent+2);
 			}
 		};
 
 		add_cell_f = [&](Cell *cell, bool in_gold, int indent)->void
 		{
-			log_debug("%*sadd_cell_f %s %s\n", indent, "", log_id(cell), in_gold ? "gold" : "gate");
-
 			auto &part_gg_cells = in_gold ? part_gold_cells : part_gate_cells;
+			bool insert_cell = !part_gg_cells.count(cell);
 
-			if (!part_gg_cells.count(cell))
-			{
-				part_gg_cells.insert(cell);
+			log_debug("%*sadd_cell_f %s %s: %s\n", indent, "", log_id(cell),
+					in_gold ? "gold" : "gate", insert_cell ? "insert" : "skip");
 
-				for (auto &conn : cell->connections())
-					if (cell->input(conn.first))
-						for (auto bit : conn.second)
-							add_bit_f(bit, in_gold, false, indent+2);
-			}
+			if (!insert_cell)
+				return;
+
+			part_gg_cells.insert(cell);
+
+			for (auto &conn : cell->connections())
+				if (cell->input(conn.first))
+					for (auto bit : conn.second)
+						add_bit_f(bit, in_gold, false, indent+2);
 		};
 
 		log("Adding bit %s to current partition.\n", log_signal(gold_bit));
