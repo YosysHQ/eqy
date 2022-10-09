@@ -1,11 +1,11 @@
 [options]
 
 [gold]
-read -formal gold.sv
+read -formal simple02_gold.sv
 prep -top top
 
 [gate]
-read -formal gate.sv
+read -formal simple02_gate.sv
 prep -top top
 
 [recode]
@@ -21,6 +21,4 @@ output-cone top.m_i i2 3
 
 [strategy simple]
 use satseq
-option depth 10
-
-[strategy dummy]
+depth 10

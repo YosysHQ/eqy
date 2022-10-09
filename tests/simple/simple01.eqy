@@ -18,4 +18,4 @@ synth -top top
 
 [strategy simple]
 use satseq
-option depth 10
+depth 10

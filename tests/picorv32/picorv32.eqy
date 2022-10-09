@@ -12,10 +12,8 @@ prep -top picorv32
 
 [match]
 
-
-
 [partition]
 
 [strategy simple]
 use satseq
-option depth 10
+depth 10

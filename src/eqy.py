@@ -60,12 +60,11 @@ def parse_args():
     parser.add_argument("-d", metavar="<dirname>", dest="workdir",
             help="set workdir name. default: <jobname>")
 
-    parser.add_argument("-m", "--makefiles-only", action="store_true", dest="makefile_only",
-            help="generate strategy makefiles and exit")
+    parser.add_argument("-m", "--setup", action="store_true", dest="setupmode",
+            help="generate partitions and makefiles and exit")
+
     parser.add_argument("--init-config-file", metavar=("<filename>", "<gold>", "<gate>"), nargs=3,
             help="create a default .eqy config in <filename> for source files <gold> and <gate>")
-    parser.add_argument("--setup", action="store_true", dest="setupmode",
-            help="set up the working directory and exit")
 
     parser.add_argument("-g", "--debug", action="store_true", dest="debugmode",
             help="enable debug mode")
@@ -247,9 +246,12 @@ def build_gate_gold(args, cfg, job):
             print(line, file=f)
         print("write_ilang {}/gate.il".format(args.workdir), file=f)
 
-    gold_task = EqyTask(job, "read_gold", [], "{yosys} -ql {workdir}/gold.log {workdir}/gold.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+    gold_task = EqyTask(job, "read_gold", [], "{yosys}{gopt} -ql {workdir}/gold.log {workdir}/gold.ys".format(
+            yosys=args.exe_paths["yosys"], gopt=" -g" if args.debugmode else "", workdir=args.workdir))
     gold_task.checkretcode = True
-    gate_task = EqyTask(job, "read_gate", [], "{yosys} -ql {workdir}/gate.log {workdir}/gate.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+
+    gate_task = EqyTask(job, "read_gate", [], "{yosys}{gopt} -ql {workdir}/gate.log {workdir}/gate.ys".format(
+            yosys=args.exe_paths["yosys"], gopt=" -g" if args.debugmode else "", workdir=args.workdir))
     gate_task.checkretcode = True
 
     job.run()
@@ -273,7 +275,9 @@ def build_combined(args, cfg, job):
         print("{dbg}eqy_combine -gold_ids {wd}/gold.ids -gate_ids {wd}/gate.ids".format(dbg="debug " if args.debugmode else "", wd=args.workdir), file=f)
         print("write_ilang {}/combined.il".format(args.workdir), file=f)
 
-    combine_task = EqyTask(job, "combine", [], "{yosys} -ql {workdir}/combine.log {workdir}/combine.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
+    combine_task = EqyTask(job, "combine", [], "{yosys}{gopt} -ql {workdir}/combine.log {workdir}/combine.ys".format(
+            yosys=args.exe_paths["yosys"], gopt=" -g" if args.debugmode else "", workdir=args.workdir))
+
     def check_retcode(retcode):
         if (retcode != 0):
             exit_with_error(f"Failed to combine designs. For details see '{args.workdir}/combine.log'.")
@@ -424,12 +428,33 @@ def make_partitions(args, cfg, job):
 
     job.run()
 
-def write_strategy_dummy(args, cfg, partition, strategy):
+def parse_strategy_dummy(args, cfg, strategy):
+    return None
+
+def write_strategy_dummy(args, cfg, strategy, scfg, partition):
     with open(f"{args.workdir}/strategies/{partition}/{strategy}/run.sh", "w") as run_f:
         print("echo PASS > status", file=run_f)
-        print(f"echo \"Assumed equivalence of partition '{partition}' using strategy '{strategy}'\"", file=run_f)
+        print(f"echo \"Assumed equivalence of partition '{partition}' via dummy strategy '{strategy}'\"", file=run_f)
 
-def write_strategy_simple(args, cfg, partition, strategy):
+def parse_strategy_satseq(args, cfg, strategy):
+    scfg = types.SimpleNamespace(depth=5)
+
+    for line in cfg.strategy[strategy]:
+        line = line.strip().split()
+
+        if len(line) == 2 and line[0] == "use":
+            continue
+
+        if len(line) == 2 and line[0] == "depth" and line[1].isnumeric():
+            scfg.depth = int(line[1])
+            continue
+
+        line = " ".join(line)
+        exit_with_error(f"Error parsing strategy config line '{line}' in strategy '{strategy}'.")
+
+    return scfg
+
+def write_strategy_satseq(args, cfg, strategy, scfg, partition):
     with open(f"{args.workdir}/strategies/{partition}/{strategy}/run.sh", "w") as run_f:
         print( f"""yosys -ql run.log run.ys
 if grep "SAT proof finished - no model found: SUCCESS!" run.log > /dev/null ; then
@@ -444,6 +469,7 @@ else
 \texit 1
 fi
 exit 0""" , file=run_f)
+
     with open(f"{args.workdir}/strategies/{partition}/{strategy}/run.ys", "w") as ys_f:
         print(f"read_ilang ../../../partitions/{partition}.il", file=ys_f)
         # TODO: where to put scripts for different strategies
@@ -451,18 +477,21 @@ exit 0""" , file=run_f)
         print("sat -set-init-undef -seq 5 -prove-asserts miter", file=ys_f)
 
 strategies = {
-    "dummy": write_strategy_dummy,
-    "simple": write_strategy_simple,
+    "dummy": (parse_strategy_dummy, write_strategy_dummy),
+    "satseq": (parse_strategy_satseq, write_strategy_satseq),
     # add strategies here
 }
 
 def make_scripts(args, cfg, job):
     partitions = []
+
     with open(args.workdir + "/partition.list") as f:
         for line in f:
             partitions.append(line.strip())
+
     if not os.path.isdir(args.workdir + "/strategies"):
         os.mkdir(args.workdir + "/strategies")
+
     with open(f"{args.workdir}/strategies.mk", "w") as make_f:
         print(".DEFAULT_GOAL := all\n", file=make_f)
         targets = []
@@ -471,13 +500,25 @@ def make_scripts(args, cfg, job):
                 os.mkdir(f"{args.workdir}/strategies/{partition}")
             prev_strategy = None
             for strategy in cfg.strategy:
+                strategyType = None
+                for line in cfg.strategy[strategy]:
+                    line = line.strip().split()
+                    if len(line) > 1 and line[0] == "use":
+                        strategyType = line[1]
+                        break
+                if strategyType is None:
+                    exit_with_error(f"Strategy '{strategy}' has no 'use' line.")
+                if strategyType not in strategies:
+                    exit_with_error(f"Unknown strategy type '{strategyType}' for strategy '{strategy}'.")
+
                 if not os.path.isdir(f"{args.workdir}/strategies/{partition}/{strategy}"):
                     os.mkdir(f"{args.workdir}/strategies/{partition}/{strategy}")
+
                 # TODO: ensure unchanged strategies don't get re-run but changed strategies do
-                try:
-                    strategies[strategy](args, cfg, partition, strategy)
-                except KeyError:
-                    exit_with_error(f"Unknown strategy '{strategy}'.")
+
+                scfg = strategies[strategyType][0](args, cfg, strategy)
+                strategies[strategyType][1](args, cfg, strategy, scfg, partition)
+
                 if prev_strategy:
                     print( f"""strategies/{partition}/{strategy}/status: {prev_strategy}
 \t@if grep PASS $^ >/dev/null ; then \\
@@ -490,6 +531,7 @@ def make_scripts(args, cfg, job):
                     print(f"\t@bash -c \"cd strategies/{partition}/{strategy}; source run.sh\"\n", file=make_f)
                 prev_strategy = f"strategies/{partition}/{strategy}/status"
             targets.append(prev_strategy)
+
         print(f".PHONY: all", file=make_f)
         print(f"all: {' '.join(targets)}", file=make_f)
         print( f"""\t@rc=0 ; \\
@@ -528,26 +570,41 @@ def validate_config(args, cfg):
     for s in mandatory_cfg_sections:
         if len(getattr(cfg, s)) == 0:
             exit_with_error("section [{}] missing".format(s))
+
     for strategy in cfg.strategy:
-        if strategy not in strategies:
-            exit_with_error(f"Unknown strategy '{strategy}'.")
+        strategyType = None
+        for line in cfg.strategy[strategy]:
+            line = line.strip().split()
+            if len(line) > 1 and line[0] == "use":
+                strategyType = line[1]
+                break
+        if strategyType is None:
+            exit_with_error(f"Strategy '{strategy}' has no 'use' line.")
+        if strategyType not in strategies:
+            exit_with_error(f"Unknown strategy type '{strategyType}' for strategy '{strategy}'.")
+        strategies[strategyType][0](args, cfg, strategy)
 
 def main():
     args = parse_args()
     cfg = read_config(args.eqyfile)
+
+    if args.debugmode:
+        print("args =", args)
+        print("cfg =", cfg)
+
     validate_config(args, cfg)
     setup_workdir(args)
-    if (args.setupmode):
-        exit(0)
-    print("args =", args)
-    print("cfg =", cfg)
+
     job = EqyJob(args, cfg, [])
     build_gate_gold(args, cfg, job)
     build_combined(args, cfg, job)
     match_ids(args, cfg)
     make_partitions(args, cfg, job)
     make_scripts(args, cfg, job)
-    run_scripts(args, cfg, job)
+
+    if not args.setupmode:
+        run_scripts(args, cfg, job)
+
     job.final()
 
 if __name__ == '__main__':
