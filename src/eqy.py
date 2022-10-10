@@ -404,7 +404,7 @@ def partition_ids(args, cfg):
             elif line[0] in ["input-cone", "output-cone"] and len(line) in [3, 4]:
                 for module_match in match_module_re(gold_ids, line[1]):
                     for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
-                        print(line[0], module_match, entity_match, line[3], file=inputcone_f if line[0]=="input-cone" else outputcone_f)
+                        print(line[0], module_match, entity_match, line[3] if len(line) == 4 else "1", file=inputcone_f if line[0]=="input-cone" else outputcone_f)
             else:
                 exit_with_error(f"Syntax error in partition command \"{' '.join(line)}\"")
 
