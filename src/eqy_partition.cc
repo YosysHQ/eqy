@@ -25,6 +25,7 @@ PRIVATE_NAMESPACE_BEGIN
 
 struct EqyPartitionWorker
 {
+	int partcnt = 0;
 	Module *gold, *gate;
 	SigMap gold_sigmap;
 	SigMap gate_sigmap;
@@ -178,33 +179,37 @@ struct EqyPartitionWorker
 		}
 	}
 
-	bool partition_open = false;
+	void create_partitions(std::ofstream &partition_list_file);
+};
+
+struct Partition
+{
+	EqyPartitionWorker *worker;
+	bool partition_open = true;
+	int index;
+
 	pool<SigBit> part_inbits, part_outbits;
 	pool<SigBit> part_gold_bits, part_gate_bits;
 	pool<Cell*> part_gold_cells, part_gate_cells;
 
-	void partition_begin()
-	{
-		log_assert(!partition_open);
-		partition_open = true;
-	}
+	Partition(EqyPartitionWorker *worker) : worker(worker), index(worker->partcnt++) {}
 
 	void partition_add(SigBit gold_bit)
 	{
-		gold_bit = gold_sigmap(gold_bit);
+		gold_bit = worker->gold_sigmap(gold_bit);
 
 		log_assert(partition_open);
-		log_assert(queue.count(gold_bit));
-		queue.erase(gold_bit);
+		log_assert(worker->queue.count(gold_bit));
+		worker->queue.erase(gold_bit);
 
 		std::function<void(SigBit,bool,bool,int)> add_bit_f;
 		std::function<void(Cell*,bool,int)> add_cell_f;
 
 		add_bit_f = [&](SigBit bit, bool in_gold, bool isoutput, int indent)->void
 		{
-			auto &gg_sigmap = in_gold ? gold_sigmap : gate_sigmap;
-			auto &gg_drivers = in_gold ? gold_drivers : gate_drivers;
-			auto &gg_matches = in_gold ? gold_matches : gate_matches;
+			auto &gg_sigmap = in_gold ? worker->gold_sigmap : worker->gate_sigmap;
+			auto &gg_drivers = in_gold ? worker->gold_drivers : worker->gate_drivers;
+			auto &gg_matches = in_gold ? worker->gold_matches : worker->gate_matches;
 			auto &part_gg_bits = in_gold ? part_gold_bits : part_gate_bits;
 
 			bit = gg_sigmap(bit);
@@ -277,7 +282,7 @@ struct EqyPartitionWorker
 						add_bit_f(bit, in_gold, false, indent+2);
 		};
 
-		log("Adding bit %s to current partition.\n", log_signal(gold_bit));
+		log("Adding bit %s to partition %d.\n", log_signal(gold_bit), index);
 		add_bit_f(gold_bit, true, true, 2);
 	}
 
@@ -286,21 +291,20 @@ struct EqyPartitionWorker
 		log_assert(partition_open);
 		partition_open = false;
 
-		log("Collected %d primary input bits: %s\n", GetSize(part_inbits), log_signal(part_inbits));
-		log("Collected %d primary output bits: %s\n", GetSize(part_outbits), log_signal(part_outbits));
+		log("Finalizing partition %d as %s.\n", index, log_id(partname));
+		log("  Collected %d primary input bits: %s\n", GetSize(part_inbits), log_signal(part_inbits));
+		log("  Collected %d primary output bits: %s\n", GetSize(part_outbits), log_signal(part_outbits));
 
-		log("Finalizing partition %s.\n", log_id(partname));
+		Design *partdesign = new Design();
 
-		Design *partition = new Design();
-
-		Module *mod_gold = partition->addModule("\\gold." + partname.substr(1));
-		Module *mod_gate = partition->addModule("\\gate." + partname.substr(1));
+		Module *mod_gold = partdesign->addModule("\\gold." + partname.substr(1));
+		Module *mod_gate = partdesign->addModule("\\gate." + partname.substr(1));
 
 		auto copy_mod_contents = [&](bool in_gold)->void
 		{
 			// Module *in_mod = in_gold ? gold : gate;
 			Module *out_mod = in_gold ? mod_gold : mod_gate;
-			auto &sigmap = in_gold ? gold_sigmap : gate_sigmap;
+			auto &sigmap = in_gold ? worker->gold_sigmap : worker->gate_sigmap;
 
 			auto &part_gg_bits = in_gold ? part_gold_bits : part_gate_bits;
 			auto &part_gg_cells = in_gold ? part_gold_cells : part_gate_cells;
@@ -315,7 +319,7 @@ struct EqyPartitionWorker
 				if (!w) continue;
 				if (!mapped_wires.count(w)) {
 					Wire *ww = out_mod->addWire(w->name, GetSize(w));
-					log_debug("%s partition wire: %s\n", in_gold ? "gold" : "gate", log_id(ww));
+					log_debug("  %s partition wire: %s\n", in_gold ? "gold" : "gate", log_id(ww));
 					// TBD: Copy some of the wire metadata
 					mapped_wires[w] = ww;
 				}
@@ -324,17 +328,17 @@ struct EqyPartitionWorker
 
 			for (auto bit : part_inbits)
 			{
-				log_debug("%s partition pi bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
+				log_debug("  %s partition pi bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
 				if (!in_gold)
-					bit = gold_matches.at(bit);
+					bit = worker->gold_matches.at(bit);
 				pi.append(bit);
 			}
 
 			for (auto bit : part_outbits)
 			{
-				log_debug("%s partition po bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
+				log_debug("  %s partition po bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
 				if (!in_gold)
-					bit = gold_matches.at(bit);
+					bit = worker->gold_matches.at(bit);
 				po.append(bit);
 			}
 
@@ -348,7 +352,7 @@ struct EqyPartitionWorker
 			for (auto c : part_gg_cells)
 			{
 				Cell *cc = out_mod->addCell(c->name, c->type);
-				log_debug("%s partition cell: %s\n", in_gold ? "gold" : "gate", log_id(cc));
+				log_debug("  %s partition cell: %s\n", in_gold ? "gold" : "gate", log_id(cc));
 				// TBD: Copy some of the cell metadata
 				cc->parameters = c->parameters;
 
@@ -380,48 +384,41 @@ struct EqyPartitionWorker
 		copy_mod_contents(true);
 		copy_mod_contents(false);
 
-		part_inbits.clear();
-		part_outbits.clear();
-		part_gold_bits.clear();
-		part_gate_bits.clear();
-		part_gold_cells.clear();
-		part_gate_cells.clear();
-
-		return partition;
-	}
-
-	void create_partitions(std::ofstream &partition_list_file)
-	{
-		int partidx = 0;
-		while (!queue.empty())
-		{
-			partition_begin();
-
-			SigBit gold_bit = *queue.begin();
-			partition_add(gold_bit);
-
-			for (auto &it : aliases.at(raliases.at(gold_bit, gold_bit), {})) {
-				if (queue.count(it)) partition_add(it);
-			}
-
-			std::ofstream ofile;
-			std::string filename = stringf("partitions/%s.%d.il", gold->name.substr(6).c_str(), partidx);
-
-			IdString partname = stringf("\\%s.%d", gold->name.substr(6).c_str(), partidx++);
-			Design *partition = partition_finalize(partname);
-
-			ofile.open(filename.c_str(), std::ofstream::trunc);
-			if (ofile.fail())
-				log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
-
-			Backend::backend_call(partition, &ofile, filename, "rtlil");
-			partition_list_file << unescape_id(partname) << "\n";
-
-			delete partition;
-			log_spacer();
-		}
+		return partdesign;
 	}
 };
+
+void EqyPartitionWorker::create_partitions(std::ofstream &partition_list_file)
+{
+	int partidx = 0;
+	while (!queue.empty())
+	{
+		SigBit gold_bit = *queue.begin();
+		Partition *partition = new Partition(this);
+		partition->partition_add(gold_bit);
+
+		for (auto &it : aliases.at(raliases.at(gold_bit, gold_bit), {})) {
+			if (queue.count(it)) partition->partition_add(it);
+		}
+
+		std::ofstream ofile;
+		std::string filename = stringf("partitions/%s.%d.il", gold->name.substr(6).c_str(), partidx);
+
+		IdString partname = stringf("\\%s.%d", gold->name.substr(6).c_str(), partidx++);
+		Design *partdesign = partition->partition_finalize(partname);
+
+		ofile.open(filename.c_str(), std::ofstream::trunc);
+		if (ofile.fail())
+			log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
+
+		Backend::backend_call(partdesign, &ofile, filename, "rtlil");
+		partition_list_file << unescape_id(partname) << "\n";
+
+		delete partdesign;
+		delete partition;
+		log_spacer();
+	}
+}
 
 struct EqyPartitionPass : public Pass
 {
