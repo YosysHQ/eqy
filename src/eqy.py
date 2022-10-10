@@ -17,7 +17,7 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
-import argparse, types, re
+import argparse, types, re, glob
 import os, sys, tempfile, shutil
 import shlex
 ##yosys-sys-path##
@@ -62,6 +62,8 @@ def parse_args():
 
     parser.add_argument("-m", "--setup", action="store_true", dest="setupmode",
             help="generate partitions and makefiles and exit")
+
+    parser.add_argument("-p", "--purge", action="append", dest="purgelist")
 
     parser.add_argument("--init-config-file", metavar=("<filename>", "<gold>", "<gate>"), nargs=3,
             help="create a default .eqy config in <filename> for source files <gold> and <gate>")
@@ -520,7 +522,7 @@ def make_scripts(args, cfg, job):
                 strategies[strategyType][1](args, cfg, strategy, scfg, partition)
 
                 if prev_strategy:
-                    print( f"""strategies/{partition}/{strategy}/status: {prev_strategy}
+                    print(f"""strategies/{partition}/{strategy}/status: {prev_strategy}
 \t@if grep PASS $^ >/dev/null ; then \\
 \t\techo "PASS (cached)" > $@; \\
 \telse \\
@@ -596,6 +598,13 @@ def main():
     setup_workdir(args)
 
     job = EqyJob(args, cfg, [])
+
+    if args.purgelist is not None:
+        for pattern in args.purgelist:
+            for path in glob.glob(f"{args.workdir}/strategies/{pattern}/status"):
+                job.log(f"Removing '{path}'.")
+                os.remove(path)
+
     build_gate_gold(args, cfg, job)
     build_combined(args, cfg, job)
     match_ids(args, cfg)
