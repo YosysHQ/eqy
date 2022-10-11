@@ -537,9 +537,60 @@ class EqySatseqStrategy(EqyStrategy):
             print(f"sat -set-init-undef -seq {self.scfg.depth} -prove-asserts miter", file=ys_f)
 
 
+class EqySbyStrategy(EqyStrategy):
+    default_scfg = dict(engine='smtbmc', mode='prove', depth=5)
+    parse_opt_engine = EqyStrategy.string_opt_parser
+    parse_opt_depth = EqyStrategy.int_opt_parser
+    parse_opt_mode = EqyStrategy.make_enum_parser(["bmc", "prove"])
+
+    def write(self, partition):
+        with open(self.path(partition, f"{partition}.sby"), "w") as sby_f:
+            print(textwrap.dedent(f"""
+                [options]
+                mode {self.scfg.mode}
+                depth {self.scfg.depth}
+                expect pass,fail,unknown
+
+                [engines]
+                {self.scfg.engine}
+
+                [script]
+                read_ilang {partition}.il
+                miter -equiv -make_assert -flatten gold.{partition} gate.{partition} miter
+                hierarchy -top miter
+
+                [files]
+                ../../../partitions/{partition}.il
+            """[1:-1]), file=sby_f)
+
+        with open(self.path(partition, "run.sh"), "w") as run_f:
+            print(textwrap.dedent(f"""
+                STATUS=ERROR
+                sby -f {partition}.sby > /dev/null && STATUS=$(awk '{{print $1}}' {partition}/status)
+                echo $STATUS > status
+                case $STATUS in
+                    PASS)
+                        echo "Proved equivalence of partition '{partition}' using strategy '{self.name}'"
+                    ;;
+                    FAIL)
+                        echo "Could not prove equivalence of partition '{partition}' using strategy '{self.name}': partitions not equivalent"
+                    ;;
+                    UNKNOWN)
+                        echo "Could not prove equivalence of partition '{partition}' using strategy '{self.name}': equivalence unknown"
+                    ;;
+                    *)
+                        cat {partition}/ERROR 2> /dev/null
+                        echo "Execution of strategy '{self.name}' on partition '{partition}' encountered an error."
+                        echo "More details can be found in '{self.path(partition, f'{partition}/logfile.txt')}'."
+                    ;;
+                esac
+            """[1:-1]), file=run_f)
+
+
 strategy_types = {
     "dummy": EqyDummyStrategy,
     "satseq": EqySatseqStrategy,
+    "sby": EqySbyStrategy,
     # add strategies here
 }
 
