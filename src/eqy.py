@@ -476,7 +476,7 @@ exit 0""" , file=run_f)
         print(f"read_ilang ../../../partitions/{partition}.il", file=ys_f)
         # TODO: where to put scripts for different strategies
         print(f"miter -equiv -make_assert -ignore_gold_x -flatten gold.{partition} gate.{partition} miter", file=ys_f)
-        print("sat -set-init-undef -seq 5 -prove-asserts miter", file=ys_f)
+        print(f"sat -set-init-undef -seq {scfg.depth} -prove-asserts miter", file=ys_f)
 
 strategies = {
     "dummy": (parse_strategy_dummy, write_strategy_dummy),

@@ -82,7 +82,6 @@ struct EqyPartitionWorker
 				log("conflicting constants for gold bit %s: %s vs %s\n", log_signal(gold_bit),
 						log_signal(constants.at(gold_bit)), log_signal(gate_bit));
 			constants[gold_bit] = State(gate_bit.data);
-			return;
 		}
 
 		if (gold_drivers.count(gold_bit)) {
@@ -111,7 +110,7 @@ struct EqyPartitionWorker
 			aliases[master_gold_bit].insert(master_gold_bit);
 			aliases[master_gold_bit].insert(gold_bit);
 			raliases[gold_bit] = master_gold_bit;
-		} else {
+		} else if (gate_bit.wire) {
 			gate_matches[gate_bit] = gold_bit;
 		}
 
@@ -214,6 +213,9 @@ struct Partition
 
 			bit = gg_sigmap(bit);
 
+			if (!bit.wire)
+				return;
+
 			bool insert_bit = !part_gg_bits.count(bit);
 
 			if (!insert_bit && isoutput && gg_matches.count(bit)) {
@@ -292,15 +294,13 @@ struct Partition
 		partition_open = false;
 
 		log("Finalizing partition %d as %s.\n", index, log_id(partname));
-		log("  Collected %d primary input bits: %s\n", GetSize(part_inbits), log_signal(part_inbits));
-		log("  Collected %d primary output bits: %s\n", GetSize(part_outbits), log_signal(part_outbits));
 
 		Design *partdesign = new Design();
 
 		Module *mod_gold = partdesign->addModule("\\gold." + partname.substr(1));
 		Module *mod_gate = partdesign->addModule("\\gate." + partname.substr(1));
 
-		auto copy_mod_contents = [&](bool in_gold)->void
+		auto copy_mod_contents = [&](bool in_gold, const SigSpec &pi, const SigSpec &po, const SigSig &conn)->void
 		{
 			// Module *in_mod = in_gold ? gold : gate;
 			Module *out_mod = in_gold ? mod_gold : mod_gate;
@@ -311,8 +311,6 @@ struct Partition
 
 			dict<SigBit,SigBit> mapped_bits;
 			dict<Wire*,Wire*> mapped_wires;
-
-			SigSpec pi, po;
 
 			for (auto bit : part_gg_bits) {
 				Wire *w = bit.wire;
@@ -326,28 +324,15 @@ struct Partition
 				mapped_bits[bit] = SigBit(mapped_wires.at(w), bit.offset);
 			}
 
-			for (auto bit : part_inbits)
-			{
-				log_debug("  %s partition pi bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
-				if (!in_gold)
-					bit = worker->gold_matches.at(bit);
-				pi.append(bit);
-			}
-
-			for (auto bit : part_outbits)
-			{
-				log_debug("  %s partition po bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
-				if (!in_gold)
-					bit = worker->gold_matches.at(bit);
-				po.append(bit);
-			}
-
 			for (auto &it : mapped_wires) {
 				Wire *w = it.first, *ww = it.second;
 				for (int i = 0; i < GetSize(w); i++)
 					if (!mapped_bits.count(SigBit(w, i)))
 						out_mod->connect(SigBit(ww, i), State::Sz);
 			}
+
+			for (int i = 0; i < GetSize(conn.first); i++)
+				out_mod->connect(mapped_bits.at(conn.first[i]), conn.second[i].wire ? mapped_bits.at(conn.second[i]) : conn.second[i]);
 
 			for (auto c : part_gg_cells)
 			{
@@ -381,8 +366,41 @@ struct Partition
 			out_mod->connect(pow, po);
 		};
 
-		copy_mod_contents(true);
-		copy_mod_contents(false);
+		dict<SigBit, int> gate_pi_positions;
+
+		SigSpec gold_pi, gold_po, gate_pi, gate_po;
+		SigSig gold_conn, gate_conn;
+
+		for (auto bit : part_inbits)
+		{
+			auto gate_bit = worker->gold_matches.at(bit);
+			if (gate_pi_positions.count(gate_bit)) {
+				int idx = gate_pi_positions.at(gate_bit);
+				log("  partition pi alias for bit %d: %s := %s <-> %s\n", idx, log_signal(bit), log_signal(gold_pi[idx]), log_signal(gate_bit));
+				gold_conn.first.append(bit);
+				gold_conn.second.append(gold_pi[idx]);
+			} else if (!gate_bit.wire) {
+				log("  partition pi alias for constant: %s <-> %s\n", log_signal(bit), log_signal(gate_bit));
+				gold_conn.first.append(bit);
+				gold_conn.second.append(gate_bit);
+			} else {
+				log("  partition pi bit %d: %s <-> %s\n", GetSize(gold_pi), log_signal(bit), log_signal(gate_bit));
+				gate_pi_positions[gate_bit] = GetSize(gold_pi);
+				gold_pi.append(bit);
+				gate_pi.append(gate_bit);
+			}
+		}
+
+		for (auto bit : part_outbits)
+		{
+			auto gate_bit = worker->gold_matches.at(bit);
+			log("  partition po bit %d: %s <-> %s\n", GetSize(gold_po), log_signal(bit), log_signal(gate_bit));
+			gold_po.append(bit);
+			gate_po.append(gate_bit);
+		}
+
+		copy_mod_contents(true, gold_pi, gold_po, gold_conn);
+		copy_mod_contents(false, gate_pi, gate_po, gate_conn);
 
 		return partdesign;
 	}
