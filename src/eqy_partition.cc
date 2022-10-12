@@ -23,9 +23,16 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 USING_YOSYS_NAMESPACE
 PRIVATE_NAMESPACE_BEGIN
 
+struct Partition;
+
 struct EqyPartitionWorker
 {
-	int partcnt = 0;
+	std::vector<std::unique_ptr<Partition>> partitions;
+	dict<SigBit, int> po_primitive_index;
+	dict<SigBit, int> po_partition_index;
+	dict<SigBit, pool<int>> pi_primitives_index;
+	dict<SigBit, pool<int>> pi_partitions_index;
+
 	Module *gold, *gate;
 	SigMap gold_sigmap;
 	SigMap gate_sigmap;
@@ -178,26 +185,78 @@ struct EqyPartitionWorker
 		}
 	}
 
-	void create_partitions(std::ofstream &partition_list_file);
+	Partition *create_partition();
+	void create_partitions();
+	void merge_partitions();
+	void import_partitions();
+	void finalize_partitions(std::ofstream &partition_list_file);
 };
 
 struct Partition
 {
 	EqyPartitionWorker *worker;
-	bool partition_open = true;
+	int merged_into = -1;
 	int index;
+
+	// A 'finalized' partition has either been written to an output file, or was replaced
+	// as partition to-be-written by merging it into another partition, making that other
+	// partition responsible for proving the POs that used to belong to this partition.
+	bool finalized = false;
+
+	// A 'primitive' partition is the original partition for a PO (or a set of merged-early POs),
+	// before merging partitions and/or importing gold data from one partition into another.
+	bool primitive = false;
 
 	pool<SigBit> part_inbits, part_outbits;
 	pool<SigBit> part_gold_bits, part_gate_bits;
 	pool<Cell*> part_gold_cells, part_gate_cells;
 
-	Partition(EqyPartitionWorker *worker) : worker(worker), index(worker->partcnt++) {}
+	Partition(EqyPartitionWorker *worker) : worker(worker), index(GetSize(worker->partitions)) { }
+
+	Partition *clone_primitive()
+	{
+		log_assert(!finalized);
+		if (!primitive) return this;
+
+		Partition *other = worker->create_partition();
+		merged_into = other->index;
+		finalized = true;
+
+		// TBD: Create a non-primitive clone of this partition and mark this partition as finalized.
+
+		return other;
+	}
+
+	void merge_partiton(Partition *other)
+	{
+		log_assert(!finalized);
+		log_assert(!other->finalized);
+
+		// TBD: Merge the other partition into this partition, and mark the other partiton as
+		// finalized. POs of the other partiton become POs of this partition, potentially replacing
+		// existing PIs of this partiton. PIs of the other partition becme PIs of this partition,
+		// unless those nets already exist (as PIs, POs, or internal nets).
+
+		other->finalized = true;
+		other->merged_into = index;
+	}
+
+	void import_partition(const Partition *other)
+	{
+		log_assert(!finalized);
+		log_assert(other->primitive);
+
+		// TBD: Copy the gold netlist of the other partition into both gold and gate of this partition.
+		// POs of the other partiton become internal nets of this partition, potentially replacing
+		// existing PIs of this partiton. PIs of the other partition becme PIs of this partition,
+		// unless those nets already exist (as PIs, POs, or internal nets).
+	}
 
 	void partition_add(SigBit gold_bit)
 	{
 		gold_bit = worker->gold_sigmap(gold_bit);
 
-		log_assert(partition_open);
+		log_assert(!finalized);
 		log_assert(worker->queue.count(gold_bit));
 		worker->queue.erase(gold_bit);
 
@@ -243,10 +302,16 @@ struct Partition
 				if (isoutput) {
 					run_other = !part_outbits.count(gold_bit);
 					part_outbits.insert(gold_bit);
+					if (primitive)
+						worker->po_primitive_index[gold_bit] = index;
+					worker->po_partition_index[gold_bit] = index;
 				} else {
 					isinput = true;
 					run_other = !part_inbits.count(gold_bit);
 					part_inbits.insert(gold_bit);
+					if (primitive)
+						worker->pi_primitives_index[gold_bit].insert(index);
+					worker->pi_partitions_index[gold_bit].insert(index);
 				}
 
 				if (run_other)
@@ -290,8 +355,8 @@ struct Partition
 
 	Design *partition_finalize(IdString partname)
 	{
-		log_assert(partition_open);
-		partition_open = false;
+		log_assert(!finalized);
+		finalized = true;
 
 		log("Finalizing partition %d as %s.\n", index, log_id(partname));
 
@@ -406,23 +471,50 @@ struct Partition
 	}
 };
 
-void EqyPartitionWorker::create_partitions(std::ofstream &partition_list_file)
+Partition *EqyPartitionWorker::create_partition()
 {
-	int partidx = 0;
+	partitions.push_back(std::unique_ptr<Partition>(new Partition(this)));
+	return partitions.back().get();
+}
+
+void EqyPartitionWorker::create_partitions()
+{
 	while (!queue.empty())
 	{
 		SigBit gold_bit = *queue.begin();
-		Partition *partition = new Partition(this);
+
+		Partition *partition = create_partition();
+		partition->primitive = true;
+
 		partition->partition_add(gold_bit);
 
 		for (auto &it : aliases.at(raliases.at(gold_bit, gold_bit), {})) {
 			if (queue.count(it)) partition->partition_add(it);
 		}
+	}
+}
+
+void EqyPartitionWorker::merge_partitions()
+{
+	// TBD
+}
+
+void EqyPartitionWorker::import_partitions()
+{
+	// TBD
+}
+
+void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
+{
+	for (auto &it : partitions)
+	{
+		Partition *partition = it.get();
+		if (partition->finalized) continue;
 
 		std::ofstream ofile;
-		std::string filename = stringf("partitions/%s.%d.il", gold->name.substr(6).c_str(), partidx);
+		std::string filename = stringf("partitions/%s.%d.il", gold->name.substr(6).c_str(), partition->index);
 
-		IdString partname = stringf("\\%s.%d", gold->name.substr(6).c_str(), partidx++);
+		IdString partname = stringf("\\%s.%d", gold->name.substr(6).c_str(), partition->index);
 		Design *partdesign = partition->partition_finalize(partname);
 
 		ofile.open(filename.c_str(), std::ofstream::trunc);
@@ -433,7 +525,6 @@ void EqyPartitionWorker::create_partitions(std::ofstream &partition_list_file)
 		partition_list_file << unescape_id(partname) << "\n";
 
 		delete partdesign;
-		delete partition;
 		log_spacer();
 	}
 }
@@ -499,7 +590,8 @@ struct EqyPartitionPass : public Pass
 						if (w->port_id)
 							worker.add_match(w->name, w->name);
 
-					worker.create_partitions(partition_list_file);
+					worker.create_partitions();
+					worker.finalize_partitions(partition_list_file);
 				}
 			}
 			else if (!gold->name.begins_with("\\gate.") && gold->name != "\\miter")
