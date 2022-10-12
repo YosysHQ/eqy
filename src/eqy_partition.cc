@@ -411,6 +411,8 @@ struct Partition
 					for (auto bit : sigmap(conn.second)) {
 						if (bit. wire == nullptr)
 							s.append(bit);
+						else if (c->output(conn.first) && part_inbits.count(bit))
+							s.append(out_mod->addWire(NEW_ID));
 						else if (mapped_bits.count(bit))
 							s.append(mapped_bits.at(bit));
 						else
