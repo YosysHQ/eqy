@@ -492,6 +492,7 @@ class EqyStrategy:
             if value not in values:
                 return "expected one of " + ', '.join(map(repr, values))
             self.options_seen.add(name)
+        return enum_parser
 
 
     def write(self, partition):
