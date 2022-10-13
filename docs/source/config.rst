@@ -92,9 +92,86 @@ to modules matching that regex, or all modules if the regex is omitted.
    [match axi_xbar_.*]
    name (reader|buffer|arbiter|writer)_([0-7]) pipeline_\1
 
-TBD Primitive grouping: [no-]autogroup, group, nostop
+[no]autogroup
+.............
 
-TBD: Partition merging and naming: name, merge, nosplit, sticky, path
+Marking a net as noautogroup will prevent the auto grouping mechanism to
+group this net with other nets into the same primitive partition. Per default
+autogrouping does group nets when
+
+- they are driven by the same cell, either in the gold or gate design, or
+- gold nets are aliases, i.e. are implemented by the same gate net.
+
+group and nogroup
+.................
+
+The ``group regex1`` command is used to group everything matching the given
+regex into the same primitive partition.
+
+The ``group regex1 regex2`` command is pairing matches for regex1 with the sets
+of nets matching the dependent regex2, and is grouping them accordingly.
+
+The ``nogroup regex1`` command prevents all further ``group`` commands from
+matching the specified nets.
+
+stop and nostop
+...............
+
+Marking a net as ``nostop`` prevents that net from becoming a primary input of
+a primitive partition. (This has no effect on nets that are module inputs.)
+
+The ``stop regex`` command prevents all further ``nostop`` commands from
+matching the speciefied nets. (The default behavior is "stop" for all nets.)
+
+name and noname
+...............
+
+The ``name regex1 string`` command is looking for nets matching the given regex,
+and then applies the given name to the partition that contains that net as primary
+output.
+
+If multiple ``name`` commands assign the same name to different entities, then the
+corresponding partitions will be merged into one partition with the given name. If
+multiple ``name`` commands apply to the same partition, then the earlier name command
+will be used to name the partition. (Both names are used for merging partitions tho.)
+
+The ``noname regex`` command can be used to prevent further name commands from
+mathing the given nets.
+
+merge and nomerge
+.................
+
+The ``merge`` and ``nomerge`` commands work similar to ``group`` and ``nogroup``,
+but creates non-primitive partitions by merging the primitive partitions generated
+by the grouping commands.
+
+path and nopath
+...............
+
+The ``path regex1 regex2`` command will determine the shortest path from the
+first net to the second net, and then merge all partitions along that path.
+
+The ``nopath regex`` command marks partitions as not-to-be-used by any further
+``path`` commands.
+
+sticky and nosticky
+...................
+
+The ``sticky regex`` command marks nets as sticky. The partition generating the
+sticky net as primary output will then be merged with any partition using the
+sticky net as primary input.
+
+The ``nosticky regex`` command preents further ``sticky`` commands from matching
+the given net.
+
+split and nosplit
+.................
+
+The ``nosplit`` command operates on a multi-bit wire and merges the partitions
+that generate the individial wire bits as primary outputs.
+
+The ``split`` command prevents further ``nosplit`` commands from matching
+the given net.
 
 Strategy sections
 -----------------
@@ -106,11 +183,28 @@ strategy as an argument.
 .. code-block:: text
 
    [strategy simple]
-   match axi_xbar_.*
+   apply axi_xbar_.*
    use satseq
    depth 10
 
-TBD: use, match, nomatch
+use statements
+..............
 
-TBD: strategy types (in its own chapter)
+The ``use strategy_type`` command selects a strategy type for this strategy. Each
+strategy type defines its own custom commands for the strategy section. For example,
+the ``depth`` command in the example above is a custom command only understood by
+the ``satseq`` strategy type.
 
+match and nomatch
+.................
+
+The ``match module_regex net_regex`` command is used to enable the given strategy
+for all partitions matching the given regexes. The ``nomatch module_regex net_regex``
+command prevents further ``match`` or ``apply`` commands for this strategy from
+applying this strategy to the matching partition.
+
+apply and noapply
+.................
+
+The ``apply module_regex name_regex`` and ``noapply`` commands work similar to the
+``match`` and ``nomatch`` commands, but matches partition names instead of net names.

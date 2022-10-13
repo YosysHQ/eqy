@@ -11,6 +11,7 @@ hardware equivalence checking.
    install.rst
    quickstart.rst
    config.rst
+   strategies.rst
    outdir.rst
    license.rst
 
