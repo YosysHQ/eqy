@@ -389,9 +389,7 @@ def match_ids(args, cfg):
 
 def partition_ids(args, cfg):
     gold_ids = read_ids(args.workdir + "/gold.ids")
-
-
-    with open(args.workdir + "/partition_names.ids", "w") as name_f, open(args.workdir + "/partition_nosplit.ids", "w") as nosplit_f, open(args.workdir + "/partition_inputcone.ids", "w") as inputcone_f, open(args.workdir + "/partition_outputcone.ids", "w") as outputcone_f:
+    with open(args.workdir + "/partition.ids", "w") as partids_f:
         for line in cfg.partition:
             line = line.split()
             if len(line) == 0:
@@ -399,15 +397,19 @@ def partition_ids(args, cfg):
             elif line[0] == "name" and len(line) == 4:
                 for module_match in match_module_re(gold_ids, line[1]):
                     for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
-                        print(line[0], module_match, entity_match, line[3], file=name_f)
-            elif line[0] == "nosplit" and len(line) == 3:
+                        print(line[0], module_match, entity_match, line[3], file=partids_f)
+            elif line[0] in ("stop", "nosticky", "split", "autogroup") and len(line) == 3:
                 for module_match in match_module_re(gold_ids, line[1]):
                     for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
-                        print(line[0], module_match, entity_match, file=nosplit_f)
-            elif line[0] in ["input-cone", "output-cone"] and len(line) in [3, 4]:
+                        pass # TBD: tag loally as disabled and suppress below as needed
+            elif line[0] in ("nostop", "sticky", "nosplit", "noautogroup", "noname", "nogroup", "nomerge", "nopath") and len(line) == 3:
                 for module_match in match_module_re(gold_ids, line[1]):
                     for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
-                        print(line[0], module_match, entity_match, line[3] if len(line) == 4 else "1", file=inputcone_f if line[0]=="input-cone" else outputcone_f)
+                        print(line[0], module_match, entity_match, file=partids_f)
+            elif line[0] in ("group", "merge") and len(line) == 3:
+                pass # TBD
+            elif line[0] in ("group", "merge", "path") and len(line) == 4:
+                pass # TBD
             else:
                 exit_with_error(f"Syntax error in partition command \"{' '.join(line)}\"")
 
@@ -419,7 +421,7 @@ def make_partitions(args, cfg, job):
     with open(args.workdir + "/partition.ys", "w") as f:
         print("plugin -i {}/eqy_partition.so".format(plugin_path), file=f)
         print("read_ilang combined.il".format(args.workdir), file=f)
-        print("{dbg}eqy_partition -matched_ids matched.ids -partition_names partition_names.ids -nosplit_ids partition_nosplit.ids -create_partition_list partition.list".format(dbg="debug " if args.debugmode else ""), file=f)
+        print("{dbg}eqy_partition -matched_ids matched.ids -partition_ids partition.ids -create_partition_list partition.list".format(dbg="debug " if args.debugmode else ""), file=f)
     if not os.path.isdir(args.workdir + "/partitions"):
         os.mkdir(args.workdir + "/partitions")
 

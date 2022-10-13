@@ -188,7 +188,7 @@ struct EqyPartitionWorker
 	Partition *create_partition();
 	void create_partitions();
 	void merge_partitions();
-	void import_partitions();
+	void ammend_partitions();
 	void finalize_partitions(std::ofstream &partition_list_file);
 };
 
@@ -501,7 +501,7 @@ void EqyPartitionWorker::merge_partitions()
 	// TBD
 }
 
-void EqyPartitionWorker::import_partitions()
+void EqyPartitionWorker::ammend_partitions()
 {
 	// TBD
 }
@@ -561,8 +561,7 @@ struct EqyPartitionPass : public Pass
 
 	void partition_worker(Design *design, bool full_module_mode,
 			const dict<std::string, std::vector<std::pair<std::string, std::string>>> &matched_ids,
-			const dict<std::string, dict<std::string, pool<std::string>>> & /* partition_names */,
-			const dict<std::string, pool<std::string>> & /* nosplit_ids */,
+			const dict<std::string, std::vector<std::vector<std::string>>> & /* partiton_ids */,
 			std::ofstream &partition_list_file)
 	{
 		int num_gold_modules = 0;
@@ -585,14 +584,16 @@ struct EqyPartitionPass : public Pass
 					for (auto &it : matched_ids.at(gold->name.substr(6)))
 						worker.add_match(IdString(RTLIL::escape_id(it.first)), IdString(RTLIL::escape_id(it.second)));
 
-					// TBD: Register partition names
-
 					// Force ports to be match points
 					for (auto w : gold->wires())
 						if (w->port_id)
 							worker.add_match(w->name, w->name);
 
+					// TBD: Register partition configuration
+
 					worker.create_partitions();
+					worker.merge_partitions();
+					worker.ammend_partitions();
 					worker.finalize_partitions(partition_list_file);
 				}
 			}
@@ -610,51 +611,58 @@ struct EqyPartitionPass : public Pass
 		if (!matched_file)
 			log_error("Cannot open file '%s'\n", filename.c_str());
 		std::string line;
-		for (std::string line; std::getline(matched_file, line); ) {
+		for (int linenr = 1; std::getline(matched_file, line); linenr++) {
 			std::vector<std::string> things = split_tokens(line);
 			if (things.size() != 3)
-				log_error("Malformed file %s\n", filename.c_str());
+				log_error("Malformed line %d in file %s\n", linenr, filename.c_str());
 			matched_ids[things[0]].push_back(std::make_pair(things[1], things[2]));
 		}
 		return matched_ids;
 	}
 
-	dict<std::string, dict<std::string, pool<std::string>>> read_partition_names(std::string filename)
+	dict<std::string, std::vector<std::vector<std::string>>> read_partition_ids(std::string filename)
 	{
-		/* dict (module -> dict (partition_name -> pool (IDs))) */
-		dict<std::string, dict<std::string, pool<std::string>>> partition_names;
+		dict<std::string, std::vector<std::vector<std::string>>> partition_ids;
+
 		std::ifstream partition_names_file(filename.c_str());
 		if (!partition_names_file)
 			log_error("Cannot open file '%s'\n", filename.c_str());
-		std::string line;
-		for (std::string line; std::getline(partition_names_file, line); ) {
+		std::string line, modname;
+		for (int linenr=1; std::getline(partition_names_file, line); linenr++) {
 			std::vector<std::string> things = split_tokens(line);
-			if (things.size() != 4)
-				log_error("Malformed file %s\n", filename.c_str());
-			partition_names[things[1]][things[3]].insert(things[2]);
+			if ((things[0] == "begin-group" || things[0] == "begin-merge" ||
+					things[0] == "begin-path")  && GetSize(things) == 2) {
+				modname = things[1];
+				partition_ids[modname].push_back({things[0]});
+				continue;
+			}
+			if ((things[0] == "arg" || things[0] == "lhs" || things[0] == "rhs")  && GetSize(things) == 2) {
+				partition_ids[modname].push_back(things);
+				continue;
+			}
+			if (things[0] == "end" && GetSize(things) == 1) {
+				partition_ids[modname].push_back(things);
+				continue;
+			}
+			if (things[0] == "name" && GetSize(things) == 4) {
+				modname = things[1];
+				partition_ids[modname].push_back({things[0], things[2], things[3]});
+				continue;
+			}
+			if ((things[0] == "nostop" || things[0] == "sticky" || things[0] == "nosplit" ||
+					things[0] == "autogroup") && GetSize(things) == 3) {
+				modname = things[1];
+				partition_ids[modname].push_back({things[0], things[2]});
+				continue;
+			}
+			log_error("Malformed line %d in file %s\n", linenr, filename.c_str());
 		}
-		return partition_names;
-	}
-
-	dict<std::string, pool<std::string>> read_nosplit_ids(std::string filename)
-	{
-		dict<std::string, pool<std::string>> nosplit_ids;
-		std::ifstream nosplit_file(filename.c_str());
-		if (!nosplit_file)
-			log_error("Cannot open file '%s'\n", filename.c_str());
-		std::string line;
-		for (std::string line; std::getline(nosplit_file, line); ) {
-			std::vector<std::string> things = split_tokens(line);
-			if (things.size() != 3)
-				log_error("Malformed file %s\n", filename.c_str());
-			nosplit_ids[things[1]].insert(things[2]);
-		}
-		return nosplit_ids;
+		return partition_ids;
 	}
 
 	void execute(std::vector<std::string> args, Design *design) override
 	{
-		std::string matched_ids_filename, partition_names_filename, nosplit_ids_filename, partition_list_filename;
+		std::string matched_ids_filename, partition_ids_filename, partition_list_filename;
 		bool full_module_mode = false;
 
 		size_t argidx;
@@ -664,20 +672,16 @@ struct EqyPartitionPass : public Pass
 				matched_ids_filename = args[++argidx];
 				continue;
 			}
-			if ((args[argidx] == "-partition_names") && argidx+1 < args.size()) {
-				partition_names_filename = args[++argidx];
-				continue;
-			}
-			if ((args[argidx] == "-nosplit_ids") && argidx+1 < args.size()) {
-				nosplit_ids_filename = args[++argidx];
-				continue;
-			}
-			if ((args[argidx] == "-fullmods")) {
-				full_module_mode = true;
+			if ((args[argidx] == "-partition_ids") && argidx+1 < args.size()) {
+				partition_ids_filename = args[++argidx];
 				continue;
 			}
 			if ((args[argidx] == "-create_partition_list") && argidx+1 < args.size()) {
 				partition_list_filename = args[++argidx];
+				continue;
+			}
+			if ((args[argidx] == "-fullmods")) {
+				full_module_mode = true;
 				continue;
 			}
 			break;
@@ -688,36 +692,13 @@ struct EqyPartitionPass : public Pass
 
 		//TBD: handle absent arguments
 		auto matched_ids = read_matched_ids(matched_ids_filename);
-		for (auto i : matched_ids)
-			for (auto j : i.second)
-				log_debug("Found ID match: %s %s %s\n", i.first.c_str(), j.first.c_str(), j.second.c_str());
-
-		auto partition_names = read_partition_names(partition_names_filename);
-		for (auto i : partition_names)
-			for (auto j : i.second)
-			{
-				log_debug("In module %s, entities ", i.first.c_str());
-				for (std::string k : j.second)
-					log_debug("%s ", k.c_str());
-				log_debug("are assigned to partition %s\n", j.first.c_str());
-			}
-
-		auto nosplit_ids = read_nosplit_ids(nosplit_ids_filename);
-		for (auto i : nosplit_ids)
-		{
-			log_debug("In module %s, do not split entities", i.first.c_str());
-			for (std::string j : i.second)
-				log_debug(" %s", j.c_str());
-			log_debug("\n");
-		}
-
-		std::ofstream partition_list_file (partition_list_filename, std::ofstream::out);
+		auto partition_ids = read_partition_ids(partition_ids_filename);
+		std::ofstream partition_list_file(partition_list_filename, std::ofstream::out);
 
 		log_push();
-		partition_worker(design, full_module_mode, matched_ids, partition_names, nosplit_ids, partition_list_file);
+		partition_worker(design, full_module_mode, matched_ids, partition_ids, partition_list_file);
 		log_pop();
 	}
-
 } EqyPartitionPass;
 
 PRIVATE_NAMESPACE_END
