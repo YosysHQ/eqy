@@ -38,5 +38,5 @@ html:
 	$(MAKE) -C docs html
 
 clean:
-	# $(MAKE) -C docs clean
+	$(MAKE) -C docs clean
 	rm -rf docs/build src/eqy_combine.so src/eqy_partition.so src/__pycache__
