@@ -151,6 +151,14 @@ path statements
 The ``path <pattern> <pattern>`` command will determine the shortest path from the
 first net to the second net, and then merge all partitions along that path.
 
+If the first pattern matches a net name then the partition generating that net is
+not included in the path itself. If the first pattern matches a partition name then
+that partition is included in the path.
+
+If the second pattern matches a net name then partitions consuming that signal
+are not included in the path itself. If the second pattern matches a partition name
+then that partition is included in the path.
+
 sticky and nosticky
 ...................
 
@@ -227,9 +235,8 @@ case it is evaluated case-insensitive.
 Attribute names and partition names can also be shell wildcard patterns, or
 regular expressions.
 
-The partition name syntax is unavailable in the ``[match]`` section, and for
-the partition commands ``[no]autogroup``, ``[no]stop``, ``[no]name``, ``path``,
-``[no]sticky``, and ``[no]split``.
+The partition name syntax is only available in ``path``, ``final``, and ``apply``
+statements.
 
 In commands that accept pairs of patterns, numeric backreferences (\0, \1, \2) and
 named backreferences (\g<1>, \g<name>) are replaced in the second pattern by
