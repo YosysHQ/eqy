@@ -51,9 +51,22 @@ a gate net name.
 Design partition files
 ----------------------
 
-The file ``partition.ids`` contains flags on gold module and net names,
-generated from the ``[partition ...]`` configuration sections. These
-flags guide the partition generation algorithm.
+The file ``partition.ids`` contains partitioning rules generated from the
+``[partition ...]`` configuration sections. These rules guide the partition
+generation algorithm. The following statements are valid in ``partition.ids``
+files.
+
+.. code-block:: text
+
+   name <module> <net> <name>
+   group <module> <net> <net>
+   merge <module> <net> <net>
+   path <module> <net> <net>
+
+   nostop <module> <net>
+   sticky <module> <net>
+   nosplit <module> <net>
+   noautogroup <module> <net>
 
 The file ``partition.list`` contains a list of all generated design partitions,
 and the primary inputs and primary outputs of each such partition.

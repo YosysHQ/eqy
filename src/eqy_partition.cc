@@ -524,7 +524,18 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 			log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
 
 		Backend::backend_call(partdesign, &ofile, filename, "rtlil");
-		partition_list_file << unescape_id(partname) << "\n";
+		partition_list_file << unescape_id(gold->name).substr(5) << " ";
+		partition_list_file << unescape_id(partname);
+
+		for (auto bit : partition->part_outbits)
+			partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
+
+		partition_list_file << " <=";
+
+		for (auto bit : partition->part_inbits)
+			partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
+
+		partition_list_file << "\n";
 
 		delete partdesign;
 		log_spacer();
@@ -627,32 +638,17 @@ struct EqyPartitionPass : public Pass
 		std::ifstream partition_names_file(filename.c_str());
 		if (!partition_names_file)
 			log_error("Cannot open file '%s'\n", filename.c_str());
-		std::string line, modname;
+		std::string line;
 		for (int linenr=1; std::getline(partition_names_file, line); linenr++) {
 			std::vector<std::string> things = split_tokens(line);
-			if ((things[0] == "begin-group" || things[0] == "begin-merge" ||
-					things[0] == "begin-path")  && GetSize(things) == 2) {
-				modname = things[1];
-				partition_ids[modname].push_back({things[0]});
-				continue;
-			}
-			if ((things[0] == "arg" || things[0] == "lhs" || things[0] == "rhs")  && GetSize(things) == 2) {
-				partition_ids[modname].push_back(things);
-				continue;
-			}
-			if (things[0] == "end" && GetSize(things) == 1) {
-				partition_ids[modname].push_back(things);
-				continue;
-			}
-			if (things[0] == "name" && GetSize(things) == 4) {
-				modname = things[1];
-				partition_ids[modname].push_back({things[0], things[2], things[3]});
+			if ((things[0] == "name" || things[0] == "group" || things[0] == "merge" ||
+					things[0] == "path") && GetSize(things) == 4) {
+				partition_ids[things[1]].push_back({things[0], things[2], things[3]});
 				continue;
 			}
 			if ((things[0] == "nostop" || things[0] == "sticky" || things[0] == "nosplit" ||
 					things[0] == "autogroup") && GetSize(things) == 3) {
-				modname = things[1];
-				partition_ids[modname].push_back({things[0], things[2]});
+				partition_ids[things[1]].push_back({things[0], things[2]});
 				continue;
 			}
 			log_error("Malformed line %d in file %s\n", linenr, filename.c_str());

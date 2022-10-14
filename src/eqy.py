@@ -398,11 +398,11 @@ def partition_ids(args, cfg):
                 for module_match in match_module_re(gold_ids, line[1]):
                     for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
                         print(line[0], module_match, entity_match, line[3], file=partids_f)
-            elif line[0] in ("stop", "nosticky", "split", "autogroup") and len(line) == 3:
+            elif line[0] in ("stop", "nosticky", "split", "nomerge", "nogroup", "noname", "autogroup") and len(line) == 3:
                 for module_match in match_module_re(gold_ids, line[1]):
                     for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
                         pass # TBD: tag loally as disabled and suppress below as needed
-            elif line[0] in ("nostop", "sticky", "nosplit", "noautogroup", "noname", "nogroup", "nomerge", "nopath") and len(line) == 3:
+            elif line[0] in ("nostop", "sticky", "nosplit", "noautogroup") and len(line) == 3:
                 for module_match in match_module_re(gold_ids, line[1]):
                     for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
                         print(line[0], module_match, entity_match, file=partids_f)
@@ -619,7 +619,7 @@ def make_scripts(args, cfg, job, strategies):
 
     with open(args.workdir + "/partition.list") as f:
         for line in f:
-            partitions.append(line.strip())
+            partitions.append(line.split()[1])
 
     if not os.path.isdir(args.workdir + "/strategies"):
         os.mkdir(args.workdir + "/strategies")

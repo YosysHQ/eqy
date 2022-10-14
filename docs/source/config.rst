@@ -68,14 +68,14 @@ Match sections
 --------------
 
 Match sections contain rules for matching net names in the gold design to net
-names in the gate design. The match section header contains an optional regex
+names in the gate design. The match section header contains an optional pattern
 matching module names. The lines within the match section are only applied to
-modules matching that regex, or all modules if the regex is omitted.
+modules matching that pattern, or all modules if the pattern is omitted.
 
 .. code-block:: text
 
-   [match axi_xbar_.*]
-   gate-match (.*)_ff \0
+   [match axi_xbar_*]
+   gate-match *_ff \0
 
 TBD: gold-match, gate-match, gold-nomatch, gate-nomatch
 
@@ -83,14 +83,14 @@ Partition sections
 ------------------
 
 Partition sections contain rules for creating matching partitions in the gold
-and gate designs.  The partition section header contains an optional regex
+and gate designs.  The partition section header contains an optional pattern
 matching module names. The lines within the partition section are only applied
-to modules matching that regex, or all modules if the regex is omitted.
+to modules matching that pattern, or all modules if the pattern is omitted.
 
 .. code-block:: text
 
-   [match axi_xbar_.*]
-   name (reader|buffer|arbiter|writer)_([0-7]) pipeline_\1
+   [match axi_xbar_*]
+   name /^(reader|buffer|arbiter|writer)_([0-7])$/ pipeline_\1
 
 [no]autogroup
 .............
@@ -105,13 +105,13 @@ autogrouping does group nets when
 group and nogroup
 .................
 
-The ``group regex1`` command is used to group everything matching the given
-regex into the same primitive partition.
+The ``group <pattern>`` command is used to group everything matching the given
+pattern into the same primitive partition.
 
-The ``group regex1 regex2`` command is pairing matches for regex1 with the sets
-of nets matching the dependent regex2, and is grouping them accordingly.
+The ``group <pattern> <pattern>`` command is pairing matches for the first pattern with the sets
+of nets matching the (dependent) second pattern, and is grouping them accordingly.
 
-The ``nogroup regex1`` command prevents all further ``group`` commands from
+The ``nogroup <pattern>`` command prevents all further ``group`` commands from
 matching the specified nets.
 
 stop and nostop
@@ -120,13 +120,13 @@ stop and nostop
 Marking a net as ``nostop`` prevents that net from becoming a primary input of
 a primitive partition. (This has no effect on nets that are module inputs.)
 
-The ``stop regex`` command prevents all further ``nostop`` commands from
+The ``stop <pattern>`` command prevents all further ``nostop`` commands from
 matching the speciefied nets. (The default behavior is "stop" for all nets.)
 
 name and noname
 ...............
 
-The ``name regex1 string`` command is looking for nets matching the given regex,
+The ``name <pattern> <string>`` command is looking for nets matching the given pattern,
 and then applies the given name to the partition that contains that net as primary
 output.
 
@@ -135,7 +135,7 @@ corresponding partitions will be merged into one partition with the given name. 
 multiple ``name`` commands apply to the same partition, then the earlier name command
 will be used to name the partition. (Both names are used for merging partitions tho.)
 
-The ``noname regex`` command can be used to prevent further name commands from
+The ``noname <pattern>`` command can be used to prevent further name commands from
 mathing the given nets.
 
 merge and nomerge
@@ -145,23 +145,20 @@ The ``merge`` and ``nomerge`` commands work similar to ``group`` and ``nogroup``
 but creates non-primitive partitions by merging the primitive partitions generated
 by the grouping commands.
 
-path and nopath
+path statements
 ...............
 
-The ``path regex1 regex2`` command will determine the shortest path from the
+The ``path <pattern> <pattern>`` command will determine the shortest path from the
 first net to the second net, and then merge all partitions along that path.
-
-The ``nopath regex`` command marks partitions as not-to-be-used by any further
-``path`` commands.
 
 sticky and nosticky
 ...................
 
-The ``sticky regex`` command marks nets as sticky. The partition generating the
+The ``sticky <pattern>`` command marks nets as sticky. The partition generating the
 sticky net as primary output will then be merged with any partition using the
 sticky net as primary input.
 
-The ``nosticky regex`` command preents further ``sticky`` commands from matching
+The ``nosticky <pattern>`` command preents further ``sticky`` commands from matching
 the given net.
 
 split and nosplit
@@ -183,7 +180,7 @@ strategy as an argument.
 .. code-block:: text
 
    [strategy simple]
-   apply axi_xbar_.*
+   apply axi_xbar_*
    use satseq
    depth 10
 
@@ -198,13 +195,35 @@ the ``satseq`` strategy type.
 match and nomatch
 .................
 
-The ``match module_regex net_regex`` command is used to enable the given strategy
-for all partitions matching the given regexes. The ``nomatch module_regex net_regex``
-command prevents further ``match`` or ``apply`` commands for this strategy from
-applying this strategy to the matching partition.
+The ``match <pattern> <pattern>`` command is used to enable the given strategy
+in modules matching the first pattern, for partitions with primary outputs matching
+the second pattern. The The ``nomatch <pattern> <pattern>`` command prevents
+further ``match`` commands from matching the specified nets.
 
 apply and noapply
 .................
 
-The ``apply module_regex name_regex`` and ``noapply`` commands work similar to the
-``match`` and ``nomatch`` commands, but matches partition names instead of net names.
+The ``apply <pattern> [<pattern>]`` and ``noapply <pattern> [<pattern>]``
+commands work similar to the ``match`` and ``nomatch`` commands, but match
+partition names instead of net names with the second pattern. If the second
+pattern is omitted, then the strategy will be applied to all partitions
+in the specified modules.
+
+Pattern Syntax
+--------------
+
+Patterns are comma-seperated lists of any combinations of the following
+types of expressions.
+
+- Names of modules or nets, or shell wildcard pattern matching those names
+- Regular expressions matching enity names, enclosed in forward slashes
+- At-sign (@) followed by an attribute name, matching all entities with that attribute set
+- At-sign and attribute name, followed by an equal sign (=) and an attribute value
+
+In commands that accept pairs of pattern, numeric backreferences (\0, \1, \2) and
+named backreferences (\g<1>, \g<name>) are replaced in the second pattern by
+the contents of the corresponding group from the first pattern.
+
+If the first pattern in a pair used the at-sign syntax for attributes, then \1
+in the second pattern is replaced with the attribute name and \2 with the corresponding
+attribute value.
