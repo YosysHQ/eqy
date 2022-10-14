@@ -199,22 +199,15 @@ strategy type defines its own custom commands for the strategy section. For exam
 the ``depth`` command in the example above is a custom command only understood by
 the ``satseq`` strategy type.
 
-match and nomatch
-.................
-
-The ``match <pattern> <pattern>`` command is used to enable the given strategy
-in modules matching the first pattern, for partitions with primary outputs matching
-the second pattern. The The ``nomatch <pattern> <pattern>`` command prevents
-further ``match`` commands from matching the specified nets.
-
 apply and noapply
 .................
 
-The ``apply <pattern> [<pattern>]`` and ``noapply <pattern> [<pattern>]``
-commands work similar to the ``match`` and ``nomatch`` commands, but match
-partition names instead of net names with the second pattern. If the second
-pattern is omitted, then the strategy will be applied to all partitions
-in the specified modules.
+The ``apply <pattern> [<pattern>]`` command is used to enable the given strategy
+in modules matching the first pattern, for partitions matching
+the second pattern. The ``noapply <pattern> [<pattern>]`` command prevents
+further ``apply`` commands in the same strategy section from matching the
+specified partitions. If the second pattern is omitted, then the strategy will
+be applied to all partitions in the modules matching the first pattern.
 
 Pattern Syntax
 --------------
@@ -222,15 +215,26 @@ Pattern Syntax
 Patterns are comma-seperated lists of any combinations of the following
 types of expressions.
 
-- Names of modules or nets, or shell wildcard pattern matching those names
-- Regular expressions matching enity names, enclosed in forward slashes
-- At-sign (@) followed by an attribute name, matching all entities with that attribute set
-- At-sign and attribute name, followed by an equal sign (=) and an attribute value
+- names of modules or nets, or shell wildcard pattern matching those names,
+- regular expressions matching enity names, enclosed in forward slashes,
+- at-sign (@) followed by an attribute name, matching all entities with that attribute set,
+- at-sign and attribute name, followed by an equal sign (=) and an attribute value,
+- or ampercent-sign (&) followed by a partition name.
 
-In commands that accept pairs of pattern, numeric backreferences (\0, \1, \2) and
+A regular expression can be enclosed in ``//i`` instead of ``//``, in which
+case it is evaluated case-insensitive.
+
+Attribute names and partition names can also be shell wildcard patterns, or
+regular expressions.
+
+The partition name syntax is unavailable in the ``[match]`` section, and for
+the partition commands ``[no]autogroup``, ``[no]stop``, ``[no]name``, ``path``,
+``[no]sticky``, and ``[no]split``.
+
+In commands that accept pairs of patterns, numeric backreferences (\0, \1, \2) and
 named backreferences (\g<1>, \g<name>) are replaced in the second pattern by
 the contents of the corresponding group from the first pattern.
 
-If the first pattern in a pair used the at-sign syntax for attributes, then \1
-in the second pattern is replaced with the attribute name and \2 with the corresponding
-attribute value.
+If the first pattern in a pair used the at-sign syntax for attributes, then \g<attr>
+in the second pattern is replaced with the attribute name and \g<value> with
+the corresponding attribute value.
