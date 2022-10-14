@@ -168,8 +168,11 @@ def read_config(configfile):
             if len(entries) == 1 and entries[0] in cfg_sections:
                 section, sectionarg = entries[0], None
                 continue
-            if len(entries) == 2 and entries[0] in pattern_sections:
-                section, sectionarg = entries
+            if len(entries) == (3 if entries[0] == "recode" else 2) and entries[0] in pattern_sections:
+                if entries[0] == "recode":
+                    section, sectionarg = (entries[0], (entries[1], entries[2]))
+                else:
+                    section, sectionarg = entries
                 continue
             if len(entries) == 2 and entries[0] in named_sections:
                 section, sectionarg = entries
