@@ -28,6 +28,12 @@ struct Partition;
 struct EqyPartitionWorker
 {
 	std::vector<std::unique_ptr<Partition>> partitions;
+	std::vector<std::vector<std::string>> rules;
+
+	pool<SigBit> bind_database;
+	pool<SigBit> solo_database;
+	dict<SigBit, pool<SigBit>> group_database;
+
 	dict<SigBit, int> po_primitive_index;
 	dict<SigBit, int> po_partition_index;
 	dict<SigBit, pool<int>> pi_primitives_index;
@@ -70,6 +76,53 @@ struct EqyPartitionWorker
 	{
 		register_drivers(gold, gold_sigmap, gold_drivers);
 		register_drivers(gate, gate_sigmap, gate_drivers);
+	}
+
+	void add_rule(const std::vector<std::string> &rule)
+	{
+		// Copy data from collect rules into local databases
+
+		if (rule[0] == "group") {
+			SigSpec sig = gold_sigmap(gold->wire("\\" + rule[1]));
+			sig.append(gold_sigmap(gold->wire("\\" + rule[2])));
+			sig.remove_const();
+			for (int i = 1; i < GetSize(sig); i++) {
+				group_database[sig[0]].insert(sig[i]);
+				group_database[sig[i]].insert(sig[0]);
+			}
+			return;
+		}
+
+		if (rule[0] == "bind") {
+			for (SigBit bit : gold_sigmap(gold->wire("\\" + rule[1])))
+				if (gold_drivers.count(bit))
+					bind_database.insert(bit);
+			return;
+		}
+
+		if (rule[0] == "join") {
+			SigSpec sig = gold_sigmap(gold->wire("\\" + rule[1]));
+			sig.remove_const();
+			for (int i = 1; i < GetSize(sig); i++) {
+				group_database[sig[0]].insert(sig[i]);
+				group_database[sig[i]].insert(sig[0]);
+			}
+			return;
+		}
+
+		if (rule[0] == "solo") {
+			for (SigBit bit : gold_sigmap(gold->wire("\\" + rule[1])))
+				solo_database.insert(bit);
+			return;
+		}
+
+		// Store partition rules for after the collect step is done
+		rules.push_back(rule);
+
+		// std::string message = "Malformed partition rule:";
+		// for (auto &word : rule)
+		// 	message += " " + word;
+		// log_error("%s\n", message.c_str());
 	}
 
 	void add_match(SigBit gold_bit, SigBit gate_bit)
@@ -254,6 +307,7 @@ struct Partition
 
 	void partition_add(SigBit gold_bit)
 	{
+		pool<SigBit> found_matched_bits;
 		gold_bit = worker->gold_sigmap(gold_bit);
 
 		log_assert(!finalized);
@@ -305,7 +359,7 @@ struct Partition
 					if (primitive)
 						worker->po_primitive_index[gold_bit] = index;
 					worker->po_partition_index[gold_bit] = index;
-				} else {
+				} else if (!worker->bind_database.count(gold_bit)) {
 					isinput = true;
 					run_other = !part_inbits.count(gold_bit);
 					part_inbits.insert(gold_bit);
@@ -332,6 +386,8 @@ struct Partition
 
 		add_cell_f = [&](Cell *cell, bool in_gold, int indent)->void
 		{
+			auto &gg_sigmap = in_gold ? worker->gold_sigmap : worker->gate_sigmap;
+			auto &gg_matches = in_gold ? worker->gold_matches : worker->gate_matches;
 			auto &part_gg_cells = in_gold ? part_gold_cells : part_gate_cells;
 			bool insert_cell = !part_gg_cells.count(cell);
 
@@ -343,14 +399,35 @@ struct Partition
 
 			part_gg_cells.insert(cell);
 
-			for (auto &conn : cell->connections())
+			for (auto &conn : cell->connections()) {
 				if (cell->input(conn.first))
 					for (auto bit : conn.second)
 						add_bit_f(bit, in_gold, false, indent+2);
+				if (cell->output(conn.first))
+					for (auto bit : gg_sigmap(conn.second))
+						if (gg_matches.count(bit))
+							found_matched_bits.insert(in_gold ? bit : gg_matches.at(bit));
+			}
 		};
 
 		log("Adding bit %s to partition %d.\n", log_signal(gold_bit), index);
 		add_bit_f(gold_bit, true, true, 2);
+
+		if (worker->solo_database.count(gold_bit))
+			return;
+
+		for (auto &bit : worker->aliases.at(worker->raliases.at(gold_bit, gold_bit), {}))
+			if (worker->queue.count(bit) && !worker->solo_database.count(bit))
+				partition_add(bit);
+
+		if (worker->group_database.count(gold_bit))
+			for (auto &bit : worker->group_database.at(gold_bit))
+				if (worker->queue.count(bit) && !worker->solo_database.count(bit))
+					partition_add(bit);
+
+		for (auto &bit : found_matched_bits)
+			if (worker->queue.count(bit) && !worker->solo_database.count(bit))
+				partition_add(bit);
 	}
 
 	Design *partition_finalize(IdString partname)
@@ -481,18 +558,11 @@ Partition *EqyPartitionWorker::create_partition()
 
 void EqyPartitionWorker::create_partitions()
 {
-	while (!queue.empty())
-	{
+	while (!queue.empty()) {
 		SigBit gold_bit = *queue.begin();
-
 		Partition *partition = create_partition();
 		partition->primitive = true;
-
 		partition->partition_add(gold_bit);
-
-		for (auto &it : aliases.at(raliases.at(gold_bit, gold_bit), {})) {
-			if (queue.count(it)) partition->partition_add(it);
-		}
 	}
 }
 
@@ -572,7 +642,7 @@ struct EqyPartitionPass : public Pass
 
 	void partition_worker(Design *design, bool full_module_mode,
 			const dict<std::string, std::vector<std::pair<std::string, std::string>>> &matched_ids,
-			const dict<std::string, std::vector<std::vector<std::string>>> & /* partiton_ids */,
+			const dict<std::string, std::vector<std::vector<std::string>>> &partiton_ids,
 			std::ofstream &partition_list_file)
 	{
 		int num_gold_modules = 0;
@@ -600,7 +670,9 @@ struct EqyPartitionPass : public Pass
 						if (w->port_id)
 							worker.add_match(w->name, w->name);
 
-					// TBD: Register partition configuration
+					if (partiton_ids.count(gold->name.substr(6)))
+						for (auto line : partiton_ids.at(gold->name.substr(6)))
+							worker.add_rule(line);
 
 					worker.create_partitions();
 					worker.merge_partitions();

@@ -10,6 +10,11 @@ clean
 read_verilog simple01.v
 synth -top top
 
+[collect top]
+bind X
+bind Y
+solo *
+
 [strategy simple]
 use satseq
 depth 10
