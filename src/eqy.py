@@ -586,12 +586,15 @@ class EqySatseqStrategy(EqyStrategy):
         with open(self.path(partition, "run.sh"), "w") as run_f:
             print(textwrap.dedent(f"""
                 yosys -ql run.log run.ys
-                if grep "SAT proof finished - no model found: SUCCESS!" run.log > /dev/null ; then
-                \techo PASS > status
-                \techo "Proved equivalence of partition '{partition}' using strategy '{self.name}'"
-                elif grep "SAT proof finished - model found: FAIL!" run.log > /dev/null ; then
+                if grep "SAT temporal induction proof finished - model found for base case: FAIL!" run.log > /dev/null ; then
+                \techo FAIL > status
+                \techo "Could not prove equivalence of partition '{partition}' using strategy '{self.name}'"
+                elif grep "Reached maximum number of time steps -> proof failed." run.log > /dev/null ; then
                 \techo UNKNOWN > status
                 \techo "Could not prove equivalence of partition '{partition}' using strategy '{self.name}'"
+                elif grep "Induction step proven: SUCCESS!" run.log > /dev/null ; then
+                \techo PASS > status
+                \techo "Proved equivalence of partition '{partition}' using strategy '{self.name}'"
                 else
                 \techo ERROR > status
                 \techo "Execution of strategy '{self.name}' on partition '{partition}' encountered an error.
@@ -604,7 +607,7 @@ class EqySatseqStrategy(EqyStrategy):
         with open(self.path(partition, "run.ys"), "w") as ys_f:
             print(f"read_ilang ../../../partitions/{partition}.il", file=ys_f)
             print(f"miter -equiv -make_assert -ignore_gold_x -flatten gold.{partition} gate.{partition} miter", file=ys_f)
-            print(f"sat -set-init-undef -seq {self.scfg.depth} -prove-asserts miter", file=ys_f)
+            print(f"sat -tempinduct -set-init-undef -seq {self.scfg.depth} -prove-asserts miter", file=ys_f)
 
 
 class EqySbyStrategy(EqyStrategy):
@@ -710,6 +713,8 @@ def make_scripts(args, cfg, job, strategies):
                     print(f"""strategies/{partition}/{strategy.name}/status: {prev_strategy}
 \t@if grep PASS $^ >/dev/null ; then \\
 \t\techo "PASS (cached)" > $@; \\
+\t@elif grep FAIL $^ >/dev/null ; then \\
+\t\techo "FAIL (cached)" > $@; \\
 \telse \\
 \t\tbash -c \"cd strategies/{partition}/{strategy.name}; source run.sh\"; \\
 \tfi\n""" , file=make_f)
