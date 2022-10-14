@@ -647,7 +647,7 @@ struct EqyPartitionPass : public Pass
 				continue;
 			}
 			if ((things[0] == "nostop" || things[0] == "sticky" || things[0] == "nosplit" ||
-					things[0] == "autogroup") && GetSize(things) == 3) {
+					things[0] == "noautogroup" || things[0] == "final") && GetSize(things) == 3) {
 				partition_ids[things[1]].push_back({things[0], things[2]});
 				continue;
 			}

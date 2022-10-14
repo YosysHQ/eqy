@@ -2,14 +2,15 @@
 EQY Output Directory Format
 ===========================
 
-Log and status file
--------------------
+Main log and status files
+-------------------------
 
 The EQY terminal output is also written to the file ``logfile.txt``
 in the output directory.
 
-Further, when the EQY run succeeded, a file ``PASS`` is created
-in the output directory, and a file ``FAIL`` is generated otherwise.
+Further, when the EQY run successfully proved equivalence the entire design, a
+file ``PASS`` is created in the output directory, and a file ``FAIL`` is
+generated otherwise.
 
 Gate and gold designs
 ---------------------
@@ -21,7 +22,7 @@ gold entities going into the matching algorithm is stored
 in ``gold.ids``.
 
 Similarly there are ``gate.il``, ``gate.log``, ``gate.ys``,
-and ``gate.ids``.
+and ``gate.ids`` for the gate design.
 
 Combined gold and gate designs
 ------------------------------
@@ -67,9 +68,10 @@ files.
    sticky <module> <net>
    nosplit <module> <net>
    noautogroup <module> <net>
+   final <module> <net>
 
 The file ``partition.list`` contains a list of all generated design partitions,
-and the primary inputs and primary outputs of each such partition.
+and the primary output bits and primary input bits of each partition.
 
 The file ``partition.ys`` contains the script running the partitioning
 algorithm, and the file ``partition.log`` contains the log output

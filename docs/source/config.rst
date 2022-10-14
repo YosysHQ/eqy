@@ -170,6 +170,13 @@ that generate the individial wire bits as primary outputs.
 The ``split`` command prevents further ``nosplit`` commands from matching
 the given net.
 
+final statements
+................
+
+The ``final <pattern>`` command marks the partitions generating the
+nets matching the pattern as final. No furter statements will have any
+effect on a partition after it is marked as final.
+
 Strategy sections
 -----------------
 
