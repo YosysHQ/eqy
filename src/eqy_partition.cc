@@ -19,6 +19,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include "kernel/yosys.h"
 #include "kernel/sigtools.h"
+#include "kernel/ffinit.h"
 
 USING_YOSYS_NAMESPACE
 PRIVATE_NAMESPACE_BEGIN
@@ -42,6 +43,8 @@ struct EqyPartitionWorker
 	Module *gold, *gate;
 	SigMap gold_sigmap;
 	SigMap gate_sigmap;
+	FfInitVals gold_initvals;
+	FfInitVals gate_initvals;
 
 	dict<SigBit, tuple<Cell*, IdString, int>> gold_drivers;
 	dict<SigBit, tuple<Cell*, IdString, int>> gate_drivers;
@@ -72,7 +75,7 @@ struct EqyPartitionWorker
 		}
 	}
 
-	EqyPartitionWorker(Module *gold, Module *gate) : gold(gold), gate(gate), gold_sigmap(gold), gate_sigmap(gate)
+	EqyPartitionWorker(Module *gold, Module *gate) : gold(gold), gate(gate), gold_sigmap(gold), gate_sigmap(gate), gold_initvals(&gold_sigmap, gold), gate_initvals(&gate_sigmap, gate)
 	{
 		register_drivers(gold, gold_sigmap, gold_drivers);
 		register_drivers(gate, gate_sigmap, gate_drivers);
@@ -447,6 +450,7 @@ struct Partition
 			// Module *in_mod = in_gold ? gold : gate;
 			Module *out_mod = in_gold ? mod_gold : mod_gate;
 			auto &sigmap = in_gold ? worker->gold_sigmap : worker->gate_sigmap;
+			auto &initvals = in_gold ? worker->gold_initvals : worker->gate_initvals;
 
 			auto &part_gg_bits = in_gold ? part_gold_bits : part_gate_bits;
 			auto &part_gg_cells = in_gold ? part_gold_cells : part_gate_cells;
@@ -476,6 +480,9 @@ struct Partition
 			for (int i = 0; i < GetSize(conn.first); i++)
 				out_mod->connect(mapped_bits.at(conn.first[i]), conn.second[i].wire ? mapped_bits.at(conn.second[i]) : conn.second[i]);
 
+			SigMap out_sigmap(out_mod);
+			FfInitVals out_initvals(&out_sigmap, out_mod);
+
 			for (auto c : part_gg_cells)
 			{
 				Cell *cc = out_mod->addCell(c->name, c->type);
@@ -483,17 +490,22 @@ struct Partition
 				// TBD: Copy some of the cell metadata
 				cc->parameters = c->parameters;
 
+				bool is_reg = RTLIL::builtin_ff_cell_types().count(c->type);
 				for (auto &conn : c->connections()) {
 					SigSpec s;
 					for (auto bit : sigmap(conn.second)) {
+						SigBit out_bit;
 						if (bit. wire == nullptr)
-							s.append(bit);
+							out_bit = bit;
 						else if (c->output(conn.first) && part_inbits.count(bit))
-							s.append(out_mod->addWire(NEW_ID));
+							out_bit = out_mod->addWire(NEW_ID);
 						else if (mapped_bits.count(bit))
-							s.append(mapped_bits.at(bit));
+							out_bit = mapped_bits.at(bit);
 						else
-							s.append(out_mod->addWire(NEW_ID));
+							out_bit = out_mod->addWire(NEW_ID);
+						s.append(out_bit);
+						if (is_reg && conn.first == ID::Q && out_bit.is_wire())
+							out_initvals.set_init(out_bit, initvals(bit));
 					}
 					cc->setPort(conn.first, s);
 				}
