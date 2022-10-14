@@ -64,7 +64,11 @@ def parse_args():
     parser.add_argument("-m", "--setup", action="store_true", dest="setupmode",
             help="generate partitions and makefiles and exit")
 
-    parser.add_argument("-p", "--purge", action="append", dest="purgelist")
+    parser.add_argument("-k", "--keep-going", action="store_true",
+            help="keep going when some make targets can't be made")
+
+    parser.add_argument("-p", "--purge", action="append", dest="purgelist", metavar="<pattern>",
+            help="purge any <partition>/<strategy> pair, supports wildcards")
 
     parser.add_argument("-g", "--debug", action="store_true", dest="debugmode",
             help="enable debug mode")
@@ -740,7 +744,8 @@ def make_scripts(args, cfg, job, strategies):
 \tfi""", file=make_f)
 
 def run_scripts(args, cfg, job):
-    run_task = EqyTask(job, "run", [], f"cd {args.workdir}; make -f strategies.mk")
+    kopt = " -k" if args.keep_going else ""
+    run_task = EqyTask(job, "run", [], f"cd {args.workdir}; make{kopt} -f strategies.mk")
     def check_output(line):
         match = re.search(r"Failed to prove equivalence", line)
         if match:
