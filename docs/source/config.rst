@@ -79,28 +79,30 @@ modules matching that pattern, or all modules if the pattern is omitted.
 
 TBD: gold-match, gate-match, gold-nomatch, gate-nomatch
 
-Partition sections
-------------------
+Collect sections
+----------------
 
-Partition sections contain rules for creating matching partitions in the gold
-and gate designs.  The partition section header contains an optional pattern
-matching module names. The lines within the partition section are only applied
-to modules matching that pattern, or all modules if the pattern is omitted.
+Collect sections contain rules for the first step of the partition algorithm,
+in which individual bits from matched nets are grouped into sets that are
+closely related and thus should be proven together in one step.
 
 .. code-block:: text
 
-   [match axi_xbar_*]
-   name /^(reader|buffer|arbiter|writer)_([0-7])$/ pipeline_\1
+   [partition axi_xbar_*]
+   bind partial_sum_*
 
-[no]autogroup
-.............
+solo and nosolo
+...............
 
-Marking a net as noautogroup will prevent the auto grouping mechanism to
+The ``solo <pattern>`` command prevents the auto-grouping mechanism to
 group this net with other nets into the same primitive partition. Per default
-autogrouping does group nets when
+auto-grouping does group nets when
 
 - they are driven by the same cell, either in the gold or gate design, or
 - gold nets are aliases, i.e. are implemented by the same gate net.
+
+The ``nosolo <pattern>`` command prevents all further ``solo`` commands
+from matching the specified nets.
 
 group and nogroup
 .................
@@ -114,14 +116,36 @@ of nets matching the (dependent) second pattern, and is grouping them accordingl
 The ``nogroup <pattern>`` command prevents all further ``group`` commands from
 matching the specified nets.
 
-stop and nostop
+bind and nobind
 ...............
 
-Marking a net as ``nostop`` prevents that net from becoming a primary input of
+Marking a net as ``bind`` prevents that net from becoming a primary input of
 a primitive partition. (This has no effect on nets that are module inputs.)
 
-The ``stop <pattern>`` command prevents all further ``nostop`` commands from
-matching the speciefied nets. (The default behavior is "stop" for all nets.)
+The ``nobind <pattern>`` command prevents all further ``bind`` commands from
+matching the speciefied nets.
+
+join and nojoin
+.................
+
+The ``join`` command operates on a multi-bit wires and groups all bits
+from such a net into the same primary partition.
+
+The ``nojoin`` command prevents further ``join`` commands from matching
+the given nets.
+
+Partition sections
+------------------
+
+Partition sections contain rules for creating matching partitions in the gold
+and gate designs.  The partition section header contains an optional pattern
+matching module names. The lines within the partition section are only applied
+to modules matching that pattern, or all modules if the pattern is omitted.
+
+.. code-block:: text
+
+   [partition axi_xbar_*]
+   name /^(reader|buffer|arbiter|writer)_([0-7])$/ pipeline_\1
 
 name and noname
 ...............
@@ -167,15 +191,6 @@ sticky net as primary output will then be merged with any partition using the
 sticky net as primary input.
 
 The ``nosticky <pattern>`` command preents further ``sticky`` commands from matching
-the given net.
-
-split and nosplit
-.................
-
-The ``nosplit`` command operates on a multi-bit wire and merges the partitions
-that generate the individial wire bits as primary outputs.
-
-The ``split`` command prevents further ``nosplit`` commands from matching
 the given net.
 
 final statements
@@ -242,6 +257,6 @@ In commands that accept pairs of patterns, numeric backreferences (\0, \1, \2) a
 named backreferences (\g<1>, \g<name>) are replaced in the second pattern by
 the contents of the corresponding group from the first pattern.
 
-If the first pattern in a pair used the at-sign syntax for attributes, then \g<attr>
+If the first pattern in a pair used the at-sign syntax for attributes, then \g<name>
 in the second pattern is replaced with the attribute name and \g<value> with
 the corresponding attribute value.

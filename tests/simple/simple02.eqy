@@ -8,16 +8,15 @@ prep -top top
 read -formal simple02_gate.sv
 prep -top top
 
-[recode]
+[match top]
+gold-match i2ab i2ba
+gate-nomatch i\dc?
 
-[match]
-gold-match top i2ab i2ba
-gate-nomatch top i\dc?
+[collect top]
+bind i2ab
 
-[partition]
-name top i2.* inputs
-nosplit top m_i
-output-cone top.m_i i2 3
+[partition top]
+name i2.* inputs
 
 [strategy simple]
 use satseq

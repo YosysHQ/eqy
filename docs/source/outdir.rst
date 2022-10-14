@@ -53,21 +53,21 @@ Design partition files
 ----------------------
 
 The file ``partition.ids`` contains partitioning rules generated from the
-``[partition ...]`` configuration sections. These rules guide the partition
+``[collect ...]`` and ``[partition ...]`` configuration sections. These rules guide the partition
 generation algorithm. The following statements are valid in ``partition.ids``
 files.
 
 .. code-block:: text
 
-   name <module> <net> <name>
+   solo <module> <net>
    group <module> <net> <net>
+   bind <module> <net>
+   join <module> <net>
+
+   name <module> <net> <name>
    merge <module> <net> <net>
    path <module> <net> <net>
-
-   nostop <module> <net>
    sticky <module> <net>
-   nosplit <module> <net>
-   noautogroup <module> <net>
    final <module> <net>
 
 The file ``partition.list`` contains a list of all generated design partitions,

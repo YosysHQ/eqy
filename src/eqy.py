@@ -45,7 +45,7 @@ def parse_args():
             usage="%(prog)s [options] <config>.eqy")
     parser.set_defaults(exe_paths=dict())
 
-    parser.add_argument("eqyfile", metavar="<config>.eqy", type=argparse.FileType('r'),
+    parser.add_argument("eqyfile", metavar="<config>.eqy", type=argparse.FileType('r'), nargs='?',
             help=".eqy configuration file (use - for stdin)")
 
     dirargs = parser.add_mutually_exclusive_group()
@@ -66,11 +66,12 @@ def parse_args():
 
     parser.add_argument("-p", "--purge", action="append", dest="purgelist")
 
-    parser.add_argument("--init-config-file", metavar=("<filename>", "<gold>", "<gate>"), nargs=3,
-            help="create a default .eqy config in <filename> for source files <gold> and <gate>")
-
     parser.add_argument("-g", "--debug", action="store_true", dest="debugmode",
             help="enable debug mode")
+
+    initcfg = parser.add_argument_group("template config file writer")
+    initcfg.add_argument("--init-config-file", metavar=("<eqy-config-file>", "<top-module>", "<gold-verilog>", "<gate-verilog>"), nargs=4,
+            help="create a default .eqy config file for the given top module and gold and gate source files")
 
     exes = parser.add_argument_group("path arguments")
     exes.add_argument("--yosys", metavar="<path_to_executable>",
@@ -103,6 +104,7 @@ def parse_args():
         "btormc": os.getenv("BTORMC", "btormc"),
         "pono": os.getenv("PONO", "pono"),
     }
+
     for k, v in args.exe_paths.items():
         exe_paths[k] = v
 
@@ -110,31 +112,23 @@ def parse_args():
 
     if args.init_config_file is not None:
         assert args.eqyfile is None
-        assert len(args.init_config_file) == 3
-        eqy_file = args.init_config_file[0]
-        gold_file = args.init_config_file[1]
-
-        gate_file = args.init_config_file[2]
-        with open(eqy_file, 'w') as config:
+        assert len(args.init_config_file) == 4
+        with open(args.init_config_file[0], 'w') as config:
             config.write("""[options]
 
 [gold]
-read -formal {0}
-prep
+read -sv {2}
+prep -top {1}
 
 [gate]
-read -formal {1}
-prep
+read -sv {3}
+prep -top {1}
 
-[recode]
-
-[match]
-
-[partition]
-
-[strategy *]
-""".format(gold_file, gate_file))
-        print("eqy config written to {}".format(eqy_file), file=sys.stderr)
+[strategy simple]
+use satseq
+depth 10
+""".format(*args.init_config_file))
+        print("eqy template config written to '{}'.".format(args.init_config_file[0]), file=sys.stderr)
         sys.exit(0)
 
     return args
@@ -144,11 +138,12 @@ def read_config(configfile):
         exit_with_error("No config file given")
 
     cfg = types.SimpleNamespace()
-    cfg_sections = ["options", "gold", "gate", "recode", "match", "partition"]
+    cfg_sections = ["options", "gold", "gate"]
+    pattern_sections = ["recode", "match", "collect", "partition"]
     named_sections = ["strategy"]
     # TODO: properly initialize options according to meaning
     # how about adding sections only as headers are encountered, so that we can check for existence?
-    for s in cfg_sections:
+    for s in cfg_sections + pattern_sections:
         setattr(cfg, s, list())
     for s in named_sections:
         setattr(cfg, s, dict())
@@ -173,28 +168,38 @@ def read_config(configfile):
             if len(entries) == 1 and entries[0] in cfg_sections:
                 section, sectionarg = entries[0], None
                 continue
+            if len(entries) == 2 and entries[0] in pattern_sections:
+                section, sectionarg = entries
+                continue
             if len(entries) == 2 and entries[0] in named_sections:
                 section, sectionarg = entries
                 if sectionarg not in getattr(cfg, section):
                     getattr(cfg, section)[sectionarg] = list()
+                else:
+                    exit_with_error(f"duplicated {section} section '{sectionarg}' in {configfile.name} line {linenr}")
                 continue
 
-        if section == "strategy":
-            cfg.strategy[sectionarg].append(line)
-            continue
+        else:
+            if section == "match" and line == "nodefault":
+                match_default = False
+                continue
 
-        if section == "match" and line == "nodefault":
-            match_default = False
-            continue
+            if section in cfg_sections:
+                getattr(cfg, section).append(line)
+                continue
 
-        if section in cfg_sections:
-            getattr(cfg, section).append(line)
-            continue
+            if section in pattern_sections:
+                getattr(cfg, section).append((sectionarg, line))
+                continue
 
-        exit_with_error("syntax error in {} line {}".format(configfile.name, linenr))
+            if section in named_sections:
+                getattr(cfg, section)[sectionarg].append(line)
+                continue
+
+        exit_with_error(f"syntax error in {configfile.name} line {linenr}")
 
     if match_default:
-        cfg.match.append("gold-match * *")
+        cfg.match.append(("*", "gold-match *"))
 
     return cfg
 
@@ -350,14 +355,14 @@ def match_ids(args, cfg):
     used_gold_ids = set()
     used_gate_ids = set()
     with open(args.workdir + "/matched.ids", 'w') as f:
-        for line in cfg.match:
+        for pattern, line in cfg.match:
             line = line.split()
             if len(line) == 0:
                 continue
-            if line[0] == "gold-match" and len(line) in [3, 4]:
-                for module_match in match_module_re(gold_ids, line[1]):
+            if line[0] == "gold-match" and len(line) in [2, 3]:
+                for module_match in match_module_re(gold_ids, pattern):
                     if module_match in gate_ids: #TODO: is this the right way to deal with missing module hierarchy?
-                        for entity_match in match_entity_re(gold_ids[module_match], gate_ids[module_match], line[2], line[3] if len(line) == 4 else None):
+                        for entity_match in match_entity_re(gold_ids[module_match], gate_ids[module_match], line[1], line[2] if len(line) == 3 else None):
                             if (module_match, entity_match[0]) in used_gold_ids:
                                 continue
                             if (module_match, entity_match[1]) in used_gate_ids:
@@ -365,10 +370,10 @@ def match_ids(args, cfg):
                             print(module_match, entity_match[0], entity_match[1], file=f)
                             used_gold_ids.add((module_match, entity_match[0]))
                             used_gate_ids.add((module_match, entity_match[1]))
-            elif line[0] == "gate-match" and len(line) in [3, 4]:
-                for module_match in match_module_re(gate_ids, line[1]):
+            elif line[0] == "gate-match" and len(line) in [2, 3]:
+                for module_match in match_module_re(gate_ids, pattern):
                     if module_match in gold_ids:
-                        for entity_match in match_entity_re(gate_ids[module_match], gold_ids[module_match], line[2], line[3] if len(line) == 4 else None):
+                        for entity_match in match_entity_re(gate_ids[module_match], gold_ids[module_match], line[1], line[2] if len(line) == 3 else None):
                             if (module_match, entity_match[0]) in used_gate_ids:
                                 continue
                             if (module_match, entity_match[1]) in used_gold_ids:
@@ -376,42 +381,101 @@ def match_ids(args, cfg):
                             print(module_match, entity_match[1], entity_match[0], file=f)
                             used_gate_ids.add((module_match, entity_match[0]))
                             used_gold_ids.add((module_match, entity_match[1]))
-            elif line[0] == "gold-nomatch" and len(line) == 3:
-                for module_match in match_module_re(gold_ids, line[1]):
-                    for entity_match in match_entity_re(gold_ids[module_match], None, line[2], None):
+            elif line[0] == "gold-nomatch" and len(line) == 2:
+                for module_match in match_module_re(gold_ids, pattern):
+                    for entity_match in match_entity_re(gold_ids[module_match], None, line[1], None):
                         used_gold_ids.add((module_match, entity_match[0]))
-            elif line[0] == "gate-nomatch" and len(line) == 3:
-                for module_match in match_module_re(gate_ids, line[1]):
-                    for entity_match in match_entity_re(gate_ids[module_match], None, line[2], None):
+            elif line[0] == "gate-nomatch" and len(line) == 2:
+                for module_match in match_module_re(gate_ids, pattern):
+                    for entity_match in match_entity_re(gate_ids[module_match], None, line[1], None):
                         used_gate_ids.add((module_match, entity_match[0]))
             else:
                 exit_with_error(f"Syntax error in match command \"{' '.join(line)}\"")
 
 def partition_ids(args, cfg):
+    no_database = {
+        "bind": set(), "join": set(), "solo": set(), "group": set(),
+        "sticky": set(), "merge": set(), "name": set(), "final": set()
+    }
+
     gold_ids = read_ids(args.workdir + "/gold.ids")
+
     with open(args.workdir + "/partition.ids", "w") as partids_f:
-        for line in cfg.partition:
+        for pattern, line in cfg.collect:
             line = line.split()
-            if len(line) == 0:
+
+            if line[0] in ("nobind", "nojoin", "nogroup", "nosolo") and len(line) == 2:
+                for module_match in match_module_re(gold_ids, pattern):
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                        no_database[line[0][2:]].add((module_match, entity_match))
                 continue
-            elif line[0] == "name" and len(line) == 4:
-                for module_match in match_module_re(gold_ids, line[1]):
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
-                        print(line[0], module_match, entity_match, line[3], file=partids_f)
-            elif line[0] in ("stop", "nosticky", "split", "nomerge", "nogroup", "noname", "autogroup") and len(line) == 3:
-                for module_match in match_module_re(gold_ids, line[1]):
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
-                        pass # TBD: tag loally as disabled and suppress below as needed
-            elif line[0] in ("nostop", "sticky", "nosplit", "noautogroup", "final") and len(line) == 3:
-                for module_match in match_module_re(gold_ids, line[1]):
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[2], None):
+
+            if line[0] in ("bind", "join", "solo") and len(line) == 2:
+                for module_match in match_module_re(gold_ids, pattern):
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                        if (module_match, entity_match) in no_database[line[0]]:
+                            continue
                         print(line[0], module_match, entity_match, file=partids_f)
-            elif line[0] in ("group", "merge") and len(line) == 3:
-                pass # TBD
-            elif line[0] in ("group", "merge", "path") and len(line) == 4:
-                pass # TBD
-            else:
-                exit_with_error(f"Syntax error in partition command \"{' '.join(line)}\"")
+                continue
+
+            if line[0] == "group" and len(line) == 2:
+                for module_match in match_module_re(gold_ids, pattern):
+                    first_entity = None
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                        if (module_match, entity_match) in no_database[line[0]]:
+                            continue
+                        if first_entity is None:
+                            first_entity = entity_match
+                        else:
+                            print(line[0], module_match, first_entity, entity_match, file=partids_f)
+                continue
+
+            if line[0] == "group" and len(line) == 3:
+                continue # TBD
+
+            exit_with_error(f"Syntax error in collect command \"{' '.join(line)}\"")
+
+        for pattern, line in cfg.partition:
+            line = line.split()
+
+            if line[0] in ("nosticky", "nomerge", "noname") and len(line) == 2:
+                for module_match in match_module_re(gold_ids, pattern):
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                        no_database[line[0][2:]].add((module_match, entity_match))
+                continue
+
+            if line[0] in ("sticky", "final") and len(line) == 2:
+                for module_match in match_module_re(gold_ids, pattern):
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                        if (module_match, entity_match) in no_database[line[0]]:
+                            continue
+                        print(line[0], module_match, entity_match, file=partids_f)
+                continue
+
+            if line[0] == "name" and len(line) == 3:
+                for module_match in match_module_re(gold_ids, pattern):
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                        if (module_match, entity_match) in no_database[line[0]]:
+                            continue
+                        print(line[0], module_match, entity_match, line[2], file=partids_f)
+                continue
+
+            if line[0] == "merge" and len(line) == 3:
+                for module_match in match_module_re(gold_ids, pattern):
+                    first_entity = None
+                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                        if (module_match, entity_match) in no_database[line[0]]:
+                            continue
+                        if first_entity is None:
+                            first_entity = entity_match
+                        else:
+                            print(line[0], module_match, first_entity, entity_match, file=partids_f)
+                continue
+
+            if line[0] in ("merge", "path") and len(line) == 4:
+                continue # TBD
+
+            exit_with_error(f"Syntax error in partition command \"{' '.join(line)}\"")
 
 def make_partitions(args, cfg, job):
     partition_ids(args, cfg)
