@@ -20,6 +20,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include "kernel/yosys.h"
 #include "kernel/sigtools.h"
 #include "kernel/ffinit.h"
+#include "kernel/mem.h"
 
 USING_YOSYS_NAMESPACE
 PRIVATE_NAMESPACE_BEGIN
@@ -608,6 +609,17 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 		Backend::backend_call(partdesign, &ofile, filename, "rtlil");
 		partition_list_file << unescape_id(gold->name).substr(5) << " ";
 		partition_list_file << unescape_id(partname);
+
+		bool has_memory = false;
+		for (auto module : partdesign->modules()) {
+			if (!has_memory)
+				has_memory = !Mem::get_all_memories(module).empty();
+		}
+
+		if (has_memory)
+			partition_list_file << " memory";
+
+		partition_list_file << " :";
 
 		for (auto bit : partition->part_outbits)
 			partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);

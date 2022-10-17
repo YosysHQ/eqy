@@ -567,8 +567,10 @@ class EqyStrategy:
             self.options_seen.add(name)
         return enum_parser
 
+    def partition_supported(self, job, partition):
+        return True
 
-    def write(self, partition):
+    def write(self, job, partition):
         raise NotImplemented("EqyStrategy.write not implemented")
 
     def path(self, partition, suffix):
@@ -576,41 +578,47 @@ class EqyStrategy:
 
 
 class EqyDummyStrategy(EqyStrategy):
-    def write(self, partition):
-        with open(f"{self.args.workdir}/strategies/{partition}/{self.name}/run.sh", "w") as run_f:
-            print("echo PASS > status", file=run_f)
-            print(f"echo \"Assumed equivalence of partition '{partition}' via dummy strategy '{self.name}'\"", file=run_f)
+    def write(self, job, partition):
+        with open(self.path(partition.name, "run.sh"), "w") as run_f:
+            print("echo UNKNOWN > status", file=run_f)
+            print(f"echo \"Setting unknown status for partition '{partition.name}' via dummy strategy '{self.name}'\"", file=run_f)
 
 
 class EqySatseqStrategy(EqyStrategy):
     default_scfg = dict(depth=5)
     parse_opt_depth = EqyStrategy.int_opt_parser
 
-    def write(self, partition):
-        with open(self.path(partition, "run.sh"), "w") as run_f:
+    def partition_supported(self, job, partition):
+        if 'memory' in partition.attributes:
+            job.log(f"Skipping strategy '{self.name}' for partition '{partition.name}' as it contains memory.")
+            return False
+        return True
+
+    def write(self, job, partition):
+        with open(self.path(partition.name, "run.sh"), "w") as run_f:
             print(textwrap.dedent(f"""
                 yosys -ql run.log run.ys
                 if grep "SAT temporal induction proof finished - model found for base case: FAIL!" run.log > /dev/null ; then
                 \techo FAIL > status
-                \techo "Could not prove equivalence of partition '{partition}' using strategy '{self.name}'"
+                \techo "Could not prove equivalence of partition '{partition.name}' using strategy '{self.name}'"
                 elif grep "Reached maximum number of time steps -> proof failed." run.log > /dev/null ; then
                 \techo UNKNOWN > status
-                \techo "Could not prove equivalence of partition '{partition}' using strategy '{self.name}'"
+                \techo "Could not prove equivalence of partition '{partition.name}' using strategy '{self.name}'"
                 elif grep "Induction step proven: SUCCESS!" run.log > /dev/null ; then
                 \techo PASS > status
-                \techo "Proved equivalence of partition '{partition}' using strategy '{self.name}'"
+                \techo "Proved equivalence of partition '{partition.name}' using strategy '{self.name}'"
                 else
                 \techo ERROR > status
-                \techo "Execution of strategy '{self.name}' on partition '{partition}' encountered an error.
-                Details can be found in '{self.args.workdir}/strategies/{partition}/{self.name}/run.log'."
+                \techo "Execution of strategy '{self.name}' on partition '{partition.name}' encountered an error.
+                Details can be found in '{self.args.workdir}/strategies/{partition.name}/{self.name}/run.log'."
                 \texit 1
                 fi
                 exit 0
             """[1:-1]), file=run_f)
 
-        with open(self.path(partition, "run.ys"), "w") as ys_f:
-            print(f"read_ilang ../../../partitions/{partition}.il", file=ys_f)
-            print(f"miter -equiv -make_assert -ignore_gold_x -flatten gold.{partition} gate.{partition} miter", file=ys_f)
+        with open(self.path(partition.name, "run.ys"), "w") as ys_f:
+            print(f"read_ilang ../../../partitions/{partition.name}.il", file=ys_f)
+            print(f"miter -equiv -make_assert -ignore_gold_x -flatten gold.{partition.name} gate.{partition.name} miter", file=ys_f)
             print(f"sat -tempinduct -set-init-undef -seq {self.scfg.depth} -prove-asserts miter", file=ys_f)
 
 
@@ -619,8 +627,8 @@ class EqySbyStrategy(EqyStrategy):
     parse_opt_engine = EqyStrategy.string_opt_parser
     parse_opt_depth = EqyStrategy.int_opt_parser
 
-    def write(self, partition):
-        with open(self.path(partition, f"{partition}.sby"), "w") as sby_f:
+    def write(self, job, partition):
+        with open(self.path(partition.name, f"{partition.name}.sby"), "w") as sby_f:
             print(textwrap.dedent(f"""
                 [options]
                 mode prove
@@ -631,33 +639,33 @@ class EqySbyStrategy(EqyStrategy):
                 {self.scfg.engine}
 
                 [script]
-                read_ilang {partition}.il
-                miter -equiv -make_assert -flatten gold.{partition} gate.{partition} miter
+                read_ilang {partition.name}.il
+                miter -equiv -make_assert -flatten gold.{partition.name} gate.{partition.name} miter
                 hierarchy -top miter
 
                 [files]
-                ../../../partitions/{partition}.il
+                ../../../partitions/{partition.name}.il
             """[1:-1]), file=sby_f)
 
-        with open(self.path(partition, "run.sh"), "w") as run_f:
+        with open(self.path(partition.name, "run.sh"), "w") as run_f:
             print(textwrap.dedent(f"""
                 STATUS=ERROR
-                sby -f {partition}.sby > /dev/null && STATUS=$(awk '{{print $1}}' {partition}/status)
+                sby -f {partition.name}.sby > /dev/null && STATUS=$(awk '{{print $1}}' {partition.name}/status)
                 echo $STATUS > status
                 case $STATUS in
                     PASS)
-                        echo "Proved equivalence of partition '{partition}' using strategy '{self.name}'"
+                        echo "Proved equivalence of partition '{partition.name}' using strategy '{self.name}'"
                     ;;
                     FAIL)
-                        echo "Could not prove equivalence of partition '{partition}' using strategy '{self.name}': partitions not equivalent"
+                        echo "Could not prove equivalence of partition '{partition.name}' using strategy '{self.name}': partitions not equivalent"
                     ;;
                     UNKNOWN)
-                        echo "Could not prove equivalence of partition '{partition}' using strategy '{self.name}': equivalence unknown"
+                        echo "Could not prove equivalence of partition '{partition.name}' using strategy '{self.name}': equivalence unknown"
                     ;;
                     *)
-                        cat {partition}/ERROR 2> /dev/null
-                        echo "Execution of strategy '{self.name}' on partition '{partition}' encountered an error."
-                        echo "More details can be found in '{self.path(partition, f'{partition}/logfile.txt')}'."
+                        cat {partition.name}/ERROR 2> /dev/null
+                        echo "Execution of strategy '{self.name}' on partition '{partition.name}' encountered an error."
+                        echo "More details can be found in '{self.path(partition.name, f'{partition.name}/logfile.txt')}'."
                         exit 1
                     ;;
                 esac
@@ -689,12 +697,34 @@ def parse_strategies(args, cfg):
 
     return strategies
 
+
+class EqyPartition:
+    def __init__(self, line):
+        self.module, self.name, *rest = line.split()
+        self.attributes = []
+        self.outbits = []
+        self.inbits = []
+        rest = iter(rest)
+        for item in rest:
+            if item == ':':
+                break
+            self.attributes.append(item)
+
+        for item in rest:
+            if item == '<=':
+                break
+            self.outbits.append(item)
+
+        for item in rest:
+            self.inbits.append(item)
+
+
 def make_scripts(args, cfg, job, strategies):
     partitions = []
 
     with open(args.workdir + "/partition.list") as f:
         for line in f:
-            partitions.append(line.split()[1])
+            partitions.append(EqyPartition(line))
 
     if not os.path.isdir(args.workdir + "/strategies"):
         os.mkdir(args.workdir + "/strategies")
@@ -703,30 +733,34 @@ def make_scripts(args, cfg, job, strategies):
         print(".DEFAULT_GOAL := all\n", file=make_f)
         targets = []
         for partition in partitions:
-            if not os.path.isdir(f"{args.workdir}/strategies/{partition}"):
-                os.mkdir(f"{args.workdir}/strategies/{partition}")
+            if not os.path.isdir(f"{args.workdir}/strategies/{partition.name}"):
+                os.mkdir(f"{args.workdir}/strategies/{partition.name}")
             prev_strategy = None
             for strategy_name in cfg.strategy:
                 # TODO: ensure unchanged strategies don't get re-run but changed strategies do
 
                 strategy = strategies[strategy_name]
-                if not os.path.isdir(f"{args.workdir}/strategies/{partition}/{strategy.name}"):
-                    os.mkdir(f"{args.workdir}/strategies/{partition}/{strategy.name}")
-                strategy.write(partition)
+                if not strategy.partition_supported(job, partition):
+                    continue
+                if not os.path.isdir(f"{args.workdir}/strategies/{partition.name}/{strategy.name}"):
+                    os.mkdir(f"{args.workdir}/strategies/{partition.name}/{strategy.name}")
+                strategy.write(job, partition)
 
                 if prev_strategy:
-                    print(f"""strategies/{partition}/{strategy.name}/status: {prev_strategy}
+                    print(f"""strategies/{partition.name}/{strategy.name}/status: {prev_strategy}
 \t@if grep PASS $^ >/dev/null ; then \\
 \t\techo "PASS (cached)" > $@; \\
 \telif grep FAIL $^ >/dev/null ; then \\
 \t\techo "FAIL (cached)" > $@; \\
 \telse \\
-\t\tbash -c \"cd strategies/{partition}/{strategy.name}; source run.sh\"; \\
+\t\tbash -c \"cd strategies/{partition.name}/{strategy.name}; source run.sh\"; \\
 \tfi\n""" , file=make_f)
                 else:
-                    print(f"strategies/{partition}/{strategy.name}/status:", file=make_f)
-                    print(f"\t@bash -c \"cd strategies/{partition}/{strategy.name}; source run.sh\"\n", file=make_f)
-                prev_strategy = f"strategies/{partition}/{strategy.name}/status"
+                    print(f"strategies/{partition.name}/{strategy.name}/status:", file=make_f)
+                    print(f"\t@bash -c \"cd strategies/{partition.name}/{strategy.name}; source run.sh\"\n", file=make_f)
+                prev_strategy = f"strategies/{partition.name}/{strategy.name}/status"
+            if prev_strategy is None:
+                exit_with_error(f"No configured strategy supports partition {partition.name}")
             targets.append(prev_strategy)
 
         print(f".PHONY: all", file=make_f)

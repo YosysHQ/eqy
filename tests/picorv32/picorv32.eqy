@@ -11,3 +11,6 @@ prep -top picorv32
 [strategy simple]
 use satseq
 depth 10
+
+[strategy dummy]
+use dummy
