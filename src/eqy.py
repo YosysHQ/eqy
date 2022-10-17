@@ -718,7 +718,7 @@ def make_scripts(args, cfg, job, strategies):
                     print(f"""strategies/{partition}/{strategy.name}/status: {prev_strategy}
 \t@if grep PASS $^ >/dev/null ; then \\
 \t\techo "PASS (cached)" > $@; \\
-\t@elif grep FAIL $^ >/dev/null ; then \\
+\telif grep FAIL $^ >/dev/null ; then \\
 \t\techo "FAIL (cached)" > $@; \\
 \telse \\
 \t\tbash -c \"cd strategies/{partition}/{strategy.name}; source run.sh\"; \\
