@@ -615,16 +615,15 @@ class EqySatseqStrategy(EqyStrategy):
 
 
 class EqySbyStrategy(EqyStrategy):
-    default_scfg = dict(engine='smtbmc', mode='prove', depth=5)
+    default_scfg = dict(engine='smtbmc', depth=5)
     parse_opt_engine = EqyStrategy.string_opt_parser
     parse_opt_depth = EqyStrategy.int_opt_parser
-    parse_opt_mode = EqyStrategy.make_enum_parser(["bmc", "prove"])
 
     def write(self, partition):
         with open(self.path(partition, f"{partition}.sby"), "w") as sby_f:
             print(textwrap.dedent(f"""
                 [options]
-                mode {self.scfg.mode}
+                mode prove
                 depth {self.scfg.depth}
                 expect pass,fail,unknown
 
@@ -659,8 +658,10 @@ class EqySbyStrategy(EqyStrategy):
                         cat {partition}/ERROR 2> /dev/null
                         echo "Execution of strategy '{self.name}' on partition '{partition}' encountered an error."
                         echo "More details can be found in '{self.path(partition, f'{partition}/logfile.txt')}'."
+                        exit 1
                     ;;
                 esac
+                exit 0
             """[1:-1]), file=run_f)
 
 
