@@ -555,16 +555,27 @@ class EqyStrategy:
             return "expected option value"
         setattr(self.scfg, name, value)
 
+    def bool_opt_parser(self, name, value):
+        if name in self.options_seen:
+            return "repeated option"
+        self.options_seen.add(name)
+        if value is None:
+            return "expected option value"
+        if value not in ("on", "off"):
+            return "expected one of 'on', 'off'"
+        setattr(self.scfg, name, value == "on")
+
     @staticmethod
     def make_enum_parser(values):
         def enum_parser(self, name, value):
             if name in self.options_seen:
                 return "repeated option"
+            self.options_seen.add(name)
             if value is None:
                 return "expected option value"
             if value not in values:
                 return "expected one of " + ', '.join(map(repr, values))
-            self.options_seen.add(name)
+            setattr(self.scfg, name, value)
         return enum_parser
 
     def partition_supported(self, job, partition):
