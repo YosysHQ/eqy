@@ -630,7 +630,7 @@ class EqySatseqStrategy(EqyStrategy):
         with open(self.path(partition.name, "run.ys"), "w") as ys_f:
             print(f"read_ilang ../../../partitions/{partition.name}.il", file=ys_f)
             print(f"miter -equiv -make_assert -ignore_gold_x -flatten gold.{partition.name} gate.{partition.name} miter", file=ys_f)
-            print(f"sat -tempinduct -set-init-undef -seq {self.scfg.depth} -prove-asserts miter", file=ys_f)
+            print(f"sat -tempinduct -set-init-undef -maxsteps {self.scfg.depth} -prove-asserts miter", file=ys_f)
 
 
 class EqySbyStrategy(EqyStrategy):
