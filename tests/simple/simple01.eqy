@@ -12,8 +12,10 @@ synth -top top
 
 [collect top]
 bind X
-bind Y
 solo *
+
+[partition top]
+sticky Y
 
 [strategy simple]
 use satseq
