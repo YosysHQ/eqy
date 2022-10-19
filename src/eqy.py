@@ -605,6 +605,23 @@ def make_partitions(args, cfg, job):
 
     job.run()
 
+def recode_ids(args, cfg):
+    gold_ids = read_ids(args.workdir + "/gold.ids")
+    gate_ids = read_ids(args.workdir + "/gate.ids")
+    with open(args.workdir + "/recode.ids", 'w') as f:
+        for pattern, line in cfg.recode:
+            line = line.split()
+            if len(line) == 0:
+                continue
+            if len(line) in [2]:
+                for module_match in match_module_re(gold_ids, pattern[0]):
+                    if module_match in gate_ids:
+                        for entity_match, _ in match_entity_re(gold_ids[module_match], gate_ids[module_match], pattern[1], None):
+                            print(module_match, entity_match, line[0], line[1], file=f)
+                    else:
+                        exit_with_error(f"Module '{module_match}' must exist in gate design.")
+            else:
+                exit_with_error(f"Syntax error in match command \"{' '.join(line)}\"")
 
 class EqyStrategy:
     default_scfg = {}
@@ -943,6 +960,7 @@ def main():
 
     build_gate_gold(args, cfg, job)
     build_combined(args, cfg, job)
+    recode_ids(args, cfg)
     match_ids(args, cfg)
     make_partitions(args, cfg, job)
     make_scripts(args, cfg, job, strategies)
