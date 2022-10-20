@@ -67,8 +67,11 @@ def parse_args():
     parser.add_argument("-k", "--keep-going", action="store_true",
             help="keep going when some make targets can't be made")
 
-    parser.add_argument("-p", "--purge", action="append", dest="purgelist", metavar="<pattern>",
+    parser.add_argument("-P", "--purge", action="append", dest="purgelist", metavar="<pattern>",
             help="purge any <partition>/<strategy> pair, supports wildcards")
+
+    parser.add_argument("-p", action="append", dest="commands", nargs=2, metavar=("<command>", "<partition>"),
+            help="run the provided yosys command(s) on the specified partition(s) and exit")
 
     parser.add_argument("-g", "--debug", action="store_true", dest="debugmode",
             help="enable debug mode")
@@ -878,7 +881,22 @@ def main():
     make_partitions(args, cfg, job)
     make_scripts(args, cfg, job, strategies)
 
-    if not args.setupmode:
+    if args.commands:
+        ys_task_index = 0
+        for command, partition in args.commands:
+            command = command.replace("\\", "\\\\").replace("'", "\\'")
+            def check_retcode_f(index):
+                def check_retcode(retcode):
+                    if (retcode != 0):
+                        exit_with_error(f"Yosys task {index} returned a non-zero exit code.")
+                return check_retcode
+            for path in glob.glob(f"{args.workdir}/partitions/{partition}.il"):
+                ys_task_index += 1
+                run_task = EqyTask(job, f"yosys.{ys_task_index}", [], f"yosys -p '{command}' {path}")
+                run_task.exit_callback = check_retcode_f(ys_task_index)
+        job.run()
+
+    elif not args.setupmode:
         run_scripts(args, cfg, job)
 
     job.final()
