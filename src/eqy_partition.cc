@@ -809,34 +809,47 @@ void EqyPartitionWorker::merge_partitions()
 	}
 
 	// automatically name remaining partitions
+	dict<Wire*,int> wire_score;
+	dict<SigBit,int> bit_score;
+	for (auto &it : pi_partitions_index) {
+		auto bit = it.first;
+
+		if (!wire_score.count(bit.wire))
+			wire_score[bit.wire] = GetSize(bit.wire->name);
+		wire_score[bit.wire] -= 10*GetSize(it.second);
+
+		if (!bit_score.count(bit))
+			bit_score[bit] = GetSize(bit.wire->name);
+		bit_score[bit] -= 10*GetSize(it.second);
+	}
 	for (auto &it : partitions)
 	{
 		Partition *partition = it.get();
 		if (partition->finalized || partition->name_priority) continue;
 
-		auto try_rename = [&](std::string name)->bool
-		{
-			if (partition->name_priority)
-				return true;
-			if (name_database.count(name))
-				return false;
-			log("Automatically naming partition %d using a PO name: %s\n", partition->index, name.c_str());
-			partition->name_priority = ++name_priority;
-			name_database[name] = partition->index;
-			partition->names.push_back(name);
-			return true;
-		};
-
 		dict<Wire*,int> wire_bits;
-
 		for (auto bit : partition->outbits)
 			wire_bits[bit.wire] += 1;
 
+		vector<pair<int,std::string>> candidates;
 		for (auto bit : partition->outbits) {
 			if (bit.wire->width == wire_bits[bit.wire])
-				try_rename(unescape_id(bit.wire->name));
+				candidates.push_back(make_pair(wire_score[bit.wire], unescape_id(bit.wire->name)));
 			else
-				try_rename(stringf("%s.%d", unescape_id(bit.wire->name).c_str(), bit.offset));
+				candidates.push_back(make_pair(bit_score[bit], stringf("%s.%d", unescape_id(bit.wire->name).c_str(), bit.offset)));
+		}
+
+		std::sort(candidates.begin(), candidates.end());
+
+		for (auto &it : candidates) {
+			if (name_database.count(it.second))
+				continue;
+
+			log("Automatically naming partition %d using a PO name: %s\n", partition->index, it.second.c_str());
+			partition->name_priority = ++name_priority;
+			name_database[it.second] = partition->index;
+			partition->names.push_back(it.second);
+			break;
 		}
 	}
 }
