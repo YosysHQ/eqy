@@ -1,0 +1,17 @@
+[options]
+
+[gold]
+read_verilog -DGOLD ex_group.sv
+prep -top top
+
+[gate]
+read_verilog -DGATE ex_group.sv
+prep -top top
+
+[collect top]
+solo *
+group X Y
+
+[strategy simple]
+use satseq
+depth 10

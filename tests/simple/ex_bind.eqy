@@ -1,0 +1,18 @@
+[options]
+
+[gold]
+read_verilog -DGOLD ex_bind.sv
+prep -top top
+
+[gate]
+read_verilog -DGATE ex_bind.sv
+prep -top top
+
+[collect top]
+bind X
+bind Y
+solo *
+
+[strategy simple]
+use satseq
+depth 10

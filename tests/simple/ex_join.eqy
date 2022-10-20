@@ -1,0 +1,17 @@
+[options]
+
+[gold]
+read_verilog -DGOLD ex_join.sv
+prep -top top
+
+[gate]
+read_verilog -DGATE ex_join.sv
+prep -top top
+
+[collect top]
+solo *
+join X
+
+[strategy simple]
+use satseq
+depth 10

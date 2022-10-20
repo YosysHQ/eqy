@@ -438,7 +438,21 @@ def partition_ids(args, cfg):
                 continue
 
             if line[0] == "group" and len(line) == 3:
-                continue # TBD
+                for module_match in match_module_re(gold_ids, pattern):
+                    first_entity = None
+                    previous_entities = set()
+                    for entity_match in match_entity_re(gold_ids[module_match], gold_ids[module_match], line[1], line[2]):
+                        if (module_match, entity_match[0]) in no_database[line[0]]:
+                            continue
+                        if (module_match, entity_match[1]) in no_database[line[0]]:
+                            continue
+                        for entity in entity_match:
+                            if first_entity is None:
+                                first_entity = entity
+                            elif entity not in previous_entities:
+                                print(line[0], module_match, first_entity, entity, file=partids_f)
+                            previous_entities.add(entity)
+                continue
 
             exit_with_error(f"Syntax error in collect command \"{' '.join(line)}\"")
 
@@ -467,7 +481,7 @@ def partition_ids(args, cfg):
                         print(line[0], module_match, entity_match, line[2], file=partids_f)
                 continue
 
-            if line[0] == "merge" and len(line) == 3:
+            if line[0] == "merge" and len(line) == 2:
                 for module_match in match_module_re(gold_ids, pattern):
                     first_entity = None
                     for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
@@ -479,8 +493,32 @@ def partition_ids(args, cfg):
                             print(line[0], module_match, first_entity, entity_match, file=partids_f)
                 continue
 
-            if line[0] in ("merge", "path") and len(line) == 4:
-                continue # TBD
+            if line[0] == "merge" and len(line) == 3:
+                for module_match in match_module_re(gold_ids, pattern):
+                    first_entity = None
+                    previous_entities = set()
+                    for entity_match in match_entity_re(gold_ids[module_match], gold_ids[module_match], line[1], line[2]):
+                        if (module_match, entity_match[0]) in no_database[line[0]]:
+                            continue
+                        if (module_match, entity_match[1]) in no_database[line[0]]:
+                            continue
+                        for entity in entity_match:
+                            if first_entity is None:
+                                first_entity = entity
+                            elif entity not in previous_entities:
+                                print(line[0], module_match, first_entity, entity, file=partids_f)
+                            previous_entities.add(entity)
+                continue
+
+            if line[0] == "path" and len(line) == 3:
+                for module_match in match_module_re(gold_ids, pattern):
+                    for entity_match in match_entity_re(gold_ids[module_match], gold_ids[module_match], line[1], line[2]):
+                        if (module_match, entity_match[0]) in no_database[line[0]]:
+                            continue
+                        if (module_match, entity_match[1]) in no_database[line[0]]:
+                            continue
+                        print(line[0], module_match, entity_match[0], entity_match[1], file=partids_f)
+                continue
 
             exit_with_error(f"Syntax error in partition command \"{' '.join(line)}\"")
 
