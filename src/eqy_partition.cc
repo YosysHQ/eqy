@@ -253,7 +253,7 @@ struct EqyPartitionWorker
 struct Partition
 {
 	vector<std::string> names;
-	int name_priority;
+	int name_priority = 0;
 
 	EqyPartitionWorker *worker;
 	int merged_into = -1;
