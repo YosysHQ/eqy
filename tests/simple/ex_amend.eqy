@@ -1,0 +1,20 @@
+[options]
+
+[gold]
+read_verilog -DGOLD ex_amend.sv
+prep -top top
+
+[gate]
+read_verilog -DGATE ex_amend.sv
+prep -top top
+
+[collect top]
+join X
+join Y
+
+[partition top]
+amend X
+
+[strategy simple]
+use satseq
+depth 10

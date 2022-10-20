@@ -193,6 +193,19 @@ sticky net as primary input.
 The ``nosticky <pattern>`` command preents further ``sticky`` commands from matching
 the given net.
 
+amend and noamend
+.................
+
+The ``amend <pattern>`` command finds the primitive partition(s) generating the
+specified net(s), and amends all partitions using those signals with the gold
+definition of that signal.
+
+The ``amend <pattern> <pattern>`` command only amends partitions that are
+matching the second pattern.
+
+The ``noamend <pattern>`` command preents further ``amend`` commands from matching
+the given net.
+
 final statements
 ................
 

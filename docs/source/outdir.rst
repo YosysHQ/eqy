@@ -70,6 +70,9 @@ files.
    sticky <module> <net>
    final <module> <net>
 
+   amend <module> <net>
+   amend <module> <net> <net>
+
 The file ``partition.list`` contains a list of all generated design partitions,
 and the primary output bits and primary input bits of each partition.
 

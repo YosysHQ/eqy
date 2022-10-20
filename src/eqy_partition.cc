@@ -246,7 +246,6 @@ struct EqyPartitionWorker
 	Partition *create_partition();
 	void create_partitions();
 	void merge_partitions();
-	void ammend_partitions();
 	void finalize_partitions(std::ofstream &partition_list_file);
 };
 
@@ -256,6 +255,7 @@ struct Partition
 	int name_priority = 0;
 
 	EqyPartitionWorker *worker;
+	pool<int> amend_with;
 	int merged_into = -1;
 	int index;
 
@@ -555,7 +555,7 @@ struct Partition
 		Module *mod_gold = partdesign->addModule("\\gold." + partname.substr(1));
 		Module *mod_gate = partdesign->addModule("\\gate." + partname.substr(1));
 
-		auto copy_mod_contents = [&](bool in_gold, const SigSpec &pi, const SigSpec &po, const SigSig &conn)->void
+		auto copy_mod_contents = [&](bool in_gold, const SigSpec &pi, const SigSpec &po, const SigSpec &cp, const SigSig &conn)->void
 		{
 			// Module *in_mod = in_gold ? gold : gate;
 			Module *out_mod = in_gold ? mod_gold : mod_gate;
@@ -621,20 +621,37 @@ struct Partition
 				}
 			}
 
-			Wire *piw = out_mod->addWire("\\__pi", GetSize(pi));
-			piw->port_input = true;
-			piw->port_id = 1;
-			out_mod->connect(pi, piw);
+			int port_idx = 0;
 
-			Wire *pow = out_mod->addWire("\\__po", GetSize(po));
-			pow->port_output = true;
-			pow->port_id = 2;
-			out_mod->connect(pow, po);
+			if (GetSize(pi)) {
+				Wire *piw = out_mod->addWire("\\__pi", GetSize(pi));
+				piw->port_input = true;
+				piw->port_id = ++port_idx;
+				out_mod->connect(pi, piw);
+			}
+
+			if (GetSize(po)) {
+				Wire *pow = out_mod->addWire("\\__po", GetSize(po));
+				pow->port_output = true;
+				pow->port_id = ++port_idx;
+				out_mod->connect(pow, po);
+			}
+
+			if (GetSize(cp)) {
+				Wire *cpw = out_mod->addWire("\\__cp", GetSize(po));
+				cpw->port_output = in_gold;
+				cpw->port_input = !in_gold;
+				cpw->port_id = ++port_idx;
+				if (in_gold)
+					out_mod->connect(cpw, cp);
+				else
+					out_mod->connect(cp, cpw);
+			}
 		};
 
 		dict<SigBit, int> gate_pi_positions;
 
-		SigSpec gold_pi, gold_po, gate_pi, gate_po;
+		SigSpec gold_pi, gold_po, gold_cp, gate_pi, gate_po, gate_cp;
 		SigSig gold_conn, gate_conn;
 
 		for (auto bit : inbits)
@@ -665,8 +682,16 @@ struct Partition
 			gate_po.append(gate_bit);
 		}
 
-		copy_mod_contents(true, gold_pi, gold_po, gold_conn);
-		copy_mod_contents(false, gate_pi, gate_po, gate_conn);
+		for (auto bit : crossbits)
+		{
+			auto gate_bit = worker->gold_matches.at(bit);
+			log("  partition cp bit %d: %s <-> %s\n", GetSize(gold_cp), log_signal(bit), log_signal(gate_bit));
+			gold_cp.append(bit);
+			gate_cp.append(gate_bit);
+		}
+
+		copy_mod_contents(true, gold_pi, gold_po, gold_cp, gold_conn);
+		copy_mod_contents(false, gate_pi, gate_po, gate_cp, gate_conn);
 
 		return partdesign;
 	}
@@ -791,6 +816,36 @@ void EqyPartitionWorker::merge_partitions()
 			continue;
 		}
 
+		if (rule[0] == "amend" && (GetSize(rule) == 2 || GetSize(rule) == 3)) {
+			SigSpec match_sig = GetSize(rule) == 3 ? gold_sigmap(gold->wire("\\" + rule[2])) : SigSpec();
+			for (auto bit : gold_sigmap(gold->wire("\\" + rule[1]))) {
+				if (!po_primitive_index.count(bit))
+					continue;
+				auto generator = partition(po_primitive_index.at(bit));
+				log_assert(generator->primitive);
+				log("  PO bit %s belongs to primitive partition %d\n", log_signal(bit), generator->index);
+				for (int idx : pi_partitions_index.at(bit, {})) {
+					auto p = partition(idx);
+					if (p->marked_final) {
+						log("    Skipping PI partition %d as it is marked final.\n", idx);
+						continue;
+					}
+					if (GetSize(rule) == 3) {
+						bool found_bit = false;
+						for (auto match_bit : match_sig)
+							found_bit |= p->gold_bits.count(match_bit);
+						if (!found_bit) {
+							log("    Skipping PI partition %d as it doesn't match the condition signal.\n", idx);
+						}
+					}
+					p = p->make_get_nonprimitive();
+					log("    Amending PI partition %d.\n", p->index);
+					p->amend_with.insert(generator->index);
+				}
+			}
+			continue;
+		}
+
 		if (rule[0] == "final" && GetSize(rule) == 2) {
 			for (auto bit : gold_sigmap(gold->wire("\\" + rule[1]))) {
 				if (!po_partition_index.count(bit))
@@ -806,6 +861,14 @@ void EqyPartitionWorker::merge_partitions()
 		for (auto &word : rule)
 			message += " " + word;
 		log_error("%s\n", message.c_str());
+	}
+
+	// actually amend now, after the regular merge operations are all done
+	for (int idx = 0; idx < GetSize(partitions); idx++) {
+		auto p = partition(idx)->make_get_nonprimitive();
+		if (p->index == idx)
+			for (auto q : p->amend_with)
+				p->import(partition(q));
 	}
 
 	// automatically name remaining partitions
@@ -854,11 +917,6 @@ void EqyPartitionWorker::merge_partitions()
 	}
 }
 
-void EqyPartitionWorker::ammend_partitions()
-{
-	// TBD
-}
-
 void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 {
 	for (auto &it : partitions)
@@ -893,14 +951,18 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 			partition_list_file << " memory";
 
 		partition_list_file << " :";
-
 		for (auto bit : partition->outbits)
 			partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
 
 		partition_list_file << " <=";
-
 		for (auto bit : partition->inbits)
 			partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
+
+		if (!partition->crossbits.empty()) {
+			partition_list_file << " =>";
+			for (auto bit : partition->crossbits)
+				partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
+		}
 
 		partition_list_file << "\n";
 
@@ -995,9 +1057,6 @@ struct EqyPartitionPass : public Pass
 					log_header(design, "Execute partitioning commands for module %s.\n", gold->name.substr(6).c_str());
 					worker.merge_partitions();
 
-					log_header(design, "Ammend partitions for module %s.\n", gold->name.substr(6).c_str());
-					worker.ammend_partitions();
-
 					log_header(design, "Finalize partitions for module %s.\n", gold->name.substr(6).c_str());
 					worker.finalize_partitions(partition_list_file);
 				}
@@ -1037,12 +1096,12 @@ struct EqyPartitionPass : public Pass
 		for (int linenr=1; std::getline(partition_names_file, line); linenr++) {
 			std::vector<std::string> things = split_tokens(line);
 			if ((things[0] == "name" || things[0] == "group" || things[0] == "merge" ||
-					things[0] == "path") && GetSize(things) == 4) {
+					things[0] == "path" || things[0] == "amend") && GetSize(things) == 4) {
 				partition_ids[things[1]].push_back({things[0], things[2], things[3]});
 				continue;
 			}
-			if ((things[0] == "bind" || things[0] == "sticky" || things[0] == "join" ||
-					things[0] == "solo" || things[0] == "final") && GetSize(things) == 3) {
+			if ((things[0] == "bind" || things[0] == "sticky" || things[0] == "join" || things[0] == "solo" ||
+					things[0] == "final" || things[0] == "amend") && GetSize(things) == 3) {
 				partition_ids[things[1]].push_back({things[0], things[2]});
 				continue;
 			}

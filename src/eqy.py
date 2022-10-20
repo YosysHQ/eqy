@@ -405,7 +405,7 @@ def match_ids(args, cfg):
 def partition_ids(args, cfg):
     no_database = {
         "bind": set(), "join": set(), "solo": set(), "group": set(),
-        "sticky": set(), "merge": set(), "name": set(), "final": set()
+        "sticky": set(), "merge": set(), "name": set(), "final": set(), "amend": set()
     }
 
     gold_ids = read_ids(args.workdir + "/gold.ids")
@@ -462,13 +462,13 @@ def partition_ids(args, cfg):
         for pattern, line in cfg.partition:
             line = line.split()
 
-            if line[0] in ("nosticky", "nomerge", "noname") and len(line) == 2:
+            if line[0] in ("nosticky", "nomerge", "noname", "noamend") and len(line) == 2:
                 for module_match in match_module_re(gold_ids, pattern):
                     for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
                         no_database[line[0][2:]].add((module_match, entity_match))
                 continue
 
-            if line[0] in ("sticky", "final") and len(line) == 2:
+            if line[0] in ("sticky", "final", "amend") and len(line) == 2:
                 for module_match in match_module_re(gold_ids, pattern):
                     for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
                         if (module_match, entity_match) in no_database[line[0]]:
@@ -513,7 +513,7 @@ def partition_ids(args, cfg):
                             previous_entities.add(entity)
                 continue
 
-            if line[0] == "path" and len(line) == 3:
+            if line[0] in ("path", "amend") and len(line) == 3:
                 for module_match in match_module_re(gold_ids, pattern):
                     for entity_match in match_entity_re(gold_ids[module_match], gold_ids[module_match], line[1], line[2]):
                         if (module_match, entity_match[0]) in no_database[line[0]]:
@@ -756,6 +756,7 @@ class EqyPartition:
         self.attributes = []
         self.outbits = []
         self.inbits = []
+        self.crossbits = []
         rest = iter(rest)
         for item in rest:
             if item == ':':
@@ -768,7 +769,12 @@ class EqyPartition:
             self.outbits.append(item)
 
         for item in rest:
+            if item == '=>':
+                break
             self.inbits.append(item)
+
+        for item in rest:
+            self.crossbits.append(item)
 
 
 def make_scripts(args, cfg, job, strategies):
