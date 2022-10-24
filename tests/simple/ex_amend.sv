@@ -8,6 +8,6 @@ endmodule
 `ifdef GATE
 module top(input A, B, C, output [1:0] X, Y);
 	assign X = {A^B, !(A^B)};
-	assign Y = (C^X[1]) ? 2'b 10 : X[0];
+	assign Y = 2'b 01 ^ {2{C^X[1]}};
 endmodule
 `endif
