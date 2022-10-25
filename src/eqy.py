@@ -19,7 +19,7 @@
 #
 import argparse, types, re, glob
 import os, sys, tempfile, shutil
-import shlex
+import shlex, fnmatch
 import textwrap
 ##yosys-sys-path##
 
@@ -330,33 +330,93 @@ def read_ids(filename):
                 exit_with_error("Missing type in line {}".format(lineno))
     return ids
 
-def match_module_re(ids, module_re):
+class Pattern:
+    repl_re = re.compile(r"\\([0-9]+)|\\g<[^>]+>")
+    pattern_re = re.compile(r"(/(?:[^/]|\\/)+/i?|(?:[a-zA-Z0-9_.*?]|\\.|\[[^\]]+\])+),?")
+
+    def __init__(self, pattern, groups, groupdict):
+        def repl(match):
+            if match[0] is not None:
+                return re.escape(groups[int(match[0])])
+            if match[1] is not None:
+                return re.escape(groupdict[match[1]])
+            assert False
+
+        self.direct = self.repl_re.sub(repl, pattern)
+        plist = self.pattern_re.split(self.direct)
+        assert "".join(plist[0::2]) == ""
+
+        self.patterns = list()
+        for pattern in plist[1::2]:
+            p = types.SimpleNamespace()
+            if pattern.startswith("/"):
+                p.type = "regex"
+                if pattern.endswith("/i"):
+                    p.regex = re.compile(pattern[1:-2], re.I)
+                else:
+                    assert pattern.endswith("/")
+                    p.regex = re.compile(pattern[1:-1], re.I)
+            else:
+                p.type = "shell"
+                p.expr = pattern
+            self.patterns.append(p)
+
+
+    def match(self, name, metadata):
+        for p in self.patterns:
+            # TBD: Attribute Patterns
+            # TBD: Partition Patterns
+            if p.type == "regex":
+                if m := p.regex.search(name):
+                    groups = [m.group()] + m.groups()
+                    groupdict = m.groupdict()
+                    return (name, groups, groupdict)
+                continue
+            if p.type == "shell":
+                if fnmatch.fnmatch(name, p.expr):
+                    return (name, [name], {})
+                continue
+            assert False
+        return None
+
+    def search(self, ids):
+        if self.direct in ids:
+            return [(self.direct, [self.direct], {})]
+
+        results = list()
+        for name, metadata in ids.items():
+            if (m := self.match(name, metadata)) is not None:
+                results.append(m)
+        return results
+
+def search_modules(ids, expr):
     matches = []
-    if module_re == "*":
-        module_re = ".*"
-    p = re.compile(module_re)
+    pattern = Pattern(expr, [], {})
     for key in ids:
-        match = p.fullmatch(key)
-        if match is not None:
+        if pattern.match(key, {}):
             matches.append(key)
     return matches
 
-def match_entity_re(ids, other_ids, entity_re, other_entity_expr):
+def search_entities(ids, other_ids, expr, other_expr):
     matches = []
-    if entity_re == "*":
-        entity_re = ".*"
-    p = re.compile(entity_re)
-    for key in ids:
-        match = p.fullmatch(key)
-        if match is not None:
-            val = key
-            if other_entity_expr is not None:
-                val = match.expand(other_entity_expr)
-            if other_ids and val not in other_ids:
-                if entity_re == ".*":
-                    continue
-                exit_with_error(f"Cannot find entity {val}")
-            matches.append((key, val))
+    found_first = False
+    found_second = other_ids is None
+    lhs = Pattern(expr, [], {})
+    for name, groups, groupdict in lhs.search(ids):
+        found_first = True
+        if other_expr is None:
+            if other_ids is None or name in other_ids:
+                matches.append((name, name))
+                found_second = True
+        else:
+            rhs = Pattern(other_expr, groups, groupdict)
+            for other_name, _, _ in rhs.search(other_ids):
+                found_second = True
+                matches.append((name, other_name))
+    if not found_first:
+        exit_with_error(f"Cannot find first entity in {expr} {other_expr}.")
+    if not found_second:
+        exit_with_error(f"Cannot find second entity in {expr} {other_expr}.")
     return matches
 
 def match_ids(args, cfg):
@@ -370,9 +430,9 @@ def match_ids(args, cfg):
             if len(line) == 0:
                 continue
             if line[0] == "gold-match" and len(line) in [2, 3]:
-                for module_match in match_module_re(gold_ids, pattern):
+                for module_match in search_modules(gold_ids, pattern):
                     if module_match in gate_ids: #TODO: is this the right way to deal with missing module hierarchy?
-                        for entity_match in match_entity_re(gold_ids[module_match], gate_ids[module_match], line[1], line[2] if len(line) == 3 else None):
+                        for entity_match in search_entities(gold_ids[module_match], gate_ids[module_match], line[1], line[2] if len(line) == 3 else None):
                             if (module_match, entity_match[0]) in used_gold_ids:
                                 continue
                             if (module_match, entity_match[1]) in used_gate_ids:
@@ -381,9 +441,9 @@ def match_ids(args, cfg):
                             used_gold_ids.add((module_match, entity_match[0]))
                             used_gate_ids.add((module_match, entity_match[1]))
             elif line[0] == "gate-match" and len(line) in [2, 3]:
-                for module_match in match_module_re(gate_ids, pattern):
+                for module_match in search_modules(gate_ids, pattern):
                     if module_match in gold_ids:
-                        for entity_match in match_entity_re(gate_ids[module_match], gold_ids[module_match], line[1], line[2] if len(line) == 3 else None):
+                        for entity_match in search_entities(gate_ids[module_match], gold_ids[module_match], line[1], line[2] if len(line) == 3 else None):
                             if (module_match, entity_match[0]) in used_gate_ids:
                                 continue
                             if (module_match, entity_match[1]) in used_gold_ids:
@@ -392,12 +452,12 @@ def match_ids(args, cfg):
                             used_gate_ids.add((module_match, entity_match[0]))
                             used_gold_ids.add((module_match, entity_match[1]))
             elif line[0] == "gold-nomatch" and len(line) == 2:
-                for module_match in match_module_re(gold_ids, pattern):
-                    for entity_match in match_entity_re(gold_ids[module_match], None, line[1], None):
+                for module_match in search_modules(gold_ids, pattern):
+                    for entity_match in search_entities(gold_ids[module_match], None, line[1], None):
                         used_gold_ids.add((module_match, entity_match[0]))
             elif line[0] == "gate-nomatch" and len(line) == 2:
-                for module_match in match_module_re(gate_ids, pattern):
-                    for entity_match in match_entity_re(gate_ids[module_match], None, line[1], None):
+                for module_match in search_modules(gate_ids, pattern):
+                    for entity_match in search_entities(gate_ids[module_match], None, line[1], None):
                         used_gate_ids.add((module_match, entity_match[0]))
             else:
                 exit_with_error(f"Syntax error in match command \"{' '.join(line)}\"")
@@ -415,23 +475,23 @@ def partition_ids(args, cfg):
             line = line.split()
 
             if line[0] in ("nobind", "nojoin", "nogroup", "nosolo") and len(line) == 2:
-                for module_match in match_module_re(gold_ids, pattern):
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                for module_match in search_modules(gold_ids, pattern):
+                    for entity_match, _ in search_entities(gold_ids[module_match], None, line[1], None):
                         no_database[line[0][2:]].add((module_match, entity_match))
                 continue
 
             if line[0] in ("bind", "join", "solo") and len(line) == 2:
-                for module_match in match_module_re(gold_ids, pattern):
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                for module_match in search_modules(gold_ids, pattern):
+                    for entity_match, _ in search_entities(gold_ids[module_match], None, line[1], None):
                         if (module_match, entity_match) in no_database[line[0]]:
                             continue
                         print(line[0], module_match, entity_match, file=partids_f)
                 continue
 
             if line[0] == "group" and len(line) == 2:
-                for module_match in match_module_re(gold_ids, pattern):
+                for module_match in search_modules(gold_ids, pattern):
                     first_entity = None
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                    for entity_match, _ in search_entities(gold_ids[module_match], None, line[1], None):
                         if (module_match, entity_match) in no_database[line[0]]:
                             continue
                         if first_entity is None:
@@ -441,10 +501,10 @@ def partition_ids(args, cfg):
                 continue
 
             if line[0] == "group" and len(line) == 3:
-                for module_match in match_module_re(gold_ids, pattern):
+                for module_match in search_modules(gold_ids, pattern):
                     first_entity = None
                     previous_entities = set()
-                    for entity_match in match_entity_re(gold_ids[module_match], gold_ids[module_match], line[1], line[2]):
+                    for entity_match in search_entities(gold_ids[module_match], gold_ids[module_match], line[1], line[2]):
                         if (module_match, entity_match[0]) in no_database[line[0]]:
                             continue
                         if (module_match, entity_match[1]) in no_database[line[0]]:
@@ -463,31 +523,31 @@ def partition_ids(args, cfg):
             line = line.split()
 
             if line[0] in ("nosticky", "nomerge", "noname", "noamend") and len(line) == 2:
-                for module_match in match_module_re(gold_ids, pattern):
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                for module_match in search_modules(gold_ids, pattern):
+                    for entity_match, _ in search_entities(gold_ids[module_match], None, line[1], None):
                         no_database[line[0][2:]].add((module_match, entity_match))
                 continue
 
             if line[0] in ("sticky", "final", "amend") and len(line) == 2:
-                for module_match in match_module_re(gold_ids, pattern):
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                for module_match in search_modules(gold_ids, pattern):
+                    for entity_match, _ in search_entities(gold_ids[module_match], None, line[1], None):
                         if (module_match, entity_match) in no_database[line[0]]:
                             continue
                         print(line[0], module_match, entity_match, file=partids_f)
                 continue
 
             if line[0] == "name" and len(line) == 3:
-                for module_match in match_module_re(gold_ids, pattern):
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                for module_match in search_modules(gold_ids, pattern):
+                    for entity_match, _ in search_entities(gold_ids[module_match], None, line[1], None):
                         if (module_match, entity_match) in no_database[line[0]]:
                             continue
                         print(line[0], module_match, entity_match, line[2], file=partids_f)
                 continue
 
             if line[0] == "merge" and len(line) == 2:
-                for module_match in match_module_re(gold_ids, pattern):
+                for module_match in search_modules(gold_ids, pattern):
                     first_entity = None
-                    for entity_match, _ in match_entity_re(gold_ids[module_match], None, line[1], None):
+                    for entity_match, _ in search_entities(gold_ids[module_match], None, line[1], None):
                         if (module_match, entity_match) in no_database[line[0]]:
                             continue
                         if first_entity is None:
@@ -497,10 +557,10 @@ def partition_ids(args, cfg):
                 continue
 
             if line[0] == "merge" and len(line) == 3:
-                for module_match in match_module_re(gold_ids, pattern):
+                for module_match in search_modules(gold_ids, pattern):
                     first_entity = None
                     previous_entities = set()
-                    for entity_match in match_entity_re(gold_ids[module_match], gold_ids[module_match], line[1], line[2]):
+                    for entity_match in search_entities(gold_ids[module_match], gold_ids[module_match], line[1], line[2]):
                         if (module_match, entity_match[0]) in no_database[line[0]]:
                             continue
                         if (module_match, entity_match[1]) in no_database[line[0]]:
@@ -514,8 +574,8 @@ def partition_ids(args, cfg):
                 continue
 
             if line[0] in ("path", "amend") and len(line) == 3:
-                for module_match in match_module_re(gold_ids, pattern):
-                    for entity_match in match_entity_re(gold_ids[module_match], gold_ids[module_match], line[1], line[2]):
+                for module_match in search_modules(gold_ids, pattern):
+                    for entity_match in search_entities(gold_ids[module_match], gold_ids[module_match], line[1], line[2]):
                         if (module_match, entity_match[0]) in no_database[line[0]]:
                             continue
                         if (module_match, entity_match[1]) in no_database[line[0]]:
