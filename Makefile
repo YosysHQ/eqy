@@ -37,6 +37,10 @@ endif
 html:
 	$(MAKE) -C docs html
 
+test:
+	$(MAKE) -C examples/simple
+
 clean:
 	$(MAKE) -C docs clean
+	$(MAKE) -C examples/simple clean
 	rm -rf docs/build src/eqy_combine.so src/eqy_partition.so src/__pycache__
