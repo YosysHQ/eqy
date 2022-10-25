@@ -1,0 +1,859 @@
+#-----------------------------------------------------------
+# Vivado v2021.2 (64-bit)
+# SW Build 3367213 on Tue Oct 19 02:47:39 MDT 2021
+# IP Build 3369179 on Thu Oct 21 08:25:16 MDT 2021
+# Start of session at: Tue Oct 25 01:58:35 2022
+# Process ID: 481837
+# Current directory: /home/claire/Work/eqy/tests/picorv32
+# Command line: vivado -mode batch -nojournal -log picorv32_vivado.log -source picorv32_vivado.tcl
+# Log file: /home/claire/Work/eqy/tests/picorv32/picorv32_vivado.log
+# Journal file: 
+# Running On: lamarr, OS: Linux, CPU Frequency: 2300.000 MHz, CPU Physical cores: 4, Host memory: 33273 MB
+#-----------------------------------------------------------
+source picorv32_vivado.tcl
+# set top picorv32
+# read_verilog ${top}.v
+# set synth_opts "-verbose"
+# lappend synth_opts -part xc7k70t-fbg676
+# lappend synth_opts -max_bram 0
+# lappend synth_opts -max_uram 0
+# lappend synth_opts -max_dsp 0
+# lappend synth_opts -no_srlextract
+# lappend synth_opts -fsm_extraction off
+# lappend synth_opts -resource_sharing on
+# set opt_opts "-verbose"
+# lappend opt_opts -propconst
+# lappend opt_opts -aggressive_remap
+# lappend opt_opts -control_set_merge
+# lappend opt_opts -merge_equivalent_drivers
+# set write_opts "-force"
+# synth_design {*}$synth_opts -top $top
+Command: synth_design -verbose -part xc7k70t-fbg676 -max_bram 0 -max_uram 0 -max_dsp 0 -no_srlextract -fsm_extraction off -resource_sharing on -top picorv32
+Starting synth_design
+Attempting to get a license for feature 'Synthesis' and/or device 'xc7k70t'
+INFO: [Common 17-349] Got license for feature 'Synthesis' and/or device 'xc7k70t'
+INFO: [Vivado_Tcl 4-288] User specified maximum number of block RAM allowed in design is 0
+INFO: [Vivado_Tcl 4-551] User specified maximum number of Ultra RAM blocks allowed in design is 0
+INFO: [Vivado_Tcl 4-287] User specified maximum number of block DSP allowed in design is 0
+INFO: [Synth 8-7079] Multithreading enabled for synth_design using a maximum of 4 processes.
+INFO: [Synth 8-7078] Launching helper process for spawning children vivado processes
+INFO: [Synth 8-7075] Helper process launched with PID 481902
+---------------------------------------------------------------------------------
+Starting Synthesize : Time (s): cpu = 00:00:07 ; elapsed = 00:00:07 . Memory (MB): peak = 2593.273 ; gain = 0.000 ; free physical = 7277 ; free virtual = 25861
+---------------------------------------------------------------------------------
+INFO: [Synth 8-6157] synthesizing module 'picorv32' [/home/claire/Work/eqy/tests/picorv32/picorv32.v:62]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1264]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1310]
+INFO: [Synth 8-155] case statement is not full and has no default [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1310]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1493]
+INFO: [Synth 8-155] case statement is not full and has no default [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1493]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1579]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1579]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1579]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1579]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1579]
+WARNING: [Synth 8-6014] Unused sequential element mem_la_firstword_reg_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:392]
+WARNING: [Synth 8-6014] Unused sequential element last_mem_valid_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:393]
+WARNING: [Synth 8-6014] Unused sequential element next_insn_opcode_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:433]
+WARNING: [Synth 8-6014] Unused sequential element mem_la_secondword_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:571]
+WARNING: [Synth 8-6014] Unused sequential element prefetched_high_word_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:572]
+WARNING: [Synth 8-6014] Unused sequential element q_ascii_instr_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:777]
+WARNING: [Synth 8-6014] Unused sequential element q_insn_imm_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:778]
+WARNING: [Synth 8-6014] Unused sequential element q_insn_opcode_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:779]
+WARNING: [Synth 8-6014] Unused sequential element q_insn_rs1_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:780]
+WARNING: [Synth 8-6014] Unused sequential element q_insn_rs2_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:781]
+WARNING: [Synth 8-6014] Unused sequential element q_insn_rd_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:782]
+WARNING: [Synth 8-6014] Unused sequential element dbg_next_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:783]
+WARNING: [Synth 8-6014] Unused sequential element dbg_valid_insn_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:786]
+WARNING: [Synth 8-6014] Unused sequential element cached_ascii_instr_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:791]
+WARNING: [Synth 8-6014] Unused sequential element cached_insn_imm_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:792]
+WARNING: [Synth 8-6014] Unused sequential element cached_insn_opcode_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:794]
+WARNING: [Synth 8-6014] Unused sequential element cached_insn_rs1_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:797]
+WARNING: [Synth 8-6014] Unused sequential element cached_insn_rs2_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:798]
+WARNING: [Synth 8-6014] Unused sequential element cached_insn_rd_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:799]
+WARNING: [Synth 8-6014] Unused sequential element dbg_insn_addr_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:803]
+WARNING: [Synth 8-6014] Unused sequential element clear_prefetched_high_word_q_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1288]
+WARNING: [Synth 8-6014] Unused sequential element set_mem_do_rinst_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1401]
+WARNING: [Synth 8-6014] Unused sequential element set_mem_do_rdata_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1402]
+WARNING: [Synth 8-6014] Unused sequential element set_mem_do_wdata_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1403]
+WARNING: [Synth 8-6014] Unused sequential element alu_out_0_q_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1405]
+WARNING: [Synth 8-6014] Unused sequential element alu_wait_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1408]
+WARNING: [Synth 8-6014] Unused sequential element alu_wait_2_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1409]
+WARNING: [Synth 8-6014] Unused sequential element dbg_rs1val_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1412]
+WARNING: [Synth 8-6014] Unused sequential element dbg_rs2val_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1413]
+WARNING: [Synth 8-6014] Unused sequential element dbg_rs1val_valid_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1414]
+WARNING: [Synth 8-6014] Unused sequential element dbg_rs2val_valid_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1415]
+WARNING: [Synth 8-6014] Unused sequential element next_irq_pending_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1435]
+WARNING: [Synth 8-6014] Unused sequential element decoder_trigger_q_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1442]
+WARNING: [Synth 8-6014] Unused sequential element decoder_pseudo_trigger_q_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1444]
+WARNING: [Synth 8-6014] Unused sequential element latched_trace_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1460]
+WARNING: [Synth 8-6014] Unused sequential element irq_active_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1466]
+WARNING: [Synth 8-6014] Unused sequential element irq_delay_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1467]
+WARNING: [Synth 8-6014] Unused sequential element irq_mask_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1468]
+WARNING: [Synth 8-6014] Unused sequential element irq_state_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1470]
+WARNING: [Synth 8-6014] Unused sequential element timer_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1472]
+WARNING: [Synth 8-6014] Unused sequential element current_pc_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1490]
+WARNING: [Synth 8-6014] Unused sequential element irq_pending_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1958]
+WARNING: [Synth 8-6014] Unused sequential element trace_valid_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1447]
+WARNING: [Synth 8-6014] Unused sequential element instr_ecall_ebreak_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1084]
+WARNING: [Synth 8-6014] Unused sequential element pcpi_timeout_reg was removed.  [/home/claire/Work/eqy/tests/picorv32/picorv32.v:1465]
+INFO: [Synth 8-6155] done synthesizing module 'picorv32' (1#1) [/home/claire/Work/eqy/tests/picorv32/picorv32.v:62]
+WARNING: [Synth 8-7129] Port pcpi_wr in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[31] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[30] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[29] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[28] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[27] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[26] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[25] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[24] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[23] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[22] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[21] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[20] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[19] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[18] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[17] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[16] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[15] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[14] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[13] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[12] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[11] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[10] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[9] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[8] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[7] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[6] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[5] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[4] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[3] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[2] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[1] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[0] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_wait in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_ready in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[31] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[30] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[29] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[28] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[27] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[26] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[25] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[24] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[23] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[22] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[21] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[20] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[19] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[18] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[17] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[16] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[15] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[14] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[13] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[12] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[11] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[10] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[9] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[8] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[7] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[6] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[5] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[4] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[3] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[2] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[1] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[0] in module picorv32 is either unconnected or has no load
+---------------------------------------------------------------------------------
+Finished Synthesize : Time (s): cpu = 00:00:09 ; elapsed = 00:00:09 . Memory (MB): peak = 2593.273 ; gain = 0.000 ; free physical = 7219 ; free virtual = 25804
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Constraint Validation : Time (s): cpu = 00:00:10 ; elapsed = 00:00:11 . Memory (MB): peak = 2593.273 ; gain = 0.000 ; free physical = 8138 ; free virtual = 26722
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Loading Part and Timing Information
+---------------------------------------------------------------------------------
+Loading part: xc7k70tfbg676-3
+INFO: [Device 21-403] Loading part xc7k70tfbg676-3
+---------------------------------------------------------------------------------
+Finished Loading Part and Timing Information : Time (s): cpu = 00:00:10 ; elapsed = 00:00:11 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 8111 ; free virtual = 26695
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 2 : Time (s): cpu = 00:00:12 ; elapsed = 00:00:11 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 8104 ; free virtual = 26685
+---------------------------------------------------------------------------------
+No constraint files found.
+---------------------------------------------------------------------------------
+Start RTL Component Statistics 
+---------------------------------------------------------------------------------
+Detailed RTL Component Info : 
++---Adders : 
+	   2 Input   32 Bit       Adders := 4     
+	   3 Input   32 Bit       Adders := 1     
+	   2 Input    5 Bit       Adders := 1     
++---XORs : 
+	   2 Input     32 Bit         XORs := 1     
++---Registers : 
+	               36 Bit    Registers := 1     
+	               32 Bit    Registers := 13    
+	                8 Bit    Registers := 1     
+	                5 Bit    Registers := 6     
+	                4 Bit    Registers := 1     
+	                2 Bit    Registers := 2     
+	                1 Bit    Registers := 75    
++---RAMs : 
+	             1024 Bit	(32 X 32 bit)          RAMs := 1     
++---Muxes : 
+	   2 Input   32 Bit        Muxes := 10    
+	   6 Input   32 Bit        Muxes := 1     
+	   5 Input   32 Bit        Muxes := 1     
+	   4 Input   32 Bit        Muxes := 5     
+	   9 Input   32 Bit        Muxes := 2     
+	   3 Input   32 Bit        Muxes := 2     
+	   2 Input   16 Bit        Muxes := 1     
+	   4 Input    8 Bit        Muxes := 1     
+	   7 Input    8 Bit        Muxes := 1     
+	   9 Input    8 Bit        Muxes := 1     
+	   2 Input    8 Bit        Muxes := 1     
+	   9 Input    5 Bit        Muxes := 2     
+	   3 Input    4 Bit        Muxes := 2     
+	   5 Input    4 Bit        Muxes := 1     
+	   4 Input    4 Bit        Muxes := 1     
+	   2 Input    4 Bit        Muxes := 1     
+	   2 Input    3 Bit        Muxes := 3     
+	   9 Input    2 Bit        Muxes := 1     
+	   6 Input    2 Bit        Muxes := 1     
+	   9 Input    1 Bit        Muxes := 25    
+	   2 Input    1 Bit        Muxes := 20    
+	   4 Input    1 Bit        Muxes := 5     
+	   3 Input    1 Bit        Muxes := 5     
+	   7 Input    1 Bit        Muxes := 3     
+---------------------------------------------------------------------------------
+Finished RTL Component Statistics 
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Part Resource Summary
+---------------------------------------------------------------------------------
+Part Resources:
+DSPs: 240 (col length:80)
+BRAMs: 270 (col length: RAMB18 80 RAMB36 40)
+---------------------------------------------------------------------------------
+Finished Part Resource Summary
+---------------------------------------------------------------------------------
+No constraint files found.
+---------------------------------------------------------------------------------
+Start Cross Boundary and Area Optimization
+---------------------------------------------------------------------------------
+WARNING: [Synth 8-7080] Parallel synthesis criteria is not met
+WARNING: [Synth 8-3917] design picorv32 has port mem_la_addr[1] driven by constant 0
+WARNING: [Synth 8-3917] design picorv32 has port mem_la_addr[0] driven by constant 0
+WARNING: [Synth 8-7129] Port pcpi_wr in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[31] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[30] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[29] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[28] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[27] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[26] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[25] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[24] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[23] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[22] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[21] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[20] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[19] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[18] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[17] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[16] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[15] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[14] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[13] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[12] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[11] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[10] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[9] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[8] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[7] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[6] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[5] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[4] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[3] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[2] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[1] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_rd[0] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_wait in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port pcpi_ready in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[31] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[30] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[29] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[28] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[27] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[26] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[25] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[24] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[23] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[22] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[21] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[20] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[19] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[18] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[17] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[16] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[15] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[14] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[13] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[12] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[11] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[10] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[9] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[8] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[7] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[6] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[5] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[4] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[3] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[2] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[1] in module picorv32 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port irq[0] in module picorv32 is either unconnected or has no load
+---------------------------------------------------------------------------------
+Finished Cross Boundary and Area Optimization : Time (s): cpu = 00:00:23 ; elapsed = 00:00:24 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 7851 ; free virtual = 26436
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start ROM, RAM, DSP, Shift Register and Retiming Reporting
+---------------------------------------------------------------------------------
+
+Distributed RAM: Preliminary Mapping Report (see note below)
++------------+-------------+-----------+----------------------+--------------+
+|Module Name | RTL Object  | Inference | Size (Depth x Width) | Primitives   | 
++------------+-------------+-----------+----------------------+--------------+
+|picorv32    | cpuregs_reg | Implied   | 32 x 32              | RAM32M x 12  | 
++------------+-------------+-----------+----------------------+--------------+
+
+Note: The table above is a preliminary report that shows the Distributed RAMs at the current stage of the synthesis flow. Some Distributed RAMs may be reimplemented as non Distributed RAM primitives later in the synthesis flow. Multiple instantiated RAMs are reported only once.
+---------------------------------------------------------------------------------
+Finished ROM, RAM, DSP, Shift Register and Retiming Reporting
+---------------------------------------------------------------------------------
+No constraint files found.
+---------------------------------------------------------------------------------
+Start Timing Optimization
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Timing Optimization : Time (s): cpu = 00:00:23 ; elapsed = 00:00:24 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 7855 ; free virtual = 26439
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start ROM, RAM, DSP, Shift Register and Retiming Reporting
+---------------------------------------------------------------------------------
+
+Distributed RAM: Final Mapping Report
++------------+-------------+-----------+----------------------+--------------+
+|Module Name | RTL Object  | Inference | Size (Depth x Width) | Primitives   | 
++------------+-------------+-----------+----------------------+--------------+
+|picorv32    | cpuregs_reg | Implied   | 32 x 32              | RAM32M x 12  | 
++------------+-------------+-----------+----------------------+--------------+
+
+---------------------------------------------------------------------------------
+Finished ROM, RAM, DSP, Shift Register and Retiming Reporting
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Technology Mapping
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Technology Mapping : Time (s): cpu = 00:00:24 ; elapsed = 00:00:24 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 7855 ; free virtual = 26439
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished IO Insertion : Time (s): cpu = 00:00:30 ; elapsed = 00:00:30 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 7857 ; free virtual = 26442
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Instances
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Instances : Time (s): cpu = 00:00:30 ; elapsed = 00:00:30 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 7857 ; free virtual = 26442
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Rebuilding User Hierarchy
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Rebuilding User Hierarchy : Time (s): cpu = 00:00:30 ; elapsed = 00:00:30 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 7857 ; free virtual = 26442
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Ports
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Ports : Time (s): cpu = 00:00:30 ; elapsed = 00:00:30 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 7857 ; free virtual = 26442
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 00:00:30 ; elapsed = 00:00:30 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 7857 ; free virtual = 26442
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Nets
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Nets : Time (s): cpu = 00:00:30 ; elapsed = 00:00:31 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 7857 ; free virtual = 26442
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Writing Synthesis Report
+---------------------------------------------------------------------------------
+
+Report BlackBoxes: 
++-+--------------+----------+
+| |BlackBox name |Instances |
++-+--------------+----------+
++-+--------------+----------+
+
+Report Cell Usage: 
++------+---------+------+
+|      |Cell     |Count |
++------+---------+------+
+|1     |BUFG     |     1|
+|2     |CARRY4   |    83|
+|3     |LUT1     |     5|
+|4     |LUT2     |    97|
+|5     |LUT3     |   116|
+|6     |LUT4     |   312|
+|7     |LUT5     |   122|
+|8     |LUT6     |   382|
+|9     |RAM32M   |    10|
+|10    |RAM32X1D |     4|
+|11    |FDRE     |   562|
+|12    |FDSE     |    12|
+|13    |IBUF     |    35|
+|14    |OBUF     |   239|
+|15    |OBUFT    |    68|
++------+---------+------+
+
+Report Instance Areas: 
++------+---------+-------+------+
+|      |Instance |Module |Cells |
++------+---------+-------+------+
+|1     |top      |       |  2048|
++------+---------+-------+------+
+---------------------------------------------------------------------------------
+Finished Writing Synthesis Report : Time (s): cpu = 00:00:30 ; elapsed = 00:00:31 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 7857 ; free virtual = 26442
+---------------------------------------------------------------------------------
+Synthesis finished with 0 errors, 0 critical warnings and 190 warnings.
+Synthesis Optimization Runtime : Time (s): cpu = 00:00:30 ; elapsed = 00:00:31 . Memory (MB): peak = 2601.121 ; gain = 7.848 ; free physical = 7869 ; free virtual = 26454
+Synthesis Optimization Complete : Time (s): cpu = 00:00:30 ; elapsed = 00:00:31 . Memory (MB): peak = 2601.129 ; gain = 7.848 ; free physical = 7869 ; free virtual = 26454
+INFO: [Project 1-571] Translating synthesized netlist
+Netlist sorting complete. Time (s): cpu = 00:00:00.01 ; elapsed = 00:00:00.02 . Memory (MB): peak = 2601.129 ; gain = 0.000 ; free physical = 7958 ; free virtual = 26543
+INFO: [Netlist 29-17] Analyzing 97 Unisim elements for replacement
+INFO: [Netlist 29-28] Unisim Transformation completed in 0 CPU seconds
+WARNING: [Netlist 29-101] Netlist 'picorv32' is not ideal for floorplanning, since the cellview 'picorv32' contains a large number of primitives.  Please consider enabling hierarchy in synthesis if you want to do floorplanning.
+INFO: [Project 1-570] Preparing netlist for logic optimization
+INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2657.148 ; gain = 0.000 ; free physical = 7886 ; free virtual = 26471
+INFO: [Project 1-111] Unisim Transformation Summary:
+  A total of 14 instances were transformed.
+  RAM32M => RAM32M (RAMD32(x6), RAMS32(x2)): 10 instances
+  RAM32X1D => RAM32X1D (RAMD32(x2)): 4 instances
+
+Synth Design complete, checksum: f5f6714e
+INFO: [Common 17-83] Releasing license: Synthesis
+19 Infos, 191 Warnings, 0 Critical Warnings and 0 Errors encountered.
+synth_design completed successfully
+synth_design: Time (s): cpu = 00:00:45 ; elapsed = 00:00:35 . Memory (MB): peak = 2657.148 ; gain = 64.031 ; free physical = 8080 ; free virtual = 26665
+# opt_design {*}$opt_opts
+Command: opt_design -verbose -propconst -aggressive_remap -control_set_merge -merge_equivalent_drivers
+Attempting to get a license for feature 'Implementation' and/or device 'xc7k70t'
+INFO: [Common 17-349] Got license for feature 'Implementation' and/or device 'xc7k70t'
+Running DRC as a precondition to command opt_design
+
+Starting DRC Task
+INFO: [DRC 23-27] Running DRC with 8 threads
+INFO: [Project 1-461] DRC finished with 0 Errors
+INFO: [Project 1-462] Please refer to the DRC report (report_drc) for more information.
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:01 . Memory (MB): peak = 2721.180 ; gain = 64.031 ; free physical = 8076 ; free virtual = 26661
+
+Starting Logic Optimization Task
+INFO: [Timing 38-35] Done setting XDC timing constraints.
+
+Phase 1 Constant propagation
+INFO: [Opt 31-423] A LUT1 is optimized to wire due to init string: 2, Cell: alu_out_q[3]_i_7
+INFO: [Opt 31-442] LUT Reduction optimized 0 LUTs
+INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
+Phase 1 Constant propagation | Checksum: 122623c85
+
+Time (s): cpu = 00:00:08 ; elapsed = 00:00:09 . Memory (MB): peak = 2993.188 ; gain = 272.008 ; free physical = 7507 ; free virtual = 26092
+INFO: [Opt 31-389] Phase Constant propagation created 0 cells and removed 1 cells
+
+Phase 2 Merging equivalent drivers
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep[0] onto instance decoded_imm_j_reg[11]
+INFO: [Opt 31-385] Pin count on merged instance decoded_imm_j_reg[11] output net/pin decoded_imm_j[11] before merging 7 after merging 39.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep[1] onto instance decoded_imm_j_reg[1]
+INFO: [Opt 31-385] Pin count on merged instance decoded_imm_j_reg[1] output net/pin decoded_imm_j[1] before merging 7 after merging 39.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep[2] onto instance decoded_imm_j_reg[2]
+INFO: [Opt 31-385] Pin count on merged instance decoded_imm_j_reg[2] output net/pin decoded_imm_j[2] before merging 7 after merging 39.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep[3] onto instance decoded_imm_j_reg[3]
+INFO: [Opt 31-385] Pin count on merged instance decoded_imm_j_reg[3] output net/pin decoded_imm_j[3] before merging 7 after merging 39.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep[4] onto instance decoded_imm_j_reg[4]
+INFO: [Opt 31-385] Pin count on merged instance decoded_imm_j_reg[4] output net/pin decoded_imm_j[4] before merging 7 after merging 39.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep[0] onto instance decoded_rs1_reg[0]
+INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg[0] output net/pin decoded_rs1[0] before merging 5 after merging 37.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep[1] onto instance decoded_rs1_reg[1]
+INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg[1] output net/pin decoded_rs1[1] before merging 5 after merging 37.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep[2] onto instance decoded_rs1_reg[2]
+INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg[2] output net/pin decoded_rs1[2] before merging 5 after merging 37.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep[3] onto instance decoded_rs1_reg[3]
+INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg[3] output net/pin decoded_rs1[3] before merging 5 after merging 37.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep[4] onto instance decoded_rs1_reg[4]
+INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg[4] output net/pin decoded_rs1[4] before merging 5 after merging 37.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_24 onto instance decoder_trigger_i_11
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_11 output net/pin decoder_trigger_i_11_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_25 onto instance decoder_trigger_i_12
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_12 output net/pin decoder_trigger_i_12_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_26 onto instance decoder_trigger_i_13
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_13 output net/pin decoder_trigger_i_13_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_27 onto instance decoder_trigger_i_14
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_14 output net/pin decoder_trigger_i_14_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_28 onto instance decoder_trigger_i_15
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_15 output net/pin decoder_trigger_i_15_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_29 onto instance decoder_trigger_i_16
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_16 output net/pin decoder_trigger_i_16_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_30 onto instance decoder_trigger_i_17
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_17 output net/pin decoder_trigger_i_17_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_46 onto instance decoder_trigger_i_32
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_32 output net/pin decoder_trigger_i_32_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_47 onto instance decoder_trigger_i_33
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_33 output net/pin decoder_trigger_i_33_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_48 onto instance decoder_trigger_i_34
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_34 output net/pin decoder_trigger_i_34_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_49 onto instance decoder_trigger_i_35
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_35 output net/pin decoder_trigger_i_35_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_50 onto instance decoder_trigger_i_36
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_36 output net/pin decoder_trigger_i_36_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_51 onto instance decoder_trigger_i_37
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_37 output net/pin decoder_trigger_i_37_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_52 onto instance decoder_trigger_i_38
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_38 output net/pin decoder_trigger_i_38_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_53 onto instance decoder_trigger_i_39
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_39 output net/pin decoder_trigger_i_39_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_68 onto instance decoder_trigger_i_55
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_55 output net/pin decoder_trigger_i_55_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_69 onto instance decoder_trigger_i_56
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_56 output net/pin decoder_trigger_i_56_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_70 onto instance decoder_trigger_i_57
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_57 output net/pin decoder_trigger_i_57_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_71 onto instance decoder_trigger_i_58
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_58 output net/pin decoder_trigger_i_58_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_72 onto instance decoder_trigger_i_59
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_59 output net/pin decoder_trigger_i_59_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_73 onto instance decoder_trigger_i_60
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_60 output net/pin decoder_trigger_i_60_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_74 onto instance decoder_trigger_i_61
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_61 output net/pin decoder_trigger_i_61_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_75 onto instance decoder_trigger_i_62
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_62 output net/pin decoder_trigger_i_62_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_84 onto instance decoder_trigger_i_76
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_76 output net/pin decoder_trigger_i_76_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_85 onto instance decoder_trigger_i_77
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_77 output net/pin decoder_trigger_i_77_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_86 onto instance decoder_trigger_i_78
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_78 output net/pin decoder_trigger_i_78_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_87 onto instance decoder_trigger_i_79
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_79 output net/pin decoder_trigger_i_79_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_88 onto instance decoder_trigger_i_80
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_80 output net/pin decoder_trigger_i_80_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_89 onto instance decoder_trigger_i_81
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_81 output net/pin decoder_trigger_i_81_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_90 onto instance decoder_trigger_i_82
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_82 output net/pin decoder_trigger_i_82_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_91 onto instance decoder_trigger_i_83
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_83 output net/pin decoder_trigger_i_83_n_0 before merging 2 after merging 3.
+Phase 2 Merging equivalent drivers | Checksum: bd39a475
+
+Time (s): cpu = 00:00:08 ; elapsed = 00:00:09 . Memory (MB): peak = 2993.188 ; gain = 272.008 ; free physical = 7507 ; free virtual = 26092
+INFO: [Opt 31-389] Phase Merging equivalent drivers created 0 cells and removed 41 cells
+
+Phase 3 Remap
+INFO: [Opt 31-442] LUT Reduction optimized 0 LUTs
+Phase 3 Remap | Checksum: 15e53d08e
+
+Time (s): cpu = 00:00:12 ; elapsed = 00:00:13 . Memory (MB): peak = 2993.188 ; gain = 272.008 ; free physical = 7510 ; free virtual = 26095
+INFO: [Opt 31-389] Phase Remap created 107 cells and removed 95 cells
+
+Phase 4 Post Processing Netlist
+Phase 4 Post Processing Netlist | Checksum: 11751a567
+
+Time (s): cpu = 00:00:12 ; elapsed = 00:00:13 . Memory (MB): peak = 2993.188 ; gain = 272.008 ; free physical = 7510 ; free virtual = 26095
+INFO: [Opt 31-389] Phase Post Processing Netlist created 0 cells and removed 0 cells
+Opt_design Change Summary
+=========================
+
+
+------------------------------------------------------------------------------------------------------------------------
+|  Phase                       |  #Cells created  |  #Cells Removed  |  #Constrained objects preventing optimizations  |
+------------------------------------------------------------------------------------------------------------------------
+|  Constant propagation        |               0  |               1  |                                              0  |
+|  Merging equivalent drivers  |               0  |              41  |                                              0  |
+|  Remap                       |             107  |              95  |                                              0  |
+|  Post Processing Netlist     |               0  |               0  |                                              0  |
+------------------------------------------------------------------------------------------------------------------------
+
+
+Ending Logic Optimization Task | Checksum: ec897671
+
+Time (s): cpu = 00:00:13 ; elapsed = 00:00:13 . Memory (MB): peak = 2993.188 ; gain = 272.008 ; free physical = 7510 ; free virtual = 26095
+
+Starting Netlist Obfuscation Task
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2993.188 ; gain = 0.000 ; free physical = 7685 ; free virtual = 26270
+Ending Netlist Obfuscation Task | Checksum: ec897671
+
+Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2993.188 ; gain = 0.000 ; free physical = 7685 ; free virtual = 26270
+INFO: [Common 17-83] Releasing license: Implementation
+96 Infos, 0 Warnings, 0 Critical Warnings and 0 Errors encountered.
+opt_design completed successfully
+opt_design: Time (s): cpu = 00:00:17 ; elapsed = 00:00:17 . Memory (MB): peak = 2993.188 ; gain = 336.039 ; free physical = 7685 ; free virtual = 26270
+# report_utilization
+Copyright 1986-2021 Xilinx, Inc. All Rights Reserved.
+------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2021.2 (lin64) Build 3367213 Tue Oct 19 02:47:39 MDT 2021
+| Date         : Tue Oct 25 01:59:39 2022
+| Host         : lamarr running 64-bit Ubuntu 20.04.5 LTS
+| Command      : report_utilization
+| Design       : picorv32
+| Device       : xc7k70tfbg676-3
+| Speed File   : -3
+| Design State : Optimized
+------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Slice Logic
+1.1 Summary of Registers by Type
+2. Memory
+3. DSP
+4. IO and GT Specific
+5. Clocking
+6. Specific Feature
+7. Primitives
+8. Black Boxes
+9. Instantiated Netlists
+
+1. Slice Logic
+--------------
+
++----------------------------+------+-------+------------+-----------+-------+
+|          Site Type         | Used | Fixed | Prohibited | Available | Util% |
++----------------------------+------+-------+------------+-----------+-------+
+| Slice LUTs*                |  937 |     0 |          0 |     41000 |  2.29 |
+|   LUT as Logic             |  889 |     0 |          0 |     41000 |  2.17 |
+|   LUT as Memory            |   48 |     0 |          0 |     13400 |  0.36 |
+|     LUT as Distributed RAM |   48 |     0 |            |           |       |
+|     LUT as Shift Register  |    0 |     0 |            |           |       |
+| Slice Registers            |  564 |     0 |          0 |     82000 |  0.69 |
+|   Register as Flip Flop    |  564 |     0 |          0 |     82000 |  0.69 |
+|   Register as Latch        |    0 |     0 |          0 |     82000 |  0.00 |
+| F7 Muxes                   |    0 |     0 |          0 |     20500 |  0.00 |
+| F8 Muxes                   |    0 |     0 |          0 |     10250 |  0.00 |
++----------------------------+------+-------+------------+-----------+-------+
+* Warning! The Final LUT count, after physical optimizations and full implementation, is typically lower. Run opt_design after synthesis, if not already completed, for a more realistic count.
+
+
+1.1 Summary of Registers by Type
+--------------------------------
+
++-------+--------------+-------------+--------------+
+| Total | Clock Enable | Synchronous | Asynchronous |
++-------+--------------+-------------+--------------+
+| 0     |            _ |           - |            - |
+| 0     |            _ |           - |          Set |
+| 0     |            _ |           - |        Reset |
+| 0     |            _ |         Set |            - |
+| 0     |            _ |       Reset |            - |
+| 0     |          Yes |           - |            - |
+| 0     |          Yes |           - |          Set |
+| 0     |          Yes |           - |        Reset |
+| 12    |          Yes |         Set |            - |
+| 552   |          Yes |       Reset |            - |
++-------+--------------+-------------+--------------+
+
+
+2. Memory
+---------
+
++----------------+------+-------+------------+-----------+-------+
+|    Site Type   | Used | Fixed | Prohibited | Available | Util% |
++----------------+------+-------+------------+-----------+-------+
+| Block RAM Tile |    0 |     0 |          0 |       135 |  0.00 |
+|   RAMB36/FIFO* |    0 |     0 |          0 |       135 |  0.00 |
+|   RAMB18       |    0 |     0 |          0 |       270 |  0.00 |
++----------------+------+-------+------------+-----------+-------+
+* Note: Each Block RAM Tile only has one FIFO logic available and therefore can accommodate only one FIFO36E1 or one FIFO18E1. However, if a FIFO18E1 occupies a Block RAM Tile, that tile can still accommodate a RAMB18E1
+
+
+3. DSP
+------
+
++-----------+------+-------+------------+-----------+-------+
+| Site Type | Used | Fixed | Prohibited | Available | Util% |
++-----------+------+-------+------------+-----------+-------+
+| DSPs      |    0 |     0 |          0 |       240 |  0.00 |
++-----------+------+-------+------------+-----------+-------+
+
+
+4. IO and GT Specific
+---------------------
+
++-----------------------------+------+-------+------------+-----------+--------+
+|          Site Type          | Used | Fixed | Prohibited | Available |  Util% |
++-----------------------------+------+-------+------------+-----------+--------+
+| Bonded IOB                  |  342 |     0 |          0 |       300 | 114.00 |
+| Bonded IPADs                |    0 |     0 |          0 |        26 |   0.00 |
+| Bonded OPADs                |    0 |     0 |          0 |        16 |   0.00 |
+| PHY_CONTROL                 |    0 |     0 |          0 |         6 |   0.00 |
+| PHASER_REF                  |    0 |     0 |          0 |         6 |   0.00 |
+| OUT_FIFO                    |    0 |     0 |          0 |        24 |   0.00 |
+| IN_FIFO                     |    0 |     0 |          0 |        24 |   0.00 |
+| IDELAYCTRL                  |    0 |     0 |          0 |         6 |   0.00 |
+| IBUFDS                      |    0 |     0 |          0 |       288 |   0.00 |
+| GTXE2_COMMON                |    0 |     0 |          0 |         2 |   0.00 |
+| GTXE2_CHANNEL               |    0 |     0 |          0 |         8 |   0.00 |
+| PHASER_OUT/PHASER_OUT_PHY   |    0 |     0 |          0 |        24 |   0.00 |
+| PHASER_IN/PHASER_IN_PHY     |    0 |     0 |          0 |        24 |   0.00 |
+| IDELAYE2/IDELAYE2_FINEDELAY |    0 |     0 |          0 |       300 |   0.00 |
+| ODELAYE2/ODELAYE2_FINEDELAY |    0 |     0 |          0 |       100 |   0.00 |
+| IBUFDS_GTE2                 |    0 |     0 |          0 |         4 |   0.00 |
+| ILOGIC                      |    0 |     0 |          0 |       300 |   0.00 |
+| OLOGIC                      |    0 |     0 |          0 |       300 |   0.00 |
++-----------------------------+------+-------+------------+-----------+--------+
+
+
+5. Clocking
+-----------
+
++------------+------+-------+------------+-----------+-------+
+|  Site Type | Used | Fixed | Prohibited | Available | Util% |
++------------+------+-------+------------+-----------+-------+
+| BUFGCTRL   |    1 |     0 |          0 |        32 |  3.13 |
+| BUFIO      |    0 |     0 |          0 |        24 |  0.00 |
+| MMCME2_ADV |    0 |     0 |          0 |         6 |  0.00 |
+| PLLE2_ADV  |    0 |     0 |          0 |         6 |  0.00 |
+| BUFMRCE    |    0 |     0 |          0 |        12 |  0.00 |
+| BUFHCE     |    0 |     0 |          0 |        96 |  0.00 |
+| BUFR       |    0 |     0 |          0 |        24 |  0.00 |
++------------+------+-------+------------+-----------+-------+
+
+
+6. Specific Feature
+-------------------
+
++-------------+------+-------+------------+-----------+-------+
+|  Site Type  | Used | Fixed | Prohibited | Available | Util% |
++-------------+------+-------+------------+-----------+-------+
+| BSCANE2     |    0 |     0 |          0 |         4 |  0.00 |
+| CAPTUREE2   |    0 |     0 |          0 |         1 |  0.00 |
+| DNA_PORT    |    0 |     0 |          0 |         1 |  0.00 |
+| EFUSE_USR   |    0 |     0 |          0 |         1 |  0.00 |
+| FRAME_ECCE2 |    0 |     0 |          0 |         1 |  0.00 |
+| ICAPE2      |    0 |     0 |          0 |         2 |  0.00 |
+| PCIE_2_1    |    0 |     0 |          0 |         1 |  0.00 |
+| STARTUPE2   |    0 |     0 |          0 |         1 |  0.00 |
+| XADC        |    0 |     0 |          0 |         1 |  0.00 |
++-------------+------+-------+------------+-----------+-------+
+
+
+7. Primitives
+-------------
+
++----------+------+---------------------+
+| Ref Name | Used | Functional Category |
++----------+------+---------------------+
+| FDRE     |  552 |        Flop & Latch |
+| LUT6     |  362 |                 LUT |
+| LUT4     |  280 |                 LUT |
+| OBUF     |  239 |                  IO |
+| LUT5     |  150 |                 LUT |
+| LUT3     |  123 |                 LUT |
+| LUT2     |   95 |                 LUT |
+| CARRY4   |   83 |          CarryLogic |
+| RAMD32   |   68 |  Distributed Memory |
+| OBUFT    |   68 |                  IO |
+| IBUF     |   35 |                  IO |
+| RAMS32   |   20 |  Distributed Memory |
+| FDSE     |   12 |        Flop & Latch |
+| LUT1     |    4 |                 LUT |
+| BUFG     |    1 |               Clock |
++----------+------+---------------------+
+
+
+8. Black Boxes
+--------------
+
++----------+------+
+| Ref Name | Used |
++----------+------+
+
+
+9. Instantiated Netlists
+------------------------
+
++----------+------+
+| Ref Name | Used |
++----------+------+
+
+
+# report_timing
+INFO: [Timing 38-91] UpdateTimingParams: Speed grade: -3, Delay Type: max.
+INFO: [Timing 38-191] Multithreading enabled for timing update using a maximum of 8 CPUs
+INFO: [Timing 38-35] Done setting XDC timing constraints.
+INFO: [Timing 38-78] ReportTimingParams: -max_paths 1 -nworst 1 -delay_type max -sort_by slack.
+Copyright 1986-2021 Xilinx, Inc. All Rights Reserved.
+------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2021.2 (lin64) Build 3367213 Tue Oct 19 02:47:39 MDT 2021
+| Date         : Tue Oct 25 01:59:40 2022
+| Host         : lamarr running 64-bit Ubuntu 20.04.5 LTS
+| Command      : report_timing
+| Design       : picorv32
+| Device       : 7k70t-fbg676
+| Speed File   : -3  PRODUCTION 1.12 2017-02-17
+------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack:                    inf
+  Source:                 resetn
+                            (input port)
+  Destination:            mem_la_write
+                            (output port)
+  Path Group:             (none)
+  Path Type:              Max at Slow Process Corner
+  Data Path Delay:        3.883ns  (logic 3.016ns (77.667%)  route 0.867ns (22.333%))
+  Logic Levels:           3  (IBUF=1 LUT4=1 OBUF=1)
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                                                      0.000     0.000 r  resetn (IN)
+                         net (fo=0)                   0.000     0.000    resetn
+                         IBUF (Prop_ibuf_I_O)         0.731     0.731 r  resetn_IBUF_inst/O
+                         net (fo=38, unplaced)        0.434     1.164    resetn_IBUF
+                         LUT4 (Prop_lut4_I0_O)        0.051     1.215 r  mem_la_write_OBUF_inst_i_1/O
+                         net (fo=5, unplaced)         0.434     1.649    mem_la_write_OBUF
+                         OBUF (Prop_obuf_I_O)         2.234     3.883 r  mem_la_write_OBUF_inst/O
+                         net (fo=0)                   0.000     3.883    mem_la_write
+                                                                      r  mem_la_write (OUT)
+  -------------------------------------------------------------------    -------------------
+
+
+
+
+# write_verilog {*}$write_opts ${top}_vivado.v
+INFO: [Common 17-206] Exiting Vivado at Tue Oct 25 01:59:40 2022...
