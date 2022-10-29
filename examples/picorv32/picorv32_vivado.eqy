@@ -1,4 +1,5 @@
 [options]
+splitnets on
 
 [gold]
 read_verilog -formal picorv32.v
@@ -8,6 +9,10 @@ prep -top picorv32
 read_verilog -nowb -noblackbox +/xilinx/cells_sim.v
 read_verilog -formal picorv32_vivado.v
 prep -top picorv32
+
+[match *]
+gate-match /^(.*)_reg\[(\d+)\].Q$/ \1[\2]
+nodefault
 
 [strategy simple]
 use satseq

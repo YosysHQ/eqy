@@ -130,7 +130,7 @@ struct EqyPartitionWorker
 		rules.push_back(rule);
 	}
 
-	void add_match(SigBit gold_bit, SigBit gate_bit)
+	void add_match(SigBit gold_bit, SigBit gate_bit, std::string indent = "")
 	{
 		gold_bit = gold_sigmap(gold_bit);
 		gate_bit = gate_sigmap(gate_bit);
@@ -138,7 +138,7 @@ struct EqyPartitionWorker
 		if (!gold_bit.wire)
 			return;
 
-		log_debug("match: %s <-> %s\n", log_signal(gold_bit), log_signal(gate_bit));
+		log_debug("%sbit match: %s <-> %s\n", indent.c_str(), log_signal(gold_bit), log_signal(gate_bit));
 
 		if (!gate_bit.wire) {
 			if (!constants.count(gold_bit))
@@ -182,13 +182,14 @@ struct EqyPartitionWorker
 		gold_matches[gold_bit] = gate_bit;
 	}
 
-	void add_match(SigSpec gold_sig, SigSpec gate_sig)
+	void add_match(SigSpec gold_sig, SigSpec gate_sig, std::string indent = "")
 	{
+		log_debug("%ssignal match: %s <-> %s\n", indent.c_str(), log_signal(gold_sig), log_signal(gate_sig));
 		for (int i = 0; i < GetSize(gold_sig) && i < GetSize(gate_sig); i++)
-			add_match(gold_sig[i], gate_sig[i]);
+			add_match(gold_sig[i], gate_sig[i], indent + "  ");
 	}
 
-	void add_match(Cell *gold_cell, Cell *gate_cell)
+	void add_match(Cell *gold_cell, Cell *gate_cell, std::string indent = "")
 	{
 		if (gold_matched_cells.count(gold_cell) && gold_matched_cells.at(gold_cell) != gate_cell)
 			log_error("conflicting matches for gold cell %s: %s vs %s\n", log_id(gold_cell),
@@ -201,18 +202,16 @@ struct EqyPartitionWorker
 		gold_matched_cells[gold_cell] = gate_cell;
 		gate_matched_cells[gate_cell] = gold_cell;
 
-		log_debug("cell match: %s <-> %s\n", log_id(gold_cell), log_id(gate_cell));
+		log_debug("%scell match: %s <-> %s\n", indent.c_str(), log_id(gold_cell), log_id(gate_cell));
 
 		for (auto &conn : gold_cell->connections())
 			if (gate_cell->connections().count(conn.first))
-				add_match(conn.second, gate_cell->connections().at(conn.first));
-
-		log_debug("end of cell match.\n");
+				add_match(conn.second, gate_cell->connections().at(conn.first), indent + "  ");
 	}
 
-	void add_match(IdString gold_id, IdString gate_id)
+	void add_match(IdString gold_id, IdString gate_id, std::string indent = "")
 	{
-		log_debug("id match: %s <-> %s\n", log_id(gold_id), log_id(gate_id));
+		log_debug("%sid match: %s <-> %s\n", indent.c_str(), log_id(gold_id), log_id(gate_id));
 
 		Cell *gold_cell = gold->cell(gold_id);
 		Cell *gate_cell = gate->cell(gate_id);
@@ -224,7 +223,7 @@ struct EqyPartitionWorker
 			if (!gate_cell)
 				log_error("Can't find cell %s in gate circuit.\n", log_id(gate_id));
 
-			add_match(gold_cell, gate_cell);
+			add_match(gold_cell, gate_cell, indent + "  ");
 			return;
 		}
 
@@ -238,7 +237,7 @@ struct EqyPartitionWorker
 			if (!gate_wire)
 				log_error("Can't find wire %s in gate circuit.\n", log_id(gate_id));
 
-			add_match(SigSpec(gold_wire), SigSpec(gate_wire));
+			add_match(SigSpec(gold_wire), SigSpec(gate_wire), indent + "  ");
 			return;
 		}
 	}
@@ -871,6 +870,8 @@ void EqyPartitionWorker::merge_partitions()
 				p->import(partition(q));
 	}
 
+	// TBD: Automatically amend primary partitions that generate gold inputs from other gold inputs
+
 	// automatically name remaining partitions
 	dict<Wire*,int> wire_score;
 	dict<SigBit,int> bit_score;
@@ -933,6 +934,13 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 		IdString partid = "\\" + partname;
 		Design *partdesign = partition->finalize(partid);
 
+		pool<SigBit> unused_gold_inputs = partition->inbits;
+		for (auto cell : partition->gold_cells)
+			for (auto conn : cell->connections())
+				for (auto bit : gold_sigmap(conn.second))
+					if (unused_gold_inputs.count(bit))
+						unused_gold_inputs.erase(bit);
+
 		ofile.open(filename.c_str(), std::ofstream::trunc);
 		if (ofile.fail())
 			log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
@@ -952,16 +960,28 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 
 		partition_list_file << " :";
 		for (auto bit : partition->outbits)
-			partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
+			if (bit.wire->width != 1)
+				partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
+			else
+				partition_list_file << stringf(" %s", unescape_id(bit.wire->name).c_str());
 
 		partition_list_file << " <=";
-		for (auto bit : partition->inbits)
-			partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
+		for (auto bit : partition->inbits) {
+			if (bit.wire->width != 1)
+				partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
+			else
+				partition_list_file << stringf(" %s", unescape_id(bit.wire->name).c_str());
+			if (unused_gold_inputs.count(bit))
+				partition_list_file << "?";
+		}
 
 		if (!partition->crossbits.empty()) {
 			partition_list_file << " =>";
 			for (auto bit : partition->crossbits)
-				partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
+				if (bit.wire->width != 1)
+					partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
+				else
+					partition_list_file << stringf(" %s", unescape_id(bit.wire->name).c_str());
 		}
 
 		partition_list_file << "\n";
@@ -1078,6 +1098,8 @@ struct EqyPartitionPass : public Pass
 		std::string line;
 		for (int linenr = 1; std::getline(matched_file, line); linenr++) {
 			std::vector<std::string> things = split_tokens(line);
+			if (things.size() == 0 || things[0] == "#")
+				continue;
 			if (things.size() != 3)
 				log_error("Malformed line %d in file %s\n", linenr, filename.c_str());
 			matched_ids[things[0]].push_back(std::make_pair(things[1], things[2]));

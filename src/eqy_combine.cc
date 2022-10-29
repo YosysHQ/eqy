@@ -75,6 +75,20 @@ struct EqyCombinePass : public Pass
 
 	void print_ids(FILE *file, Module *m)
 	{
+		fprintf(file, "%s .", unescape_id(m->name).c_str());
+		for (string name : m->get_hdlname_attribute())
+			if (unescape_id(m->name) != name)
+				fprintf(file, " N=%s", name.c_str());
+		for (auto &a : m->attributes) {
+			if (a.first == ID::hdlname)
+				continue;
+			if (a.second.flags == RTLIL::CONST_FLAG_STRING)
+				fprintf(file, " A:%s=\"%s\"", unescape_id(a.first).c_str(), a.second.decode_string().c_str());
+			else
+				fprintf(file, " A:%s=%d", unescape_id(a.first).c_str(), a.second.as_int());
+		}
+		fprintf(file, "\n");
+
 		for (auto c : m->cells())
 			if (c->name.isPublic())
 			{
@@ -82,13 +96,17 @@ struct EqyCombinePass : public Pass
 				for (string name : c->get_hdlname_attribute())
 					if (unescape_id(c->name) != name)
 						fprintf(file, " N=%s", name.c_str());
-				for (auto &a : c->attributes)
+				for (auto &a : c->attributes) {
+					if (a.first == ID::hdlname)
+						continue;
 					if (a.second.flags == RTLIL::CONST_FLAG_STRING)
 						fprintf(file, " A:%s=\"%s\"", unescape_id(a.first).c_str(), a.second.decode_string().c_str());
 					else
-						fprintf(file, " A:%s=%s", unescape_id(a.first).c_str(), a.second.as_string().c_str());
+						fprintf(file, " A:%s=%d", unescape_id(a.first).c_str(), a.second.as_int());
+				}
 				fprintf(file, "\n");
 			}
+
 		for (auto w : m->wires())
 			if (w->name.isPublic())
 			{
@@ -96,11 +114,14 @@ struct EqyCombinePass : public Pass
 				for (string name : w->get_hdlname_attribute())
 					if (unescape_id(w->name) != name)
 						fprintf(file, " N=%s", name.c_str());
-				for (auto &a : w->attributes)
+				for (auto &a : w->attributes) {
+					if (a.first == ID::hdlname)
+						continue;
 					if (a.second.flags == RTLIL::CONST_FLAG_STRING)
 						fprintf(file, " A:%s=\"%s\"", unescape_id(a.first).c_str(), a.second.decode_string().c_str());
 					else
-						fprintf(file, " A:%s=%s", unescape_id(a.first).c_str(), a.second.as_string().c_str());
+						fprintf(file, " A:%s=%d", unescape_id(a.first).c_str(), a.second.as_int());
+				}
 				fprintf(file, "\n");
 			}
 	}
