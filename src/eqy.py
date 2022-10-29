@@ -955,32 +955,42 @@ def make_scripts(args, cfg, job, strategies):
 \t\tif ! grep -q "PASS" $$f ; then \\
 \t\t\tp=$${{f#strategies/}} ; \\
 \t\t\tp=$${{p%/*/status}} ; \\
-\t\t\techo "Failed to prove equivalence of partition $$p" ; \\
+\t\t\techo "* Failed to prove equivalence of partition $$p" ; \\
 \t\t\trc=1 ; \\
 \t\tfi ; \\
 \tdone ; \\
 \tif [ "$$rc" -eq 0 ] ; then \\
-\t\techo "Successfully proved designs equivalent" ; \\
+\t\techo "* Successfully proved designs equivalent" ; \\
 \tfi""", file=make_f)
 
 def run_scripts(args, cfg, job):
     kopt = " -k" if args.keep_going else ""
     run_task = EqyTask(job, "run", [], f"cd {args.workdir}; make{kopt} -f strategies.mk")
+    summary_messages = list()
+
     def check_output(line):
-        match = re.search(r"Failed to prove equivalence", line)
-        if match:
-            job.update_status("FAIL")
-        else:
-            match = re.search(r"Successfully proved designs equivalent", line)
+        if line.startswith("* "):
+            match = re.match(r"^\* Failed to prove equivalence", line)
             if match:
-                job.update_status("PASS")
+                job.update_status("FAIL")
+            else:
+                match = re.match(r"^\* Successfully proved designs equivalent", line)
+                if match:
+                    job.update_status("PASS")
+            summary_messages.append(line[2:])
+            return None
         return line
-    run_task.output_callback = check_output
+
     def check_retcode(retcode):
         if (retcode != 0):
             exit_with_error(f"A problem occurred during equivalence check.")
+
+    run_task.output_callback = check_output
     run_task.exit_callback = check_retcode
     job.run()
+
+    for line in summary_messages:
+        job.log(line)
 
 def validate_config(args, cfg):
     mandatory_cfg_sections = ["gold", "gate"]
