@@ -10,7 +10,7 @@ ifeq ($(OS), Windows_NT)
 PYTHON = $(shell cygpath -w -m $(PREFIX)/bin/python3)
 endif
 
-build: src/eqy_combine.so src/eqy_partition.so
+build: src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so
 
 src/eqy_combine.so: src/eqy_combine.cc
 	yosys-config --build $@ $^
@@ -18,13 +18,17 @@ src/eqy_combine.so: src/eqy_combine.cc
 src/eqy_partition.so: src/eqy_partition.cc
 	yosys-config --build $@ $^
 
-install: src/eqy_combine.so src/eqy_partition.so
+src/eqy_recode.so: src/eqy_recode.cc
+	yosys-config --build $@ $^
+
+install: src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	mkdir -p $(DESTDIR)$(PREFIX)/share/yosys/python3
 	mkdir -p $(DESTDIR)$(PREFIX)/share/yosys/plugins
 	cp src/eqy_job.py $(DESTDIR)$(PREFIX)/share/yosys/python3/
 	cp src/eqy_combine.so $(DESTDIR)$(PREFIX)/share/yosys/plugins/
 	cp src/eqy_partition.so $(DESTDIR)$(PREFIX)/share/yosys/plugins/
+	cp src/eqy_recode.so $(DESTDIR)$(PREFIX)/share/yosys/plugins/
 ifeq ($(OS), Windows_NT)
 	sed -e 's|##yosys-sys-path##|sys.path += [os.path.dirname(__file__) + p for p in ["/share/python3", "/../share/yosys/python3"]]|;' \
 		-e "s|#!/usr/bin/env python3|#!$(PYTHON)|" < src/eqy.py > $(DESTDIR)$(PREFIX)/bin/eqy-script.py
@@ -43,4 +47,4 @@ test:
 clean:
 	$(MAKE) -C docs clean
 	$(MAKE) -C examples/simple clean
-	rm -rf docs/build src/eqy_combine.so src/eqy_partition.so src/__pycache__
+	rm -rf docs/build src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so src/__pycache__
