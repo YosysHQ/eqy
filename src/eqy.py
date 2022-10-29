@@ -412,6 +412,8 @@ class Pattern:
 
         results = list()
         for name, metadata in ids.items():
+            if name == ".":
+                continue
             if (m := self.match(name, metadata)) is not None:
                 results.append(m)
         return results
@@ -858,7 +860,7 @@ def parse_strategies(args, cfg):
 
 
 class EqyPartition:
-    net_index_re = re.compile(r"^(.*)\[\d+\]$")
+    net_index_re = re.compile(r"^(.*)\[(\d+)\]$")
 
     def __init__(self, line, cfg):
         self.module, self.name, *rest = line.split()
@@ -879,10 +881,12 @@ class EqyPartition:
         def parse_net_item(item):
             if item in ids:
                 return item, None
-            elif m := self.net_index_re.match(item) and m[1] in ids:
-                return item, int(m[2])
             else:
-                exit_with_error(f"Can't find net {item} in gold module {self.module}.")
+                m = self.net_index_re.match(item)
+                if m and m[1] in ids:
+                    return item, int(m[2])
+                else:
+                    exit_with_error(f"Can't find net {item} in gold module {self.module}.")
 
         for item in rest:
             if item == '<=':
