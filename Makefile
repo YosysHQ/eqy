@@ -42,6 +42,7 @@ html:
 	$(MAKE) -C docs html
 
 test:
+	$(MAKE) -C examples/simple clean
 	$(MAKE) -C examples/simple
 
 clean:
