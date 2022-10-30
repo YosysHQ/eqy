@@ -83,6 +83,8 @@ struct EqyPartitionWorker
 		return partitions.at(index).get();
 	}
 
+	void check_integrity();
+
 	void register_drivers(Module *m, SigMap &sm, dict<SigBit, tuple<Cell*, IdString, int>> &db)
 	{
 		for (auto cell : m->cells()) {
@@ -294,7 +296,7 @@ struct Partition
 	Partition(EqyPartitionWorker *worker) : worker(worker), index(GetSize(worker->partitions)) { }
 
 	// Create a unique non-primitive clone of this partition and mark this partition as finalized.
-	Partition *make_get_nonprimitive(bool make=true)
+	Partition *make_get_nonprimitive()
 	{
 		if (merged_into >= 0) {
 			Partition *other = worker->partition(merged_into)->make_get_nonprimitive();
@@ -304,7 +306,7 @@ struct Partition
 
 		log_assert(!finalized);
 
-		if (!primitive || !make) return this;
+		if (!primitive) return this;
 
 		Partition *other = worker->create_partition();
 		merged_into = other->index;
@@ -327,11 +329,11 @@ struct Partition
 		other->gate_cells = gate_cells;
 
 		for (auto bit : inbits) {
-			worker->pi_partitions_index[bit].erase(other->index);
-			worker->pi_partitions_index[bit].insert(index);
+			worker->pi_partitions_index[bit].erase(index);
+			worker->pi_partitions_index[bit].insert(other->index);
 		}
 		for (auto bit : outbits) {
-			worker->po_partition_index[bit] = index;
+			worker->po_partition_index[bit] = other->index;
 		}
 
 		return other;
@@ -369,8 +371,17 @@ struct Partition
 		}
 
 		for (auto bit : other->outbits) {
-			if (inbits.count(bit))
+			if (inbits.count(bit)) {
+				if (primitive) {
+					worker->pi_primitives_index[bit].erase(index);
+					if (worker->pi_primitives_index[bit].empty())
+						worker->pi_primitives_index.erase(bit);
+				}
+				worker->pi_partitions_index[bit].erase(index);
+				if (worker->pi_partitions_index[bit].empty())
+					worker->pi_partitions_index.erase(bit);
 				inbits.erase(bit);
+			}
 			outbits.insert(bit);
 		}
 
@@ -384,11 +395,18 @@ struct Partition
 		gate_cells.insert(other->gate_cells.begin(), other->gate_cells.end());
 
 		if (primitive && other->primitive) {
-			for (auto bit : other->inbits)
+			for (auto bit : other->inbits) {
 				worker->pi_primitives_index[bit].erase(other->index);
+				if (worker->pi_primitives_index[bit].empty())
+					worker->pi_primitives_index.erase(bit);
+			}
 		}
-		for (auto bit : other->inbits)
+		for (auto bit : other->inbits) {
 			worker->pi_partitions_index[bit].erase(other->index);
+			if (worker->pi_partitions_index[bit].empty())
+				worker->pi_partitions_index.erase(bit);
+		}
+
 		for (auto bit : inbits) {
 			if (primitive)
 				worker->pi_primitives_index[bit].insert(index);
@@ -717,6 +735,76 @@ struct Partition
 	}
 };
 
+void EqyPartitionWorker::check_integrity()
+{
+	log_debug("CHECKING DATABASE INTEGRITY\n");
+
+	dict<SigBit, int> new_po_primitive_index;
+	dict<SigBit, int> new_po_partition_index;
+	dict<SigBit, pool<int>> new_pi_primitives_index;
+	dict<SigBit, pool<int>> new_pi_partitions_index;
+
+	for (int idx = 0; idx < GetSize(partitions); idx++) {
+		auto p = partition(idx);
+
+		if (p->primitive && (p->merged_into == -1 || !partition(p->merged_into)->primitive)) {
+			for (auto bit : p->outbits) {
+				log_assert(!new_po_primitive_index.count(bit));
+				new_po_primitive_index[bit] = p->index;
+			}
+			for (auto bit : p->inbits)
+				new_pi_primitives_index[bit].insert(p->index);
+		}
+
+		if (!p->finalized) {
+			for (auto bit : p->outbits) {
+				log_assert(!new_po_partition_index.count(bit));
+				new_po_partition_index[bit] = p->index;
+			}
+			for (auto bit : p->inbits)
+				new_pi_partitions_index[bit].insert(p->index);
+		}
+	}
+
+#if 0
+	po_primitive_index.sort();
+	new_po_primitive_index.sort();
+	log_dump(po_primitives_index);
+	log_dump(new_po_primitives_index);
+#endif
+	log_assert(new_po_primitive_index == po_primitive_index);
+
+#if 0
+	po_partition_index.sort();
+	new_po_partition_index.sort();
+	log_dump(po_partition_index);
+	log_dump(new_po_partition_index);
+#endif
+	log_assert(new_po_partition_index == po_partition_index);
+
+#if 0
+	pi_primitives_index.sort();
+	new_pi_primitives_index.sort();
+	for (auto &it : pi_primitives_index) it.second.sort();
+	for (auto &it : new_pi_primitives_index) it.second.sort();
+	log_dump(pi_primitives_index);
+	log_dump(new_pi_primitives_index);
+#endif
+	log_assert(new_pi_primitives_index == pi_primitives_index);
+
+#if 0
+	pi_partitions_index.sort();
+	new_pi_partitions_index.sort();
+	for (auto &it : pi_partitions_index) it.second.sort();
+	for (auto &it : new_pi_partitions_index) it.second.sort();
+	log_dump(pi_partitions_index);
+	log_dump(new_pi_partitions_index);
+#endif
+	log_assert(new_pi_partitions_index == pi_partitions_index);
+
+	log_debug("DATABASE INTEGRITY CHECKS PASSED\n");
+}
+
 Partition *EqyPartitionWorker::create_partition()
 {
 	partitions.push_back(std::unique_ptr<Partition>(new Partition(this)));
@@ -892,21 +980,69 @@ void EqyPartitionWorker::merge_partitions()
 		log_error("%s\n", message.c_str());
 	}
 
-	// actually amend now, after the regular merge operations are all done
-	log("Execute queued manual amend rules.\n");
+	log("Find additional automatic amend rules.\n");
 	for (int idx = 0; idx < GetSize(partitions); idx++) {
-		auto p = partition(idx)->make_get_nonprimitive(false);
-		if (p->index == idx && !p->amend_with.empty()) {
+		auto p = partition(idx);
+		if (!p->finalized) continue;
+
+		log("Checking partition %d:\n", p->index);
+
+		pool<int> po_candidates, pi_candidates;
+		for (auto bit : p->inbits) {
+			if (noamend_database.count(bit))
+				continue;
+
+			if (po_primitive_index.count(bit)) {
+				int pidx = po_primitive_index.at(bit);
+				log_debug("  partition %d is a PO candidate: %s\n", pidx, log_signal(bit));
+				po_candidates.insert(pidx);
+			}
+
+			if (pi_primitives_index.count(bit))
+				for (auto pidx : pi_primitives_index.at(bit)) {
+					log_debug("  partition %d is a PI candidate: %s\n", pidx, log_signal(bit));
+					pi_candidates.insert(pidx);
+				}
+		}
+
+		log("  Found %d po candidates and %d pi candidates.\n", GetSize(po_candidates), GetSize(pi_candidates));
+
+		for (auto pidx : po_candidates) {
+			if (!pi_candidates.count(pidx))
+				continue;
+
+			pool<SigBit> matched_pis, matched_pos;
+			auto prim = partition(pidx);
+
+			for (auto bit : prim->inbits)
+				if (p->inbits.count(bit)) matched_pis.insert(bit);
+
+			for (auto bit : prim->outbits)
+				if (p->inbits.count(bit)) matched_pos.insert(bit);
+			log_assert(prim->crossbits.empty());
+
+			log("    Amending with partition %d (%d pi matches and %d po matches).\n", pidx, GetSize(matched_pis), GetSize(matched_pos));
+			p->amend_with.insert(prim->index);
+			log_assert(!matched_pis.empty());
+			log_assert(!matched_pos.empty());
+
+			for (auto bit : matched_pis)
+				log_debug("      PI: %s\n", log_signal(bit));
+			for (auto bit : matched_pos)
+				log_debug("      PO: %s\n", log_signal(bit));
+		}
+	}
+
+	// actually amend now, after the regular merge operations are all done
+	log("Execute queued amend rules.\n");
+	for (int idx = 0; idx < GetSize(partitions); idx++) {
+		auto p = partition(idx);
+		if (!p->finalized && !p->amend_with.empty()) {
 			auto p = partition(idx)->make_get_nonprimitive();
 			if (p->index == idx)
 				for (auto q : p->amend_with)
 					p->import(partition(q));
 		}
-	}
-
-	log("Execute additional automatic amend rules.\n");
-	for (int idx = 0; idx < GetSize(partitions); idx++) {
-		// TBD: Automatically amend primary partitions that generate gold inputs from other gold inputs
 	}
 
 	// automatically name remaining partitions
@@ -1133,9 +1269,11 @@ struct EqyPartitionPass : public Pass
 
 					log_header(design, "Create primitive partitions for module %s.\n", gold->name.substr(6).c_str());
 					worker.create_partitions();
+					worker.check_integrity();
 
 					log_header(design, "Execute partitioning commands for module %s.\n", gold->name.substr(6).c_str());
 					worker.merge_partitions();
+					//worker.check_integrity();
 
 					log_header(design, "Finalize partitions for module %s.\n", gold->name.substr(6).c_str());
 					worker.finalize_partitions(partition_list_file);
