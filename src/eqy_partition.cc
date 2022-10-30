@@ -27,6 +27,22 @@ PRIVATE_NAMESPACE_BEGIN
 
 struct Partition;
 
+std::string increase_indent(const std::string &indent)
+{
+#ifndef NDEBUG
+	if (!log_force_debug)
+		return std::string();
+	if (indent.size() <= 40)
+		return indent + "  ";
+	int i = -1;
+	if (sscanf(indent.c_str(), " %d", &i) == 1)
+		return stringf("%*s%d> ", 40, "", i+2);
+	return stringf("%*s%d> ", 40, "", GetSize(indent)+2);
+#else
+	return std::string();
+#endif
+}
+
 struct EqyPartitionWorker
 {
 	std::vector<std::unique_ptr<Partition>> partitions;
@@ -186,7 +202,7 @@ struct EqyPartitionWorker
 	{
 		log_debug("%ssignal match: %s <-> %s\n", indent.c_str(), log_signal(gold_sig), log_signal(gate_sig));
 		for (int i = 0; i < GetSize(gold_sig) && i < GetSize(gate_sig); i++)
-			add_match(gold_sig[i], gate_sig[i], indent + "  ");
+			add_match(gold_sig[i], gate_sig[i], increase_indent(indent));
 	}
 
 	void add_match(Cell *gold_cell, Cell *gate_cell, std::string indent = "")
@@ -206,7 +222,7 @@ struct EqyPartitionWorker
 
 		for (auto &conn : gold_cell->connections())
 			if (gate_cell->connections().count(conn.first))
-				add_match(conn.second, gate_cell->connections().at(conn.first), indent + "  ");
+				add_match(conn.second, gate_cell->connections().at(conn.first), increase_indent(indent));
 	}
 
 	void add_match(IdString gold_id, IdString gate_id, std::string indent = "")
@@ -223,7 +239,7 @@ struct EqyPartitionWorker
 			if (!gate_cell)
 				log_error("Can't find cell %s in gate circuit.\n", log_id(gate_id));
 
-			add_match(gold_cell, gate_cell, indent + "  ");
+			add_match(gold_cell, gate_cell, increase_indent(indent));
 			return;
 		}
 
@@ -237,7 +253,7 @@ struct EqyPartitionWorker
 			if (!gate_wire)
 				log_error("Can't find wire %s in gate circuit.\n", log_id(gate_id));
 
-			add_match(SigSpec(gold_wire), SigSpec(gate_wire), indent + "  ");
+			add_match(SigSpec(gold_wire), SigSpec(gate_wire), increase_indent(indent));
 			return;
 		}
 	}
@@ -277,7 +293,7 @@ struct Partition
 	Partition(EqyPartitionWorker *worker) : worker(worker), index(GetSize(worker->partitions)) { }
 
 	// Create a unique non-primitive clone of this partition and mark this partition as finalized.
-	Partition *make_get_nonprimitive()
+	Partition *make_get_nonprimitive(bool make=true)
 	{
 		if (merged_into >= 0) {
 			Partition *other = worker->partition(merged_into)->make_get_nonprimitive();
@@ -287,7 +303,7 @@ struct Partition
 
 		log_assert(!finalized);
 
-		if (!primitive) return this;
+		if (!primitive || !make) return this;
 
 		Partition *other = worker->create_partition();
 		merged_into = other->index;
@@ -297,6 +313,7 @@ struct Partition
 
 		other->names = names;
 		other->name_priority = name_priority;
+		other->amend_with = amend_with;
 
 		other->inbits = inbits;
 		other->outbits = outbits;
@@ -341,6 +358,9 @@ struct Partition
 				names = new_names;
 			}
 		}
+
+		for (int p : other->amend_with)
+			amend_with.insert(p);
 
 		for (auto bit : other->inbits) {
 			if (!gold_bits.count(bit))
@@ -419,10 +439,10 @@ struct Partition
 		log_assert(worker->queue.count(gold_bit));
 		worker->queue.erase(gold_bit);
 
-		std::function<void(SigBit,bool,bool,int)> add_bit_f;
-		std::function<void(Cell*,bool,int)> add_cell_f;
+		std::function<void(SigBit,bool,bool,const std::string&)> add_bit_f;
+		std::function<void(Cell*,bool,const std::string&)> add_cell_f;
 
-		add_bit_f = [&](SigBit bit, bool in_gold, bool isoutput, int indent)->void
+		add_bit_f = [&](SigBit bit, bool in_gold, bool isoutput, const std::string &indent)->void
 		{
 			auto &gg_sigmap = in_gold ? worker->gold_sigmap : worker->gate_sigmap;
 			auto &gg_drivers = in_gold ? worker->gold_drivers : worker->gate_drivers;
@@ -442,7 +462,7 @@ struct Partition
 					insert_bit = true;
 			}
 
-			log_debug("%*sadd_bit_f %s %s%s: %s\n", indent, "", log_signal(bit),
+			log_debug("%sadd_bit_f %s %s%s: %s\n", indent.c_str(), log_signal(bit),
 					in_gold ? "gold" : "gate", isoutput ? " [output]" : "", insert_bit ? "insert" : "skip");
 
 			if (!insert_bit)
@@ -474,7 +494,7 @@ struct Partition
 				}
 
 				if (run_other)
-					add_bit_f(xx_bit, !in_gold, isoutput, indent+2);
+					add_bit_f(xx_bit, !in_gold, isoutput, increase_indent(indent));
 			}
 			else
 			{
@@ -485,18 +505,18 @@ struct Partition
 			{
 				auto const &driver = gg_drivers.at(bit);
 				auto driver_cell = std::get<0>(driver);
-				add_cell_f(driver_cell, in_gold, indent+2);
+				add_cell_f(driver_cell, in_gold, increase_indent(indent));
 			}
 		};
 
-		add_cell_f = [&](Cell *cell, bool in_gold, int indent)->void
+		add_cell_f = [&](Cell *cell, bool in_gold, const std::string &indent)->void
 		{
 			auto &gg_sigmap = in_gold ? worker->gold_sigmap : worker->gate_sigmap;
 			auto &gg_matches = in_gold ? worker->gold_matches : worker->gate_matches;
 			auto &gg_cells = in_gold ? gold_cells : gate_cells;
 			bool insert_cell = !gg_cells.count(cell);
 
-			log_debug("%*sadd_cell_f %s %s: %s\n", indent, "", log_id(cell),
+			log_debug("%sadd_cell_f %s %s: %s\n", indent.c_str(), log_id(cell),
 					in_gold ? "gold" : "gate", insert_cell ? "insert" : "skip");
 
 			if (!insert_cell)
@@ -507,7 +527,7 @@ struct Partition
 			for (auto &conn : cell->connections()) {
 				if (cell->input(conn.first))
 					for (auto bit : conn.second)
-						add_bit_f(bit, in_gold, false, indent+2);
+						add_bit_f(bit, in_gold, false, increase_indent(indent));
 				if (cell->output(conn.first))
 					for (auto bit : gg_sigmap(conn.second))
 						if (gg_matches.count(bit) && !worker->solo_database.count(bit))
@@ -516,7 +536,7 @@ struct Partition
 		};
 
 		log("Adding bit %s to partition %d.\n", log_signal(gold_bit), index);
-		add_bit_f(gold_bit, true, true, 2);
+		add_bit_f(gold_bit, true, true, "  ");
 
 		for (auto &bit : worker->aliases.at(worker->raliases.at(gold_bit, gold_bit), {}))
 			if (!worker->solo_database.count(bit))
@@ -863,13 +883,18 @@ void EqyPartitionWorker::merge_partitions()
 	}
 
 	// actually amend now, after the regular merge operations are all done
+	log("Execute queued manual amend rules.\n");
 	for (int idx = 0; idx < GetSize(partitions); idx++) {
-		auto p = partition(idx)->make_get_nonprimitive();
-		if (p->index == idx)
-			for (auto q : p->amend_with)
-				p->import(partition(q));
+		auto p = partition(idx)->make_get_nonprimitive(false);
+		if (p->index == idx && !p->amend_with.empty()) {
+			auto p = partition(idx)->make_get_nonprimitive();
+			if (p->index == idx)
+				for (auto q : p->amend_with)
+					p->import(partition(q));
+		}
 	}
 
+	log("Execute additional automatic amend rules.\n");
 	// TBD: Automatically amend primary partitions that generate gold inputs from other gold inputs
 
 	// automatically name remaining partitions
@@ -880,39 +905,62 @@ void EqyPartitionWorker::merge_partitions()
 
 		if (!wire_score.count(bit.wire))
 			wire_score[bit.wire] = GetSize(bit.wire->name);
-		wire_score[bit.wire] -= 10*GetSize(it.second);
+		wire_score[bit.wire] -= GetSize(it.second);
 
 		if (!bit_score.count(bit))
 			bit_score[bit] = GetSize(bit.wire->name);
-		bit_score[bit] -= 10*GetSize(it.second);
+		bit_score[bit] -= GetSize(it.second);
 	}
 	for (auto &it : partitions)
 	{
 		Partition *partition = it.get();
 		if (partition->finalized || partition->name_priority) continue;
 
-		dict<Wire*,int> wire_bits;
-		for (auto bit : partition->outbits)
-			wire_bits[bit.wire] += 1;
+		log_debug("Automatically naming partition %d:\n", partition->index);
 
-		vector<pair<int,std::string>> candidates;
+		dict<Wire*,int> wire_bits;
 		for (auto bit : partition->outbits) {
-			if (bit.wire->width == wire_bits[bit.wire])
-				candidates.push_back(make_pair(wire_score[bit.wire], unescape_id(bit.wire->name)));
-			else
-				candidates.push_back(make_pair(bit_score[bit], stringf("%s.%d", unescape_id(bit.wire->name).c_str(), bit.offset)));
+			wire_bits[bit.wire] += 1;
+		}
+
+		auto mangle_name = [](const std::string &s)->std::string {
+			std::string r;
+			for (char c : s) {
+				if ('a' <= c && c <= 'z') r += c;
+				if ('A' <= c && c <= 'Z') r += c;
+				if ('0' <= c && c <= '9') r += c;
+				if ('.' == c || c == '_') r += c;
+			}
+			return r;
+		};
+
+		vector<tuple<int,std::string,std::string>> candidates;
+		for (auto bit : partition->outbits) {
+			if (bit.wire->width < 2*wire_bits[bit.wire]) {
+				std::string name = unescape_id(bit.wire->name);
+				int score = wire_score[bit.wire];
+				log_debug("  candidate output wire with score %d: %s\n", score, log_signal(bit));
+				candidates.push_back(make_tuple(score, mangle_name(name), name));
+			} else {
+				std::string name = stringf("%s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
+				int score = bit_score[bit.wire];
+				log_debug("  candidate output bit with score %d: %s\n", score, log_signal(bit));
+				candidates.push_back(make_tuple(bit_score[bit], mangle_name(name), name));
+			}
 		}
 
 		std::sort(candidates.begin(), candidates.end());
 
 		for (auto &it : candidates) {
-			if (name_database.count(it.second))
+			if (name_database.count(std::get<1>(it))) {
+				log_debug("  name '%s' is already taken\n", std::get<1>(it).c_str());
 				continue;
+			}
 
-			log("Automatically naming partition %d using a PO name: %s\n", partition->index, it.second.c_str());
+			log("Automatically naming partition %d '%s' using a PO name: %s\n", partition->index, std::get<1>(it).c_str(), std::get<2>(it).c_str());
 			partition->name_priority = ++name_priority;
-			name_database[it.second] = partition->index;
-			partition->names.push_back(it.second);
+			name_database[std::get<1>(it)] = partition->index;
+			partition->names.push_back(std::get<1>(it));
 			break;
 		}
 	}
