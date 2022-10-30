@@ -560,6 +560,8 @@ def partition_ids(args, cfg):
                 for module_match in search_modules(cfg.gold_ids, pattern):
                     for entity_match, _ in search_entities(cfg.gold_ids[module_match], None, line[1], None):
                         no_database[line[0][2:]].add((module_match, entity_match))
+                        if line[0] == "noamend":
+                            print(line[0], module_match, entity_match, file=partids_f)
                 continue
 
             if line[0] in ("sticky", "final", "amend") and len(line) == 2:

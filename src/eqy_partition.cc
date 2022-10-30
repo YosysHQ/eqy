@@ -52,6 +52,7 @@ struct EqyPartitionWorker
 	pool<SigBit> solo_database;
 	dict<SigBit, pool<SigBit>> group_database;
 	dict<std::string, int> name_database;
+	pool<SigBit> noamend_database;
 
 	dict<SigBit, int> po_primitive_index;
 	dict<SigBit, int> po_partition_index;
@@ -865,6 +866,15 @@ void EqyPartitionWorker::merge_partitions()
 			continue;
 		}
 
+		if (rule[0] == "noamend" && GetSize(rule) == 2) {
+			for (auto bit : gold_sigmap(gold->wire("\\" + rule[1]))) {
+				if (!po_partition_index.count(bit))
+					continue;
+				noamend_database.insert(bit);
+			}
+			continue;
+		}
+
 		if (rule[0] == "final" && GetSize(rule) == 2) {
 			for (auto bit : gold_sigmap(gold->wire("\\" + rule[1]))) {
 				if (!po_partition_index.count(bit))
@@ -895,7 +905,9 @@ void EqyPartitionWorker::merge_partitions()
 	}
 
 	log("Execute additional automatic amend rules.\n");
-	// TBD: Automatically amend primary partitions that generate gold inputs from other gold inputs
+	for (int idx = 0; idx < GetSize(partitions); idx++) {
+		// TBD: Automatically amend primary partitions that generate gold inputs from other gold inputs
+	}
 
 	// automatically name remaining partitions
 	dict<Wire*,int> wire_score;
@@ -943,7 +955,7 @@ void EqyPartitionWorker::merge_partitions()
 				candidates.push_back(make_tuple(score, mangle_name(name), name));
 			} else {
 				std::string name = stringf("%s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
-				int score = bit_score[bit.wire];
+				int score = bit_score[bit];
 				log_debug("  candidate output bit with score %d: %s\n", score, log_signal(bit));
 				candidates.push_back(make_tuple(bit_score[bit], mangle_name(name), name));
 			}
@@ -1171,7 +1183,7 @@ struct EqyPartitionPass : public Pass
 				continue;
 			}
 			if ((things[0] == "bind" || things[0] == "sticky" || things[0] == "join" || things[0] == "solo" ||
-					things[0] == "final" || things[0] == "amend") && GetSize(things) == 3) {
+					things[0] == "final" || things[0] == "amend" || things[0] == "noamend") && GetSize(things) == 3) {
 				partition_ids[things[1]].push_back({things[0], things[2]});
 				continue;
 			}
