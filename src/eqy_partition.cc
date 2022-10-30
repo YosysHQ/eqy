@@ -943,7 +943,7 @@ void EqyPartitionWorker::merge_partitions()
 				candidates.push_back(make_tuple(score, mangle_name(name), name));
 			} else {
 				std::string name = stringf("%s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
-				int score = bit_score[bit.wire];
+				int score = bit_score[bit];
 				log_debug("  candidate output bit with score %d: %s\n", score, log_signal(bit));
 				candidates.push_back(make_tuple(bit_score[bit], mangle_name(name), name));
 			}
