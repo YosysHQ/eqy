@@ -14,8 +14,15 @@ form of key-value pairs.
 .. code-block:: text
 
    [options]
-   awesome yes
-   foobar 15
+   splitnets on
+
+Supported options are:
+
+=============== ================== ==========================================================================
+Option          Values             Description
+=============== ================== ==========================================================================
+``splitnets``   ``on``/``off``     Split vector nets and ports into individual bits when reading the designs
+=============== ================== ==========================================================================
 
 Gold and gate sections
 ----------------------
@@ -88,7 +95,7 @@ closely related and thus should be proven together in one step.
 
 .. code-block:: text
 
-   [partition axi_xbar_*]
+   [collect axi_xbar_*]
    bind partial_sum_*
 
 solo and nosolo
