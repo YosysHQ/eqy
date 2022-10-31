@@ -21,6 +21,7 @@ import argparse, types, re, glob
 import os, sys, tempfile, shutil
 import shlex, fnmatch
 import textwrap
+import click
 ##yosys-sys-path##
 
 from eqy_job import EqyJob, EqyTask
@@ -975,11 +976,14 @@ def run_scripts(args, cfg, job):
             match = re.match(r"^\* Failed to prove equivalence", line)
             if match:
                 job.update_status("FAIL")
+                summary_messages.append(click.style(line[2:], fg="red", bold=True))
             else:
                 match = re.match(r"^\* Successfully proved designs equivalent", line)
                 if match:
                     job.update_status("PASS")
-            summary_messages.append(line[2:])
+                    summary_messages.append(click.style(line[2:], fg="green", bold=True))
+                else:
+                    summary_messages.append(click.style(line[2:], bold=true))
             return None
         return line
 

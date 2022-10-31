@@ -4,14 +4,14 @@ if os.name == "posix":
 import subprocess, signal
 from select import select
 from time import time, localtime
-
+import click
 
 
 possible_statuses = ["PASS", "FAIL", "UNKNOWN", "ERROR", "TIMEOUT"]
 all_tasks_running = []
 
 def force_shutdown(signum, frame):
-    print("EQY ---- Keyboard interrupt or external termination signal ----", flush=True)
+    click.echo("EQY ---- Keyboard interrupt or external termination signal ----")
     for task in list(all_tasks_running):
         task.terminate()
     sys.exit(1)
@@ -77,8 +77,8 @@ class EqyTask:
     def log(self, line):
         if line is not None and (self.noprintregex is None or not self.noprintregex.match(line)):
             if self.logfile is not None:
-                print(line, file=self.logfile)
-            self.job.log("{}: {}".format(self.info, line))
+                click.echo(line, file=self.logfile)
+            self.job.log(click.style(self.info, fg="magenta") + ": " + line)
 
     def handle_output(self, line):
         if self.terminated or len(line) == 0:
@@ -98,7 +98,7 @@ class EqyTask:
     def terminate(self, timeout=False):
         if self.running:
             if not self.silent:
-                self.job.log("{}: terminating process".format(self.info))
+                self.job.log("{}: terminating process".format(click.style(self.info, fg="magenta")))
             if os.name == "posix":
                 try:
                     os.killpg(self.p.pid, signal.SIGTERM)
@@ -119,7 +119,7 @@ class EqyTask:
                     return
 
             if not self.silent:
-                self.job.log("{}: starting process \"{}\"".format(self.info, self.cmdline))
+                self.job.log("{}: starting process \"{}\"".format(click.style(self.info, fg="magenta"), self.cmdline))
 
             if os.name == "posix":
                 def preexec_fn():
@@ -154,7 +154,7 @@ class EqyTask:
 
         if self.p.poll() is not None:
             if not self.silent:
-                self.job.log("{}: finished (returncode={})".format(self.info, self.p.returncode))
+                self.job.log("{}: finished (returncode={})".format(click.style(self.info, fg="magenta"), self.p.returncode))
             self.job.tasks_running.remove(self)
             all_tasks_running.remove(self)
             self.running = False
@@ -162,7 +162,7 @@ class EqyTask:
             if self.p.returncode == 127:
                 self.job.status = "ERROR"
                 if not self.silent:
-                    self.job.log("{}: COMMAND NOT FOUND. ERROR.".format(self.info))
+                    self.job.log("{}: COMMAND NOT FOUND. ERROR.".format(click.style(self.info, fg="magenta")))
                 self.terminated = True
                 self.job.terminate()
                 return
@@ -172,7 +172,7 @@ class EqyTask:
             if self.checkretcode and self.p.returncode != 0:
                 self.job.status = "ERROR"
                 if not self.silent:
-                    self.job.log("{}: job failed. ERROR.".format(self.info))
+                    self.job.log("{}: job failed. ERROR.".format(click.style(self.info, fg="magenta")))
                 self.terminated = True
                 self.job.terminate()
                 return
@@ -222,12 +222,12 @@ class EqyJob:
         self.logfile = open("{}/logfile.txt".format(self.workdir), "a")
 
         for line in early_logs:
-            print(line, file=self.logfile, flush=True)
+            click.echo(line, file=self.logfile)
 
         # if not reusedir:
         #     with open("{}/config.sby".format(workdir), "w") as f:
         #         for line in sbyconfig:
-        #             print(line, file=f)
+        #             click.echo(line, file=f)
 
     def taskloop(self):
         for task in self.tasks_pending:
@@ -260,21 +260,30 @@ class EqyJob:
                     self.status = "TIMEOUT"
                     self.terminate(timeout=True)
 
-    def log(self, logmessage):
+    def dress_message(self, logmessage):
         tm = localtime()
-        print("EQY {:2d}:{:02d}:{:02d} [{}] {}".format(tm.tm_hour, tm.tm_min, tm.tm_sec, self.workdir, logmessage), flush=True)
-        print("EQY {:2d}:{:02d}:{:02d} [{}] {}".format(tm.tm_hour, tm.tm_min, tm.tm_sec, self.workdir, logmessage), file=self.logfile, flush=True)
+        return " ".join([
+            click.style("EQY", fg="blue"),
+            click.style("{:2d}:{:02d}:{:02d}".format(tm.tm_hour, tm.tm_min, tm.tm_sec), fg="green"),
+            "[" + click.style(self.workdir, fg="blue") + "]",
+            logmessage
+        ])
+
+    def log(self, logmessage):
+        text = self.dress_message(logmessage)
+        click.echo(text)
+        click.echo(text, file=self.logfile)
 
     def error(self, logmessage):
-        tm = localtime()
-        print("EQY {:2d}:{:02d}:{:02d} [{}] ERROR: {}".format(tm.tm_hour, tm.tm_min, tm.tm_sec, self.workdir, logmessage), flush=True)
-        print("EQY {:2d}:{:02d}:{:02d} [{}] ERROR: {}".format(tm.tm_hour, tm.tm_min, tm.tm_sec, self.workdir, logmessage), file=self.logfile, flush=True)
+        text = self.dress_message(logmessage)
+        click.echo(text)
+        click.echo(text, file=self.logfile)
         self.status = "ERROR"
         if "ERROR" not in self.expect:
             self.retcode = 16
         self.terminate()
         with open("{}/{}".format(self.workdir, self.status), "w") as f:
-            print("ERROR: {}".format(logmessage), file=f)
+            click.echo("ERROR: {}".format(logmessage), file=f)
         raise EqyAbort(logmessage)
 
     # def makedirs(self, path):
@@ -675,6 +684,6 @@ class EqyJob:
 
         with open("{}/{}".format(self.workdir, self.status), "w") as f:
             for line in self.summary:
-                print(line, file=f)
+                click.echo(line, file=f)
 
         self.log("DONE ({}, rc={})".format(self.status, self.retcode))
