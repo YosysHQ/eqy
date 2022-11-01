@@ -581,29 +581,45 @@ struct Partition
 		}
 	}
 
-	Design *finalize(IdString partname, std::ofstream &info_file)
+	Design *finalize(IdString partname, std::ofstream &yaml_file)
 	{
 		log_assert(!finalized);
 		finalized = true;
 
 		log("Finalizing partition %d as %s.\n", index, log_id(partname));
 
-		info_file << stringf("partition:\n");
-		info_file << stringf("  index: %d\n", index);
-		info_file << stringf("  name: %s\n", log_id(partname));
+		yaml_file << stringf("partition:\n");
+		yaml_file << stringf("  index: %d\n", index);
+		yaml_file << stringf("  name: %s\n", log_id(partname));
 
-		info_file << stringf("  inbits:\n");
+		dict<std::string, pool<int>> yaml_bits;
+		auto write_yaml_bits = [&](const char *name)->void {
+			yaml_file << stringf("  %s:\n", name);
+			yaml_bits.sort();
+			for (auto &it : yaml_bits) {
+				yaml_file << stringf("    '%s': [", it.first.c_str());
+				it.second.sort();
+				for (int i : it.second) {
+					if (i != *it.second.begin())
+						yaml_file << ", ";
+					yaml_file << i;
+				}
+				yaml_file << "]\n";
+			}
+			yaml_bits.clear();
+		};
+
 		for (auto &bit : inbits)
-			info_file << stringf("    - ['%s', %d]\n", unescape_id(bit.wire->name).c_str(), bit.offset);
+			yaml_bits[unescape_id(bit.wire->name)].insert(bit.offset);
+		write_yaml_bits("inbits");
 
-		info_file << stringf("  outbits:\n");
 		for (auto &bit : outbits)
-			info_file << stringf("    - ['%s', %d]\n", unescape_id(bit.wire->name).c_str(), bit.offset);
+			yaml_bits[unescape_id(bit.wire->name)].insert(bit.offset);
+		write_yaml_bits("outbits");
 
-		info_file << stringf("  crossbits:\n");
 		for (auto &bit : crossbits)
-			info_file << stringf("    - ['%s', %d]\n", unescape_id(bit.wire->name).c_str(), bit.offset);
-
+			yaml_bits[unescape_id(bit.wire->name)].insert(bit.offset);
+		write_yaml_bits("crossbits");
 
 		Design *partdesign = new Design();
 
@@ -612,8 +628,8 @@ struct Partition
 
 		auto copy_mod_contents = [&](bool in_gold, const SigSpec &pi, const SigSpec &po, const SigSpec &cp, const SigSig &conn)->void
 		{
-			info_file << stringf("%s_module:\n", in_gold ? "gold" : "gate");
-			info_file << stringf("  name: %s\n", log_id(mod_gold));
+			yaml_file << stringf("%s_module:\n", in_gold ? "gold" : "gate");
+			yaml_file << stringf("  name: %s\n", log_id(mod_gold));
 
 			// Module *in_mod = in_gold ? gold : gate;
 			Module *out_mod = in_gold ? mod_gold : mod_gate;
@@ -631,7 +647,6 @@ struct Partition
 			pio_bits.insert(po.begin(), po.end());
 			pio_bits.insert(cp.begin(), cp.end());
 
-			info_file << stringf("  internal_bits:\n");
 			for (auto bit : gg_bits) {
 				Wire *w = bit.wire;
 				if (!w) continue;
@@ -642,9 +657,10 @@ struct Partition
 					mapped_wires[w] = ww;
 				}
 				if (w->name.isPublic() && !pio_bits.count(bit))
-					info_file << stringf("    - ['%s', %d]\n", unescape_id(w->name).c_str(), bit.offset);
+					yaml_bits[unescape_id(w->name)].insert(bit.offset);
 				mapped_bits[bit] = SigBit(mapped_wires.at(w), bit.offset);
 			}
+			write_yaml_bits("internal");
 
 			for (auto &it : mapped_wires) {
 				Wire *w = it.first, *ww = it.second;
@@ -659,7 +675,7 @@ struct Partition
 			SigMap out_sigmap(out_mod);
 			FfInitVals out_initvals(&out_sigmap, out_mod);
 
-			info_file << stringf("  initvals:\n");
+			if (0) yaml_file << stringf("  init:\n");
 			for (auto c : gg_cells)
 			{
 				Cell *cc = out_mod->addCell(c->name, c->type);
@@ -683,7 +699,7 @@ struct Partition
 							out_bit = out_mod->addWire(NEW_ID);
 						s.append(out_bit);
 						if (is_reg && conn.first == ID::Q && out_bit.is_wire()) {
-							info_file << stringf("    - ['%s', '%s', %d, '%s', %d, '%c']\n",
+							if (0) yaml_file << stringf("    - ['%s', '%s', %d, '%s', %d, '%c']\n",
 									unescape_id(c->name).c_str(), unescape_id(conn.first).c_str(),
 									bit_index, unescape_id(out_bit.wire->name).c_str(),
 									out_bit.offset, "01xzam"[initvals(bit)]);
@@ -694,6 +710,9 @@ struct Partition
 					cc->setPort(conn.first, s);
 				}
 			}
+
+			yaml_file << stringf("  cellcount: %d\n", GetSize(gg_cells));
+			yaml_file << stringf("  bitcount: %d\n", GetSize(gg_bits));
 
 			int port_idx = 0;
 
@@ -1162,10 +1181,10 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 				stringf("%s.%s", gold->name.substr(6).c_str(), partition->names.front().c_str()) :
 				stringf("%s#%d", gold->name.substr(6).c_str(), partition->index);
 		std::string filename = stringf("partitions/%s.il", partname.c_str());
-		std::string info_filename = stringf("partitions/%s.info", partname.c_str());
+		std::string yaml_filename = stringf("partitions/%s.yml", partname.c_str());
 
 		IdString partid = "\\" + partname;
-		ofile.open(info_filename.c_str(), std::ofstream::trunc);
+		ofile.open(yaml_filename.c_str(), std::ofstream::trunc);
 		Design *partdesign = partition->finalize(partid, ofile);
 		ofile.close();
 
