@@ -14,6 +14,9 @@ prep -top picorv32
 gate-match /^(.*)_reg\[(\d+)\].Q$/ \1[\2]
 nodefault
 
+[collect *]
+solo mem_wdata[0]
+
 [strategy simple]
 use satseq
 depth 10
