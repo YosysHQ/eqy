@@ -581,12 +581,29 @@ struct Partition
 		}
 	}
 
-	Design *finalize(IdString partname)
+	Design *finalize(IdString partname, std::ofstream &info_file)
 	{
 		log_assert(!finalized);
 		finalized = true;
 
 		log("Finalizing partition %d as %s.\n", index, log_id(partname));
+
+		info_file << stringf("partition:\n");
+		info_file << stringf("  index: %d\n", index);
+		info_file << stringf("  name: %s\n", log_id(partname));
+
+		info_file << stringf("  inbits:\n");
+		for (auto &bit : inbits)
+			info_file << stringf("    - ['%s', %d]\n", unescape_id(bit.wire->name).c_str(), bit.offset);
+
+		info_file << stringf("  outbits:\n");
+		for (auto &bit : outbits)
+			info_file << stringf("    - ['%s', %d]\n", unescape_id(bit.wire->name).c_str(), bit.offset);
+
+		info_file << stringf("  crossbits:\n");
+		for (auto &bit : crossbits)
+			info_file << stringf("    - ['%s', %d]\n", unescape_id(bit.wire->name).c_str(), bit.offset);
+
 
 		Design *partdesign = new Design();
 
@@ -595,6 +612,9 @@ struct Partition
 
 		auto copy_mod_contents = [&](bool in_gold, const SigSpec &pi, const SigSpec &po, const SigSpec &cp, const SigSig &conn)->void
 		{
+			info_file << stringf("%s_module:\n", in_gold ? "gold" : "gate");
+			info_file << stringf("  name: %s\n", log_id(mod_gold));
+
 			// Module *in_mod = in_gold ? gold : gate;
 			Module *out_mod = in_gold ? mod_gold : mod_gate;
 			auto &sigmap = in_gold ? worker->gold_sigmap : worker->gate_sigmap;
@@ -606,6 +626,12 @@ struct Partition
 			dict<SigBit,SigBit> mapped_bits;
 			dict<Wire*,Wire*> mapped_wires;
 
+			pool<SigBit> pio_bits;
+			pio_bits.insert(pi.begin(), pi.end());
+			pio_bits.insert(po.begin(), po.end());
+			pio_bits.insert(cp.begin(), cp.end());
+
+			info_file << stringf("  internal_bits:\n");
 			for (auto bit : gg_bits) {
 				Wire *w = bit.wire;
 				if (!w) continue;
@@ -615,6 +641,8 @@ struct Partition
 					// TBD: Copy some of the wire metadata
 					mapped_wires[w] = ww;
 				}
+				if (w->name.isPublic() && !pio_bits.count(bit))
+					info_file << stringf("    - ['%s', %d]\n", unescape_id(w->name).c_str(), bit.offset);
 				mapped_bits[bit] = SigBit(mapped_wires.at(w), bit.offset);
 			}
 
@@ -631,6 +659,7 @@ struct Partition
 			SigMap out_sigmap(out_mod);
 			FfInitVals out_initvals(&out_sigmap, out_mod);
 
+			info_file << stringf("  initvals:\n");
 			for (auto c : gg_cells)
 			{
 				Cell *cc = out_mod->addCell(c->name, c->type);
@@ -641,6 +670,7 @@ struct Partition
 				bool is_reg = RTLIL::builtin_ff_cell_types().count(c->type);
 				for (auto &conn : c->connections()) {
 					SigSpec s;
+					int bit_index = 0;
 					for (auto bit : sigmap(conn.second)) {
 						SigBit out_bit;
 						if (bit. wire == nullptr)
@@ -652,8 +682,14 @@ struct Partition
 						else
 							out_bit = out_mod->addWire(NEW_ID);
 						s.append(out_bit);
-						if (is_reg && conn.first == ID::Q && out_bit.is_wire())
+						if (is_reg && conn.first == ID::Q && out_bit.is_wire()) {
+							info_file << stringf("    - ['%s', '%s', %d, '%s', %d, '%c']\n",
+									unescape_id(c->name).c_str(), unescape_id(conn.first).c_str(),
+									bit_index, unescape_id(out_bit.wire->name).c_str(),
+									out_bit.offset, "01xzam"[initvals(bit)]);
 							out_initvals.set_init(out_bit, initvals(bit));
+						}
+						bit_index++;
 					}
 					cc->setPort(conn.first, s);
 				}
@@ -1126,9 +1162,12 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 				stringf("%s.%s", gold->name.substr(6).c_str(), partition->names.front().c_str()) :
 				stringf("%s#%d", gold->name.substr(6).c_str(), partition->index);
 		std::string filename = stringf("partitions/%s.il", partname.c_str());
+		std::string info_filename = stringf("partitions/%s.info", partname.c_str());
 
 		IdString partid = "\\" + partname;
-		Design *partdesign = partition->finalize(partid);
+		ofile.open(info_filename.c_str(), std::ofstream::trunc);
+		Design *partdesign = partition->finalize(partid, ofile);
+		ofile.close();
 
 		pool<SigBit> unused_gold_inputs = partition->inbits;
 		for (auto cell : partition->gold_cells)
