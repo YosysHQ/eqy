@@ -581,45 +581,52 @@ struct Partition
 		}
 	}
 
-	Design *finalize(IdString partname, std::ofstream &yaml_file)
+	Design *finalize(IdString partname, std::ofstream &json_file)
 	{
 		log_assert(!finalized);
 		finalized = true;
 
 		log("Finalizing partition %d as %s.\n", index, log_id(partname));
 
-		yaml_file << stringf("partition:\n");
-		yaml_file << stringf("  index: %d\n", index);
-		yaml_file << stringf("  name: %s\n", log_id(partname));
+		json_file << stringf("{\n");
+		json_file << stringf("  \"partition\": {\n");
+		json_file << stringf("    \"index\": %d,\n", index);
+		json_file << stringf("    \"name\": \"%s\",\n", log_id(partname));
 
-		dict<std::string, pool<int>> yaml_bits;
-		auto write_yaml_bits = [&](const char *name)->void {
-			yaml_file << stringf("  %s:\n", name);
-			yaml_bits.sort();
-			for (auto &it : yaml_bits) {
-				yaml_file << stringf("    '%s': [", it.first.c_str());
+		dict<std::string, pool<int>> json_bits;
+		auto write_json_bits = [&](const char *name, bool last = false)->void {
+			json_file << stringf("    \"%s\": {\n", name);
+			json_bits.sort();
+			bool first = true;
+			for (auto &it : json_bits) {
+				if (!first) json_file << ",\n";
+				json_file << stringf("      \"%s\": [", it.first.c_str());
 				it.second.sort();
 				for (int i : it.second) {
 					if (i != *it.second.begin())
-						yaml_file << ", ";
-					yaml_file << i;
+						json_file << ", ";
+					json_file << i;
 				}
-				yaml_file << "]\n";
+				json_file << "]";
+				first = false;
 			}
-			yaml_bits.clear();
+			json_bits.clear();
+			json_file << stringf("\n    }%s\n", last ? "" : ",");
 		};
 
 		for (auto &bit : inbits)
-			yaml_bits[unescape_id(bit.wire->name)].insert(bit.offset);
-		write_yaml_bits("inbits");
+			json_bits[unescape_id(bit.wire->name)].insert(bit.offset);
+		write_json_bits("inbits");
 
 		for (auto &bit : outbits)
-			yaml_bits[unescape_id(bit.wire->name)].insert(bit.offset);
-		write_yaml_bits("outbits");
+			json_bits[unescape_id(bit.wire->name)].insert(bit.offset);
+		write_json_bits("outbits");
 
 		for (auto &bit : crossbits)
-			yaml_bits[unescape_id(bit.wire->name)].insert(bit.offset);
-		write_yaml_bits("crossbits");
+			json_bits[unescape_id(bit.wire->name)].insert(bit.offset);
+		write_json_bits("crossbits", true);
+
+		json_file << stringf("  },\n");
 
 		Design *partdesign = new Design();
 
@@ -628,8 +635,8 @@ struct Partition
 
 		auto copy_mod_contents = [&](bool in_gold, const SigSpec &pi, const SigSpec &po, const SigSpec &cp, const SigSig &conn)->void
 		{
-			yaml_file << stringf("%s_module:\n", in_gold ? "gold" : "gate");
-			yaml_file << stringf("  name: %s\n", log_id(mod_gold));
+			json_file << stringf("  \"%s_module\": {\n", in_gold ? "gold" : "gate");
+			json_file << stringf("    \"name\": \"%s\",\n", log_id(mod_gold));
 
 			// Module *in_mod = in_gold ? gold : gate;
 			Module *out_mod = in_gold ? mod_gold : mod_gate;
@@ -657,10 +664,10 @@ struct Partition
 					mapped_wires[w] = ww;
 				}
 				if (w->name.isPublic() && !pio_bits.count(bit))
-					yaml_bits[unescape_id(w->name)].insert(bit.offset);
+					json_bits[unescape_id(w->name)].insert(bit.offset);
 				mapped_bits[bit] = SigBit(mapped_wires.at(w), bit.offset);
 			}
-			write_yaml_bits("internal");
+			write_json_bits("internal");
 
 			for (auto &it : mapped_wires) {
 				Wire *w = it.first, *ww = it.second;
@@ -675,7 +682,6 @@ struct Partition
 			SigMap out_sigmap(out_mod);
 			FfInitVals out_initvals(&out_sigmap, out_mod);
 
-			if (0) yaml_file << stringf("  init:\n");
 			for (auto c : gg_cells)
 			{
 				Cell *cc = out_mod->addCell(c->name, c->type);
@@ -698,21 +704,17 @@ struct Partition
 						else
 							out_bit = out_mod->addWire(NEW_ID);
 						s.append(out_bit);
-						if (is_reg && conn.first == ID::Q && out_bit.is_wire()) {
-							if (0) yaml_file << stringf("    - ['%s', '%s', %d, '%s', %d, '%c']\n",
-									unescape_id(c->name).c_str(), unescape_id(conn.first).c_str(),
-									bit_index, unescape_id(out_bit.wire->name).c_str(),
-									out_bit.offset, "01xzam"[initvals(bit)]);
+						if (is_reg && conn.first == ID::Q && out_bit.is_wire())
 							out_initvals.set_init(out_bit, initvals(bit));
-						}
 						bit_index++;
 					}
 					cc->setPort(conn.first, s);
 				}
 			}
 
-			yaml_file << stringf("  cellcount: %d\n", GetSize(gg_cells));
-			yaml_file << stringf("  bitcount: %d\n", GetSize(gg_bits));
+			json_file << stringf("    \"cellcount\": %d,\n", GetSize(gg_cells));
+			json_file << stringf("    \"bitcount\": %d\n", GetSize(gg_bits));
+			json_file << stringf("  }%s\n", in_gold ? "," : "");
 
 			int port_idx = 0;
 
@@ -786,6 +788,7 @@ struct Partition
 		copy_mod_contents(true, gold_pi, gold_po, gold_cp, gold_conn);
 		copy_mod_contents(false, gate_pi, gate_po, gate_cp, gate_conn);
 
+		json_file << stringf("}\n");
 		return partdesign;
 	}
 };
@@ -1181,10 +1184,10 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 				stringf("%s.%s", gold->name.substr(6).c_str(), partition->names.front().c_str()) :
 				stringf("%s#%d", gold->name.substr(6).c_str(), partition->index);
 		std::string filename = stringf("partitions/%s.il", partname.c_str());
-		std::string yaml_filename = stringf("partitions/%s.yml", partname.c_str());
+		std::string json_filename = stringf("partitions/%s.json", partname.c_str());
 
 		IdString partid = "\\" + partname;
-		ofile.open(yaml_filename.c_str(), std::ofstream::trunc);
+		ofile.open(json_filename.c_str(), std::ofstream::trunc);
 		Design *partdesign = partition->finalize(partid, ofile);
 		ofile.close();
 
@@ -1213,30 +1216,16 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 			partition_list_file << " memory";
 
 		partition_list_file << " :";
-		for (auto bit : partition->outbits)
-			if (bit.wire->width != 1)
-				partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
-			else
-				partition_list_file << stringf(" %s", unescape_id(bit.wire->name).c_str());
+		SigSpec outsig(partition->outbits);
+		outsig.sort();
 
-		partition_list_file << " <=";
-		for (auto bit : partition->inbits) {
-			if (bit.wire->width != 1)
-				partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
+		for (auto chunk : outsig.chunks())
+			if (chunk.offset == 0 && chunk.width == chunk.wire->width != 1)
+				partition_list_file << stringf(" %s", unescape_id(chunk.wire->name).c_str());
+			else if (chunk.width == 1)
+				partition_list_file << stringf(" %s[%d]", unescape_id(chunk.wire->name).c_str(), chunk.offset);
 			else
-				partition_list_file << stringf(" %s", unescape_id(bit.wire->name).c_str());
-			if (unused_gold_inputs.count(bit))
-				partition_list_file << "?";
-		}
-
-		if (!partition->crossbits.empty()) {
-			partition_list_file << " =>";
-			for (auto bit : partition->crossbits)
-				if (bit.wire->width != 1)
-					partition_list_file << stringf(" %s[%d]", unescape_id(bit.wire->name).c_str(), bit.offset);
-				else
-					partition_list_file << stringf(" %s", unescape_id(bit.wire->name).c_str());
-		}
+				partition_list_file << stringf(" %s[%d:%d]", unescape_id(chunk.wire->name).c_str(), chunk.offset+chunk.width-1, chunk.offset);
 
 		partition_list_file << "\n";
 

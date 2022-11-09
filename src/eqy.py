@@ -19,9 +19,8 @@
 #
 import argparse, types, re, glob
 import os, sys, tempfile, shutil
-import shlex, fnmatch
-import textwrap
-import click
+import shlex, fnmatch, textwrap
+import click, json
 ##yosys-sys-path##
 
 from eqy_job import EqyJob, EqyTask
@@ -865,54 +864,27 @@ def parse_strategies(args, cfg):
 class EqyPartition:
     net_index_re = re.compile(r"^(.*)\[(\d+)\]$")
 
-    def __init__(self, line, cfg):
-        self.module, self.name, *rest = line.split()
-        self.attributes = []
-        self.outbits = []
-        self.inbits = []
-        self.crossbits = []
+    def __init__(self, line, args, cfg):
+        fields = iter(line.split())
+        self.module = next(fields)
+        self.name = next(fields)
 
-        assert self.module in cfg.gold_ids
-        ids = cfg.gold_ids[self.module]
-
-        rest = iter(rest)
-        for item in rest:
+        self.attributes = set()
+        for item in fields:
             if item == ':':
                 break
-            self.attributes.append(item)
+            self.attributes.add(item)
 
-        def parse_net_item(item):
-            if item in ids:
-                return item, None
-            else:
-                m = self.net_index_re.match(item)
-                if m and m[1] in ids:
-                    return item, int(m[2])
-                else:
-                    exit_with_error(f"Can't find net {item} in gold module {self.module}.")
-
-        for item in rest:
-            if item == '<=':
-                break
-            self.outbits.append(parse_net_item(item))
-
-        for item in rest:
-            if item == '=>':
-                break
-            if item[-1] == "?":
-                item = item[:-1]
-            self.inbits.append(parse_net_item(item))
-
-        for item in rest:
-            self.crossbits.append(parse_net_item(item))
-
+        with open(f"{args.workdir}/partitions/{self.name}.json", "r") as f:
+            for key, value in json.load(f).items():
+                setattr(self, key, value)
 
 def make_scripts(args, cfg, job, strategies):
     partitions = []
 
     with open(args.workdir + "/partition.list") as f:
         for line in f:
-            partitions.append(EqyPartition(line, cfg))
+            partitions.append(EqyPartition(line, args, cfg))
 
     if not os.path.isdir(args.workdir + "/strategies"):
         os.mkdir(args.workdir + "/strategies")
