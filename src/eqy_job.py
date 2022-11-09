@@ -79,6 +79,11 @@ class EqyTask:
             if self.logfile is not None:
                 click.echo(line, file=self.logfile)
             if line.startswith("Warning:"):
+                line = click.style(line, fg="yellow", bold=True)
+            if line.startswith("Proved equivalence "):
+                line = click.style(line, fg="green")
+            if line.startswith("Could not prove equivalence ") or \
+               line.startswith("Setting unknown status for partition "):
                 line = click.style(line, fg="yellow")
             self.job.log(click.style(self.info, fg="magenta") + ": " + line)
 
