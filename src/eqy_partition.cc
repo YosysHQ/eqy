@@ -719,20 +719,28 @@ struct Partition
 			json_file << stringf("    \"bitcount\": %d\n", GetSize(gg_bits));
 			json_file << stringf("  }%s\n", in_gold ? "," : "");
 
+			SigSpec out_pi, out_po, out_cp;
+			for (auto bit : sigmap(pi))
+				out_pi.append(bit.is_wire() ? mapped_bits.at(bit) : bit);
+			for (auto bit : sigmap(po))
+				out_po.append(bit.is_wire() ? mapped_bits.at(bit) : bit);
+			for (auto bit : sigmap(cp))
+				out_cp.append(bit.is_wire() ? mapped_bits.at(bit) : bit);
+
 			int port_idx = 0;
 
 			if (GetSize(pi)) {
 				Wire *piw = out_mod->addWire("\\__pi", GetSize(pi));
 				piw->port_input = true;
 				piw->port_id = ++port_idx;
-				out_mod->connect(pi, piw);
+				out_mod->connect(out_pi, piw);
 			}
 
 			if (GetSize(po)) {
 				Wire *pow = out_mod->addWire("\\__po", GetSize(po));
 				pow->port_output = true;
 				pow->port_id = ++port_idx;
-				out_mod->connect(pow, po);
+				out_mod->connect(pow, out_po);
 			}
 
 			if (GetSize(cp)) {
@@ -741,10 +749,12 @@ struct Partition
 				cpw->port_input = !in_gold;
 				cpw->port_id = ++port_idx;
 				if (in_gold)
-					out_mod->connect(cpw, cp);
+					out_mod->connect(cpw, out_cp);
 				else
-					out_mod->connect(cp, cpw);
+					out_mod->connect(out_cp, cpw);
 			}
+
+			out_mod->fixup_ports();
 		};
 
 		dict<SigBit, int> gate_pi_positions;
