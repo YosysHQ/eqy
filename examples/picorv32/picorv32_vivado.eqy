@@ -6,6 +6,7 @@ read_verilog -formal picorv32.v
 prep -top picorv32
 
 [gate]
+logger -nowarn limited.support.for.tri-state.*/cells_sim.v
 read_verilog -nowb -noblackbox +/xilinx/cells_sim.v
 read_verilog -formal picorv32_vivado.v
 prep -top picorv32

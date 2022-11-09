@@ -78,6 +78,8 @@ class EqyTask:
         if line is not None and (self.noprintregex is None or not self.noprintregex.match(line)):
             if self.logfile is not None:
                 click.echo(line, file=self.logfile)
+            if line.startswith("Warning:"):
+                line = click.style(line, fg="yellow")
             self.job.log(click.style(self.info, fg="magenta") + ": " + line)
 
     def handle_output(self, line):
