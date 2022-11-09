@@ -581,13 +581,14 @@ struct Partition
 		}
 	}
 
-	Design *finalize(IdString partname, std::ofstream &json_file)
+	Design *finalize(IdString partname, const std::string &json_filename)
 	{
 		log_assert(!finalized);
 		finalized = true;
 
 		log("Finalizing partition %d as %s.\n", index, log_id(partname));
 
+		std::ofstream json_file(json_filename.c_str(), std::ofstream::trunc);
 		json_file << stringf("{\n");
 		json_file << stringf("  \"partition\": {\n");
 		json_file << stringf("    \"index\": %d,\n", index);
@@ -1179,7 +1180,6 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 		Partition *partition = it.get();
 		if (partition->finalized) continue;
 
-		std::ofstream ofile;
 		std::string partname = partition->name_priority ?
 				stringf("%s.%s", gold->name.substr(6).c_str(), partition->names.front().c_str()) :
 				stringf("%s#%d", gold->name.substr(6).c_str(), partition->index);
@@ -1187,9 +1187,7 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 		std::string json_filename = stringf("partitions/%s.json", partname.c_str());
 
 		IdString partid = "\\" + partname;
-		ofile.open(json_filename.c_str(), std::ofstream::trunc);
-		Design *partdesign = partition->finalize(partid, ofile);
-		ofile.close();
+		Design *partdesign = partition->finalize(partid, json_filename);
 
 		pool<SigBit> unused_gold_inputs = partition->inbits;
 		for (auto cell : partition->gold_cells)
@@ -1198,14 +1196,6 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 					if (unused_gold_inputs.count(bit))
 						unused_gold_inputs.erase(bit);
 
-		ofile.open(filename.c_str(), std::ofstream::trunc);
-		if (ofile.fail())
-			log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
-
-		// Pass::call(partdesign, "setundef -undriven -undef");
-		// Pass::call(partdesign, "check -assert -initdrv");
-		Pass::call(partdesign, "check -initdrv");
-		Backend::backend_call(partdesign, &ofile, filename, "rtlil");
 		partition_list_file << unescape_id(gold->name).substr(5) << " ";
 		partition_list_file << partname;
 
@@ -1232,6 +1222,9 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 
 		partition_list_file << "\n";
 
+		Backend::backend_call(partdesign, nullptr, filename, "rtlil");
+		// partdesign->check();
+		// Pass::call(partdesign, "check -assert -initdrv");
 		delete partdesign;
 		log_spacer();
 	}

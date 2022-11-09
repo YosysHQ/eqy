@@ -275,6 +275,8 @@ def build_gate_gold(args, cfg, job):
         if cfg.options.splitnets:
             print("splitnets -ports", file=f)
         print("opt_clean", file=f)
+        print("check -initdrv", file=f)
+        print("setundef -undriven -undef", file=f)
         print("write_ilang {}/gold.il".format(args.workdir), file=f)
     with open(args.workdir + "/gate.ys", "w") as f:
         for line in cfg.gate:
@@ -282,6 +284,8 @@ def build_gate_gold(args, cfg, job):
         if cfg.options.splitnets:
             print("splitnets -ports", file=f)
         print("opt_clean", file=f)
+        print("check -initdrv", file=f)
+        print("setundef -undriven -undef", file=f)
         print("write_ilang {}/gate.il".format(args.workdir), file=f)
 
     gold_task = EqyTask(job, "read_gold", [], "{yosys}{gopt} -ql {workdir}/gold.log {workdir}/gold.ys".format(
