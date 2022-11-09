@@ -557,7 +557,9 @@ struct Partition
 		log("Adding bit %s to partition %d.\n", log_signal(gold_bit), index);
 		add_bit_f(gold_bit, true, true, "  ");
 
-		for (auto &bit : worker->aliases.at(worker->raliases.at(gold_bit, gold_bit), {}))
+		pool<SigBit> empty = {};
+
+		for (auto &bit : worker->aliases.at(worker->raliases.at(gold_bit, gold_bit), empty))
 			if (!worker->solo_database.count(bit))
 				found_matched_bits.insert(bit);
 
