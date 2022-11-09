@@ -940,7 +940,7 @@ def make_scripts(args, cfg, job, strategies):
 
 def run_scripts(args, cfg, job):
     kopt = " -k" if args.keep_going else ""
-    run_task = EqyTask(job, "run", [], f"cd {args.workdir}; make{kopt} -f strategies.mk")
+    run_task = EqyTask(job, "run", [], f"make{kopt} -C {args.workdir} -f strategies.mk")
     summary_messages = list()
 
     def check_output(line):

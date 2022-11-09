@@ -80,11 +80,15 @@ class EqyTask:
                 click.echo(line, file=self.logfile)
             if line.startswith("Warning:"):
                 line = click.style(line, fg="yellow", bold=True)
-            if line.startswith("Proved equivalence "):
+            elif line.startswith("ERROR:"):
+                line = click.style(line, fg="red", bold=True)
+            elif line.startswith("Proved equivalence "):
                 line = click.style(line, fg="green")
-            if line.startswith("Could not prove equivalence ") or \
-               line.startswith("Setting unknown status for partition "):
+            elif line.startswith("Could not prove equivalence ") or \
+                 line.startswith("Setting unknown status for partition "):
                 line = click.style(line, fg="yellow")
+            elif line.startswith("Proved inequivalence "):
+                line = click.style(line, fg="red")
             self.job.log(click.style(self.info, fg="magenta") + ": " + line)
 
     def handle_output(self, line):

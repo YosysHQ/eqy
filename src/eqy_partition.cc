@@ -1202,6 +1202,9 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 		if (ofile.fail())
 			log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
 
+		// Pass::call(partdesign, "setundef -undriven -undef");
+		// Pass::call(partdesign, "check -assert -initdrv");
+		Pass::call(partdesign, "check -initdrv");
 		Backend::backend_call(partdesign, &ofile, filename, "rtlil");
 		partition_list_file << unescape_id(gold->name).substr(5) << " ";
 		partition_list_file << partname;
