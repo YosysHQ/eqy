@@ -453,11 +453,11 @@ struct Partition
 	}
 
 	void add(SigBit gold_bit)
-
 	{
 		pool<SigBit> found_matched_bits;
 		gold_bit = worker->gold_sigmap(gold_bit);
 
+		log_assert(primitive);
 		log_assert(!finalized);
 		log_assert(worker->queue.count(gold_bit));
 		worker->queue.erase(gold_bit);
@@ -504,15 +504,13 @@ struct Partition
 				if (isoutput) {
 					run_other = !outbits.count(gold_bit);
 					outbits.insert(gold_bit);
-					if (primitive)
-						worker->po_primitive_index[gold_bit] = index;
+					worker->po_primitive_index[gold_bit] = index;
 					worker->po_partition_index[gold_bit] = index;
 				} else if (!worker->bind_database.count(gold_bit)) {
 					isinput = true;
 					run_other = !inbits.count(gold_bit);
 					inbits.insert(gold_bit);
-					if (primitive)
-						worker->pi_primitives_index[gold_bit].insert(index);
+					worker->pi_primitives_index[gold_bit].insert(index);
 					worker->pi_partitions_index[gold_bit].insert(index);
 				}
 
@@ -664,9 +662,10 @@ struct Partition
 			for (auto bit : gg_bits) {
 				Wire *w = bit.wire;
 				if (!w) continue;
+				log_debug("  %s partition bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
 				if (!mapped_wires.count(w)) {
 					Wire *ww = out_mod->addWire(w->name, GetSize(w));
-					log_debug("  %s partition wire: %s\n", in_gold ? "gold" : "gate", log_id(ww));
+					log_debug("  %s partition wire: %s\n", in_gold ? "gold" : "gate", log_id(w));
 					// TBD: Copy some of the wire metadata
 					mapped_wires[w] = ww;
 				}
@@ -702,9 +701,10 @@ struct Partition
 					int bit_index = 0;
 					for (auto bit : sigmap(conn.second)) {
 						SigBit out_bit;
-						if (bit. wire == nullptr)
+						if (bit.wire == nullptr)
 							out_bit = bit;
-						else if (c->output(conn.first) && inbits.count(bit))
+						else if (c->output(conn.first) && inbits.count(in_gold ? bit :
+								worker->gate_matches.at(bit, bit)))
 							out_bit = out_mod->addWire(NEW_ID);
 						else if (mapped_bits.count(bit))
 							out_bit = mapped_bits.at(bit);
@@ -715,6 +715,8 @@ struct Partition
 							out_initvals.set_init(out_bit, initvals(bit));
 						bit_index++;
 					}
+					log_debug("    port %s: %s => %s => %s\n", log_id(conn.first), log_signal(conn.second),
+							log_signal(sigmap(conn.second)), log_signal(s));
 					cc->setPort(conn.first, s);
 				}
 			}
