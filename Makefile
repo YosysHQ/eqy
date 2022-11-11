@@ -12,14 +12,17 @@ endif
 
 build: src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so
 
+DEBUG_CXXFLAGS :=
+#DEBUG_CXXFLAGS += -Og
+
 src/eqy_combine.so: src/eqy_combine.cc
-	yosys-config --build $@ $^
+	yosys-config --build $@ $(DEBUG_CXXFLAGS) $^
 
 src/eqy_partition.so: src/eqy_partition.cc
-	yosys-config --build $@ $^
+	yosys-config --build $@ $(DEBUG_CXXFLAGS) $^
 
 src/eqy_recode.so: src/eqy_recode.cc
-	yosys-config --build $@ $^
+	yosys-config --build $@ $(DEBUG_CXXFLAGS) $^
 
 install: src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so
 	mkdir -p $(DESTDIR)$(PREFIX)/bin

@@ -429,23 +429,27 @@ struct Partition
 		log_assert(other->primitive);
 
 		for (auto bit : other->inbits) {
-			if (!gold_bits.count(bit))
+			if (!gold_bits.count(bit)) {
 				inbits.insert(bit);
+				gate_bits.insert(worker->gold_matches.at(bit));
+			}
 		}
 
 		for (auto bit : other->outbits) {
 			if (inbits.count(bit))
 				inbits.erase(bit);
-			crossbits.insert(bit);
+			auto gate_bit = worker->gold_matches.at(bit);
+			auto gate_cell = get<0>(worker->gate_drivers.at(gate_bit));
+			if (gate_cells.count(gate_cell) == 0) {
+				crossbits.insert(bit);
+				gate_bits.insert(gate_bit);
+			}
 		}
 
 		log_assert(other->crossbits.empty());
 
 		gold_bits.insert(other->gold_bits.begin(), other->gold_bits.end());
-		gate_bits.insert(other->gate_bits.begin(), other->gate_bits.end());
-
 		gold_cells.insert(other->gold_cells.begin(), other->gold_cells.end());
-		gate_cells.insert(other->gate_cells.begin(), other->gate_cells.end());
 	}
 
 	void add(SigBit gold_bit)
@@ -1235,8 +1239,8 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 		partition_list_file << "\n";
 
 		Backend::backend_call(partdesign, nullptr, filename, "rtlil");
-		// partdesign->check();
-		// Pass::call(partdesign, "check -assert -initdrv");
+		partdesign->check();
+		Pass::call(partdesign, "check -assert -initdrv");
 		delete partdesign;
 		log_spacer();
 	}
