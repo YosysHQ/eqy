@@ -479,51 +479,68 @@ struct Partition
 
 			bool insert_bit = !gg_bits.count(bit);
 
-			if (!insert_bit && isoutput && gg_matches.count(bit)) {
-				SigBit gold_bit = in_gold ? bit : gg_matches.at(bit);
-				if (!outbits.count(gold_bit))
-					insert_bit = true;
-			}
-
-			log_debug("%sadd_bit_f %s %s%s: %s\n", indent.c_str(), log_signal(bit),
-					in_gold ? "gold" : "gate", isoutput ? " [output]" : "", insert_bit ? "insert" : "skip");
-
-			if (!insert_bit)
-				return;
-
-			bool isinput = false;
-
-			gg_bits.insert(bit);
-
 			if (gg_matches.count(bit))
 			{
 				SigBit xx_bit = gg_matches.at(bit);
 				SigBit gold_bit = in_gold ? bit : xx_bit;
-				bool run_other = false;
 
-				if (isoutput) {
-					run_other = !outbits.count(gold_bit);
-					outbits.insert(gold_bit);
-					worker->po_primitive_index[gold_bit] = index;
-					worker->po_partition_index[gold_bit] = index;
-				} else if (!worker->bind_database.count(gold_bit)) {
-					isinput = true;
-					run_other = !inbits.count(gold_bit);
-					inbits.insert(gold_bit);
-					worker->pi_primitives_index[gold_bit].insert(index);
-					worker->pi_partitions_index[gold_bit].insert(index);
+				if (isoutput)
+					insert_bit = true;
+				if (outbits.count(gold_bit))
+					isoutput = true;
+			}
+
+			bool isinput = false;
+			bool run_other = false;
+
+			if (insert_bit)
+			{
+				gg_bits.insert(bit);
+
+				if (gg_matches.count(bit))
+				{
+					SigBit xx_bit = gg_matches.at(bit);
+					SigBit gold_bit = in_gold ? bit : xx_bit;
+
+					if (isoutput) {
+						run_other = !outbits.count(gold_bit);
+						outbits.insert(gold_bit);
+						worker->po_primitive_index[gold_bit] = index;
+						worker->po_partition_index[gold_bit] = index;
+						if (inbits.count(gold_bit)) {
+							inbits.erase(gold_bit);
+							worker->pi_primitives_index[gold_bit].erase(index);
+							if (worker->pi_primitives_index[gold_bit].empty())
+								worker->pi_primitives_index.erase(gold_bit);
+							worker->pi_partitions_index[gold_bit].erase(index);
+							if (worker->pi_partitions_index[gold_bit].empty())
+								worker->pi_partitions_index.erase(gold_bit);
+						}
+					} else if (!worker->bind_database.count(gold_bit)) {
+						isinput = true;
+						run_other = !inbits.count(gold_bit);
+						inbits.insert(gold_bit);
+						worker->pi_primitives_index[gold_bit].insert(index);
+						worker->pi_partitions_index[gold_bit].insert(index);
+					}
 				}
-
-				if (run_other)
-					add_bit_f(xx_bit, !in_gold, isoutput, increase_indent(indent));
-			}
-			else
-			{
-				log_assert(!isoutput);
+				else
+				{
+					log_assert(!isoutput);
+				}
 			}
 
-			if (!isinput && gg_drivers.count(bit))
-			{
+			log_debug("%sadd_bit_f %s %s%s%s: %s%s\n", indent.c_str(),
+					log_signal(bit), in_gold ? "gold" : "gate",
+					isoutput ? " [output]" : "", isinput ? " [input]" : "",
+					insert_bit ? "insert" : "skip", run_other ? "+" : "");
+
+			if (run_other) {
+				SigBit xx_bit = gg_matches.at(bit);
+				add_bit_f(xx_bit, !in_gold, isoutput, increase_indent(indent));
+			}
+
+			if (insert_bit && !isinput && gg_drivers.count(bit)) {
 				auto const &driver = gg_drivers.at(bit);
 				auto driver_cell = std::get<0>(driver);
 				add_cell_f(driver_cell, in_gold, increase_indent(indent));

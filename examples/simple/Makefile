@@ -1,4 +1,7 @@
-test: ex_amend/PASS ex_bind/PASS ex_group/PASS ex_join/PASS
+test: counter/PASS ex_amend/PASS ex_bind/PASS ex_group/PASS ex_join/PASS
+
+counter/PASS: counter.eqy counter.sv
+	eqy -f counter.eqy
 
 ex_amend/PASS: ex_amend.eqy ex_amend.sv
 	eqy -f ex_amend.eqy
@@ -13,6 +16,6 @@ ex_join/PASS: ex_join.eqy ex_join.sv
 	eqy -f ex_join.eqy
 
 clean:
-	rm -rf ex_amend/ ex_bind/ ex_group/ ex_join/
+	rm -rf counter/ ex_amend/ ex_bind/ ex_group/ ex_join/
 
 .PHONY: test clean
