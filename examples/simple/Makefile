@@ -1,4 +1,7 @@
-test: counter/PASS ex_amend/PASS ex_bind/PASS ex_group/PASS ex_join/PASS
+test: aliases/PASS counter/PASS ex_amend/PASS ex_bind/PASS ex_group/PASS ex_join/PASS
+
+aliases/PASS: aliases.eqy aliases.sv
+	-eqy -f aliases.eqy
 
 counter/PASS: counter.eqy counter.sv
 	eqy -f counter.eqy

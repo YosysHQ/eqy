@@ -1,0 +1,13 @@
+[options]
+
+[gold]
+read_verilog -DGOLD aliases.sv
+prep -top aliases
+
+[gate]
+read_verilog -DGATE aliases.sv
+prep -top aliases
+
+[strategy simple]
+use satseq
+depth 10
