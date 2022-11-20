@@ -8,6 +8,11 @@ prep -top aliases
 read_verilog -DGATE aliases.sv
 prep -top aliases
 
+# work-arounds for "insbuf on"
+[collect *]
+bind X
+join Y
+
 [strategy simple]
 use satseq
 depth 10

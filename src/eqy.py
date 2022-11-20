@@ -157,6 +157,7 @@ def read_config(configfile):
 
     cfg.options = types.SimpleNamespace()
     cfg.options.splitnets = False
+    cfg.options.insbuf = True
 
     section = None
     sectionarg = None
@@ -633,6 +634,8 @@ def make_partitions(args, cfg, job):
     with open(args.workdir + "/partition.ys", "w") as f:
         print("plugin -i {}/eqy_partition.so".format(plugin_path), file=f)
         print("read_ilang combined.il".format(args.workdir), file=f)
+        if cfg.options.insbuf:
+            print("insbuf", file=f)
         print("{dbg}eqy_partition -matched_ids matched.ids -partition_ids partition.ids -create_partition_list partition.list".format(dbg="debug " if args.debugmode else ""), file=f)
     if not os.path.isdir(args.workdir + "/partitions"):
         os.mkdir(args.workdir + "/partitions")
