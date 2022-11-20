@@ -19,6 +19,6 @@ ex_join/PASS: ex_join.eqy ex_join.sv
 	eqy -f ex_join.eqy
 
 clean:
-	rm -rf counter/ ex_amend/ ex_bind/ ex_group/ ex_join/
+	rm -rf aliases/ counter/ ex_amend/ ex_bind/ ex_group/ ex_join/
 
 .PHONY: test clean
