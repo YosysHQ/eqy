@@ -448,7 +448,10 @@ def search_entities(ids, other_ids, expr, other_expr):
                 found_second = True
                 matches.append((name, other_name))
     if not found_first:
-        exit_with_error(f"Cannot find first entity in {expr} {other_expr}.")
+        if other_expr is None:
+            exit_with_error(f"Cannot find entity {expr}.")
+        else:
+            exit_with_error(f"Cannot find first entity in {expr} {other_expr}.")
     if not found_second:
         exit_with_error(f"Cannot find second entity in {expr} {other_expr}.")
     return matches

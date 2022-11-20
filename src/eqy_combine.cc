@@ -122,6 +122,8 @@ struct EqyCombinePass : public Pass
 					else
 						fprintf(file, " A:%s=%d", unescape_id(a.first).c_str(), a.second.as_int());
 				}
+				if (w->port_id)
+					fprintf(file, " P=%s%s", w->port_input ? "I" : "", w->port_output ? "O" : "");
 				fprintf(file, "\n");
 			}
 	}
