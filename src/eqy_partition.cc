@@ -505,6 +505,7 @@ struct Partition
 					if (isoutput) {
 						run_other = !outbits.count(gold_bit);
 						outbits.insert(gold_bit);
+						worker->queue.erase(gold_bit);
 						worker->po_primitive_index[gold_bit] = index;
 						worker->po_partition_index[gold_bit] = index;
 						if (inbits.count(gold_bit)) {
