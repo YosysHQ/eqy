@@ -575,7 +575,7 @@ struct Partition
 		};
 
 		log("Adding bit %s to partition %d.\n", log_signal(gold_bit), index);
-		add_bit_f(gold_bit, true, true, "  ");
+		add_bit_f(gold_bit, true, true, stringf("p%d>  ", index));
 
 		pool<SigBit> empty = {};
 
@@ -1193,18 +1193,21 @@ void EqyPartitionWorker::merge_partitions()
 		}
 
 		std::sort(candidates.begin(), candidates.end());
+		for (int extra_idx = 0; !partition->name_priority; ++extra_idx) {
+			for (auto &it : candidates) {
+				std::string name = std::get<1>(it);
+				if (extra_idx) name += stringf("_%d", extra_idx);
+				if (name_database.count(name)) {
+					log_debug("  name '%s' is already taken\n", name.c_str());
+					continue;
+				}
 
-		for (auto &it : candidates) {
-			if (name_database.count(std::get<1>(it))) {
-				log_debug("  name '%s' is already taken\n", std::get<1>(it).c_str());
-				continue;
+				log("Automatically naming partition %d '%s' using a PO name: %s\n", partition->index, name.c_str(), std::get<2>(it).c_str());
+				partition->name_priority = ++name_priority;
+				name_database[std::get<1>(it)] = partition->index;
+				partition->names.push_back(std::get<1>(it));
+				break;
 			}
-
-			log("Automatically naming partition %d '%s' using a PO name: %s\n", partition->index, std::get<1>(it).c_str(), std::get<2>(it).c_str());
-			partition->name_priority = ++name_priority;
-			name_database[std::get<1>(it)] = partition->index;
-			partition->names.push_back(std::get<1>(it));
-			break;
 		}
 	}
 }
@@ -1218,7 +1221,7 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 
 		std::string partname = partition->name_priority ?
 				stringf("%s.%s", gold->name.substr(6).c_str(), partition->names.front().c_str()) :
-				stringf("%s#%d", gold->name.substr(6).c_str(), partition->index);
+				stringf("%s.%d", gold->name.substr(6).c_str(), partition->index);
 		std::string filename = stringf("partitions/%s.il", partname.c_str());
 		std::string json_filename = stringf("partitions/%s.json", partname.c_str());
 
