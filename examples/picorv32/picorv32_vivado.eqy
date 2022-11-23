@@ -17,7 +17,9 @@ gate-match /^(.*)_reg\[(\d+)\].Q$/ \1[\2]
 nodefault
 
 [collect *]
-solo mem_wdata[0]
+bind /^mem_la_(addr\[\d+\]|read|write)$/
+bind mem_valid
+bind trap
 
 [strategy simple]
 use satseq

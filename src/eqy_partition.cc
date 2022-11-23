@@ -633,8 +633,8 @@ struct Partition
 				json_file << "]";
 				first = false;
 			}
+			json_file << stringf("%s    }%s\n", json_bits.empty() ? "" : "\n", last ? "" : ",");
 			json_bits.clear();
-			json_file << stringf("\n    }%s\n", last ? "" : ",");
 		};
 
 		for (auto &bit : inbits)
@@ -677,6 +677,14 @@ struct Partition
 			pio_bits.insert(po.begin(), po.end());
 			pio_bits.insert(cp.begin(), cp.end());
 
+			pool<SigBit> unused_inputs;
+
+			for (auto bit : pi) unused_inputs.insert(sigmap(bit));
+			if (!in_gold) for (auto bit : cp) unused_inputs.insert(sigmap(bit));
+
+			for (auto bit : po) unused_inputs.erase(sigmap(bit));
+			if (in_gold) for (auto bit : cp) unused_inputs.erase(sigmap(bit));
+
 			for (auto bit : gg_bits) {
 				Wire *w = bit.wire;
 				if (!w) continue;
@@ -717,6 +725,8 @@ struct Partition
 				for (auto &conn : c->connections()) {
 					SigSpec s;
 					int bit_index = 0;
+					if (c->input(conn.first))
+						for (auto bit : conn.second) unused_inputs.erase(sigmap(bit));
 					for (auto bit : sigmap(conn.second)) {
 						SigBit out_bit;
 						if (bit.wire == nullptr)
@@ -738,6 +748,10 @@ struct Partition
 					cc->setPort(conn.first, s);
 				}
 			}
+
+			for (auto &bit : unused_inputs)
+				json_bits[unescape_id(bit.wire->name)].insert(bit.offset);
+			write_json_bits("unused");
 
 			json_file << stringf("    \"cellcount\": %d,\n", GetSize(gg_cells));
 			json_file << stringf("    \"bitcount\": %d\n", GetSize(gg_bits));
