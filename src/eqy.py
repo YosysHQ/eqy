@@ -67,6 +67,9 @@ def parse_args():
     parser.add_argument("-k", "--keep-going", action="store_true",
             help="keep going when some make targets can't be made")
 
+    parser.add_argument("-j", "--jobs", metavar="<N>", type=int, action="store", dest="num_jobs",
+            help="Allow running <N> make jobs at once")
+
     parser.add_argument("-P", "--purge", action="append", dest="purgelist", metavar="<pattern>",
             help="purge any <partition>/<strategy> pair, supports wildcards")
 
@@ -947,7 +950,8 @@ def make_scripts(args, cfg, job, strategies):
 
 def run_scripts(args, cfg, job):
     kopt = " -k" if args.keep_going else ""
-    run_task = EqyTask(job, "run", [], f"make{kopt} -C {args.workdir} -f strategies.mk")
+    jopt = f" -j{args.num_jobs}" if args.num_jobs else ""
+    run_task = EqyTask(job, "run", [], f"make{kopt}{jopt} -C {args.workdir} -f strategies.mk")
     summary_messages = list()
 
     def check_output(line):
