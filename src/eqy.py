@@ -885,13 +885,16 @@ class EqyPartition:
 
         with open(f"{args.workdir}/partitions/{self.name}.json", "r") as f:
             for key, value in json.load(f).items():
-                setattr(self, key, value)
+                if key in ("gold_module", "gate_module"):
+                    setattr(self, key, types.SimpleNamespace(**value))
+                else:
+                    setattr(self, key, value)
 
-        if self.gold_module["unused"]:
-            job.warning(f"Partition {self.name} contains unused gold inputs.")
+        if self.gold_module.unused:
+            job.warning(f"Partition {self.name} contains {len(self.gold_module.unused)} unused gold inputs.")
 
-        if self.gate_module["unused"]:
-            job.warning(f"Partition {self.name} contains unused gate inputs.")
+        if self.gate_module.unused:
+            job.warning(f"Partition {self.name} contains {len(self.gate_module.unused)} unused gate inputs.")
 
 def make_scripts(args, cfg, job, strategies):
     partitions = []
