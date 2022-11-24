@@ -790,7 +790,7 @@ class EqySatseqStrategy(EqyStrategy):
         with open(self.path(partition.name, "run.ys"), "w") as ys_f:
             print(f"read_ilang ../../../partitions/{partition.name}.il", file=ys_f)
             print(f"miter -equiv -cross -make_assert -ignore_gold_x -flatten gold.{partition.name} gate.{partition.name} miter", file=ys_f)
-            print(f"sat -tempinduct -set-init-undef -maxsteps {self.scfg.depth} -prove-asserts -show-public -dump_vcd trace.vcd miter", file=ys_f)
+            print(f"sat -tempinduct -set-init-undef -set-def-inputs -maxsteps {self.scfg.depth} -prove-asserts -show-public -dump_vcd trace.vcd miter", file=ys_f)
 
 
 class EqySbyStrategy(EqyStrategy):
@@ -958,14 +958,17 @@ def run_scripts(args, cfg, job):
     kopt = " -k" if args.keep_going else ""
     jopt = f" -j{args.num_jobs}" if args.num_jobs else ""
     run_task = EqyTask(job, "run", [], f"make{kopt}{jopt} -C {args.workdir} -f strategies.mk")
+    failing_partitions_count = 0
     summary_messages = list()
 
     def check_output(line):
+        nonlocal failing_partitions_count
         if line.startswith("* "):
             match = re.match(r"^\* Failed to prove equivalence", line)
             if match:
                 job.update_status("FAIL")
                 summary_messages.append(click.style(line[2:], fg="red", bold=True))
+                failing_partitions_count += 1
             else:
                 match = re.match(r"^\* Successfully proved designs equivalent", line)
                 if match:
@@ -984,6 +987,8 @@ def run_scripts(args, cfg, job):
     run_task.exit_callback = check_retcode
     job.run()
 
+    if failing_partitions_count:
+        job.warning(f"Failed to prove equivalence for {failing_partitions_count} partitions:")
     for line in summary_messages:
         job.log(line)
 
