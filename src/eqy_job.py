@@ -285,8 +285,13 @@ class EqyJob:
         click.echo(text)
         click.echo(text, file=self.logfile)
 
+    def warning(self, logmessage):
+        text = self.dress_message(click.style("Warning: " + logmessage, fg="yellow", bold=True))
+        click.echo(text)
+        click.echo(text, file=self.logfile)
+
     def error(self, logmessage):
-        text = self.dress_message(logmessage)
+        text = self.dress_message(click.style("ERROR: " + logmessage, fg="red", bold=True))
         click.echo(text)
         click.echo(text, file=self.logfile)
         self.status = "ERROR"
@@ -294,7 +299,7 @@ class EqyJob:
             self.retcode = 16
         self.terminate()
         with open("{}/{}".format(self.workdir, self.status), "w") as f:
-            click.echo("ERROR: {}".format(logmessage), file=f)
+            click.echo(logmessage, file=f)
         raise EqyAbort(logmessage)
 
     # def makedirs(self, path):

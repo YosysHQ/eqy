@@ -20,7 +20,7 @@
 import argparse, types, re, glob
 import os, sys, tempfile, shutil
 import shlex, fnmatch, textwrap
-import click, json
+import click, json, collections
 ##yosys-sys-path##
 
 from eqy_job import EqyJob, EqyTask
@@ -329,7 +329,7 @@ def build_combined(args, cfg, job):
     job.run()
 
 def read_ids(filename):
-    ids = dict()
+    ids = collections.defaultdict(dict)
     with open(filename) as f:
         for lineno, line in enumerate(f):
             line = shlex.split(line)
@@ -337,23 +337,31 @@ def read_ids(filename):
                 continue
             if len(line) < 3:
                 exit_with_error("Syntax error in line {}".format(lineno))
+
             modname = line[0]
             objname = line[1]
             opts = line[2:]
-            if modname not in ids:
-                ids[modname] = dict()
+
             ids[modname][objname] = dict()
+
             for opt in opts:
                 if "=" in opt:
                     optkey, optval = opt.split("=", maxsplit=1)
                 else:
                     optkey, optval = opt, None
-                if optkey == "N":
+
+                if optkey in ("N"):
                     if optkey not in ids[modname][objname]:
                         ids[modname][objname][optkey] = list()
                     ids[modname][objname][optkey].append(optval)
-                else:
+                    continue
+
+                if optkey.startswith("A:") or optkey in ("c", "w", "P"):
                     ids[modname][objname][optkey] = optval
+                    continue
+
+                exit_with_error("Invalid option {} in line {}".format(optkey, lineno))
+
             if 'w' not in ids[modname][objname] and 'c' not in ids[modname][objname] and objname != ".":
                 exit_with_error("Missing type in line {}".format(lineno))
     return ids
@@ -423,42 +431,46 @@ class Pattern:
                 results.append(m)
         return results
 
-def search_modules(ids, expr):
+def search_modules(job, ids, expr, excl=set()):
     matches = []
     pattern = Pattern(expr, [], {})
     for key in ids:
         if pattern.match(key, {}):
-            matches.append(key)
+            if key not in excl: matches.append(key)
     return matches
 
-def search_entities(ids, other_ids, expr, other_expr):
+def search_entities(job, ids, other_ids, expr, other_expr, excl=set(), other_excl=set()):
     matches = []
     found_first = False
     found_second = other_ids is None
     lhs = Pattern(expr, [], {})
+
     for name, groups, groupdict in lhs.search(ids):
         found_first = True
         if other_expr is None:
             if other_ids is None or name in other_ids:
-                matches.append((name, name))
+                if name not in excl and name not in other_excl: matches.append((name, name))
                 found_second = True
         else:
             rhs = Pattern(other_expr, groups, groupdict)
             for other_name, _, _ in rhs.search(other_ids):
+                if name not in excl and other_name not in other_excl: matches.append((name, other_name))
                 found_second = True
-                matches.append((name, other_name))
+
     if not found_first:
         if other_expr is None:
-            exit_with_error(f"Cannot find entity {expr}.")
+            job.warning(f"Cannot find entity {expr}.")
         else:
-            exit_with_error(f"Cannot find first entity in {expr} {other_expr}.")
+            job.warning(f"Cannot find first entity in {expr} {other_expr}.")
     if not found_second:
-        exit_with_error(f"Cannot find second entity in {expr} {other_expr}.")
+        job.warning(f"Cannot find second entity in {expr} {other_expr}.")
+
     return matches
 
 def match_ids(args, cfg, job):
-    used_gold_ids = set()
-    used_gate_ids = set()
+    cfg.matched_ids = collections.defaultdict(dict)
+    used_gold_ids = collections.defaultdict(set)
+    used_gate_ids = collections.defaultdict(set)
     with open(args.workdir + "/matched.ids", 'w') as f:
         for pattern, line in cfg.match:
             line = line.split()
@@ -467,46 +479,44 @@ def match_ids(args, cfg, job):
             match_counter = 0
             print(f"# [{pattern}] {' '.join(line)}", file=f)
             if line[0] == "gold-match" and len(line) in [2, 3]:
-                for module_match in search_modules(cfg.gold_ids, pattern):
+                for module_match in search_modules(job, cfg.gold_ids, pattern):
                     if module_match in cfg.gate_ids: #TODO: is this the right way to deal with missing module hierarchy?
-                        for entity_match in search_entities(cfg.gold_ids[module_match], cfg.gate_ids[module_match], line[1], line[2] if len(line) == 3 else None):
-                            if (module_match, entity_match[0]) in used_gold_ids:
-                                continue
-                            if (module_match, entity_match[1]) in used_gate_ids:
-                                continue
+                        for entity_match in search_entities(job, cfg.gold_ids[module_match], cfg.gate_ids[module_match],
+                                                            line[1], line[2] if len(line) == 3 else None,
+                                                            used_gold_ids[module_match], used_gate_ids[module_match]):
                             match_counter += 1
                             print(module_match, entity_match[0], entity_match[1], file=f)
-                            used_gold_ids.add((module_match, entity_match[0]))
-                            used_gate_ids.add((module_match, entity_match[1]))
+                            cfg.matched_ids[module_match][entity_match[0]] = cfg.gold_ids[module_match][entity_match[0]]
+                            used_gold_ids[module_match].add(entity_match[0])
+                            used_gate_ids[module_match].add(entity_match[1])
             elif line[0] == "gate-match" and len(line) in [2, 3]:
-                for module_match in search_modules(cfg.gate_ids, pattern):
+                for module_match in search_modules(job, cfg.gate_ids, pattern):
                     if module_match in cfg.gold_ids:
-                        for entity_match in search_entities(cfg.gate_ids[module_match], cfg.gold_ids[module_match], line[1], line[2] if len(line) == 3 else None):
-                            if (module_match, entity_match[0]) in used_gate_ids:
-                                continue
-                            if (module_match, entity_match[1]) in used_gold_ids:
-                                continue
+                        for entity_match in search_entities(job, cfg.gate_ids[module_match], cfg.gold_ids[module_match],
+                                                            line[1], line[2] if len(line) == 3 else None,
+                                                            used_gate_ids[module_match], used_gold_ids[module_match]):
                             match_counter += 1
                             print(module_match, entity_match[1], entity_match[0], file=f)
-                            used_gate_ids.add((module_match, entity_match[0]))
-                            used_gold_ids.add((module_match, entity_match[1]))
+                            cfg.matched_ids[module_match][entity_match[1]] = cfg.gold_ids[module_match][entity_match[1]]
+                            used_gate_ids[module_match].add(entity_match[0])
+                            used_gold_ids[module_match].add(entity_match[1])
             elif line[0] == "gold-nomatch" and len(line) == 2:
-                for module_match in search_modules(cfg.gold_ids, pattern):
-                    for entity_match in search_entities(cfg.gold_ids[module_match], None, line[1], None):
+                for module_match in search_modules(job, cfg.gold_ids, pattern):
+                    for entity_match in search_entities(job, cfg.gold_ids[module_match], None, line[1], None, used_gold_ids[module_match]):
                         match_counter += 1
-                        used_gold_ids.add((module_match, entity_match[0]))
+                        used_gold_ids[module_match].add(entity_match[0])
             elif line[0] == "gate-nomatch" and len(line) == 2:
-                for module_match in search_modules(cfg.gate_ids, pattern):
-                    for entity_match in search_entities(cfg.gate_ids[module_match], None, line[1], None):
+                for module_match in search_modules(job, cfg.gate_ids, pattern):
+                    for entity_match in search_entities(job, cfg.gate_ids[module_match], None, line[1], None, used_gate_ids[module_match]):
                         match_counter += 1
-                        used_gate_ids.add((module_match, entity_match[0]))
+                        used_gate_ids[module_match].add(entity_match[0])
             else:
                 exit_with_error(f"Syntax error in match command \"{' '.join(line)}\"")
 
             if args.debugmode:
                 job.log(f"Matched {match_counter} nets: [{pattern}] {' '.join(line)}")
 
-def partition_ids(args, cfg):
+def partition_ids(args, cfg, job):
     no_database = {
         "bind": set(), "join": set(), "solo": set(), "group": set(),
         "sticky": set(), "merge": set(), "name": set(), "final": set(), "amend": set()
@@ -517,25 +527,21 @@ def partition_ids(args, cfg):
             line = line.split()
 
             if line[0] in ("nobind", "nojoin", "nogroup", "nosolo") and len(line) == 2:
-                for module_match in search_modules(cfg.gold_ids, pattern):
-                    for entity_match, _ in search_entities(cfg.gold_ids[module_match], None, line[1], None):
+                for module_match in search_modules(job, cfg.matched_ids, pattern):
+                    for entity_match, _ in search_entities(job, cfg.matched_ids[module_match], None, line[1], None, no_database[line[0][2:]]):
                         no_database[line[0][2:]].add((module_match, entity_match))
                 continue
 
             if line[0] in ("bind", "join", "solo") and len(line) == 2:
-                for module_match in search_modules(cfg.gold_ids, pattern):
-                    for entity_match, _ in search_entities(cfg.gold_ids[module_match], None, line[1], None):
-                        if (module_match, entity_match) in no_database[line[0]]:
-                            continue
+                for module_match in search_modules(job, cfg.matched_ids, pattern):
+                    for entity_match, _ in search_entities(job, cfg.matched_ids[module_match], None, line[1], None, no_database[line[0]]):
                         print(line[0], module_match, entity_match, file=partids_f)
                 continue
 
             if line[0] in ("group", "solo-group") and len(line) == 2:
-                for module_match in search_modules(cfg.gold_ids, pattern):
+                for module_match in search_modules(job, cfg.matched_ids, pattern):
                     first_entity = None
-                    for entity_match, _ in search_entities(cfg.gold_ids[module_match], None, line[1], None):
-                        if (module_match, entity_match) in no_database["group"]:
-                            continue
+                    for entity_match, _ in search_entities(job, cfg.matched_ids[module_match], None, line[1], None, no_database["group"]):
                         if line[0] == "solo-group":
                             if (module_match, entity_match) in no_database["solo"]:
                                 continue
@@ -547,14 +553,11 @@ def partition_ids(args, cfg):
                 continue
 
             if line[0] == "group" and len(line) == 3:
-                for module_match in search_modules(cfg.gold_ids, pattern):
+                for module_match in search_modules(job, cfg.matched_ids, pattern):
                     first_entity = None
                     previous_entities = set()
-                    for entity_match in search_entities(cfg.gold_ids[module_match], cfg.gold_ids[module_match], line[1], line[2]):
-                        if (module_match, entity_match[0]) in no_database[line[0]]:
-                            continue
-                        if (module_match, entity_match[1]) in no_database[line[0]]:
-                            continue
+                    for entity_match in search_entities(job, cfg.matched_ids[module_match], cfg.matched_ids[module_match],
+                                                        line[1], line[2], no_database[line[0]], no_database[line[0]]):
                         for entity in entity_match:
                             if first_entity is None:
                                 first_entity = entity
@@ -569,35 +572,29 @@ def partition_ids(args, cfg):
             line = line.split()
 
             if line[0] in ("nosticky", "nomerge", "noname", "noamend") and len(line) == 2:
-                for module_match in search_modules(cfg.gold_ids, pattern):
-                    for entity_match, _ in search_entities(cfg.gold_ids[module_match], None, line[1], None):
+                for module_match in search_modules(job, cfg.matched_ids, pattern):
+                    for entity_match, _ in search_entities(job, cfg.matched_ids[module_match], None, line[1], None, no_database[line[0][2:]]):
                         no_database[line[0][2:]].add((module_match, entity_match))
                         if line[0] == "noamend":
                             print(line[0], module_match, entity_match, file=partids_f)
                 continue
 
             if line[0] in ("sticky", "final", "amend") and len(line) == 2:
-                for module_match in search_modules(cfg.gold_ids, pattern):
-                    for entity_match, _ in search_entities(cfg.gold_ids[module_match], None, line[1], None):
-                        if (module_match, entity_match) in no_database[line[0]]:
-                            continue
+                for module_match in search_modules(job, cfg.matched_ids, pattern):
+                    for entity_match, _ in search_entities(job, cfg.matched_ids[module_match], None, line[1], None, no_database[line[0]]):
                         print(line[0], module_match, entity_match, file=partids_f)
                 continue
 
             if line[0] == "name" and len(line) == 3:
-                for module_match in search_modules(cfg.gold_ids, pattern):
-                    for entity_match, _ in search_entities(cfg.gold_ids[module_match], None, line[1], None):
-                        if (module_match, entity_match) in no_database[line[0]]:
-                            continue
+                for module_match in search_modules(job, cfg.matched_ids, pattern):
+                    for entity_match, _ in search_entities(job, cfg.matched_ids[module_match], None, line[1], None, no_database[line[0]]):
                         print(line[0], module_match, entity_match, line[2], file=partids_f)
                 continue
 
             if line[0] == "merge" and len(line) == 2:
-                for module_match in search_modules(cfg.gold_ids, pattern):
+                for module_match in search_modules(job, cfg.matched_ids, pattern):
                     first_entity = None
-                    for entity_match, _ in search_entities(cfg.gold_ids[module_match], None, line[1], None):
-                        if (module_match, entity_match) in no_database[line[0]]:
-                            continue
+                    for entity_match, _ in search_entities(job, cfg.matched_ids[module_match], None, line[1], None, no_database[line[0]]):
                         if first_entity is None:
                             first_entity = entity_match
                         else:
@@ -605,14 +602,11 @@ def partition_ids(args, cfg):
                 continue
 
             if line[0] == "merge" and len(line) == 3:
-                for module_match in search_modules(cfg.gold_ids, pattern):
+                for module_match in search_modules(job, cfg.matched_ids, pattern):
                     first_entity = None
                     previous_entities = set()
-                    for entity_match in search_entities(cfg.gold_ids[module_match], cfg.gold_ids[module_match], line[1], line[2]):
-                        if (module_match, entity_match[0]) in no_database[line[0]]:
-                            continue
-                        if (module_match, entity_match[1]) in no_database[line[0]]:
-                            continue
+                    for entity_match in search_entities(job, cfg.matched_ids[module_match], cfg.matched_ids[module_match],
+                                                        line[1], line[2], no_database[line[0]], no_database[line[0]]):
                         for entity in entity_match:
                             if first_entity is None:
                                 first_entity = entity
@@ -622,19 +616,16 @@ def partition_ids(args, cfg):
                 continue
 
             if line[0] in ("path", "amend") and len(line) == 3:
-                for module_match in search_modules(cfg.gold_ids, pattern):
-                    for entity_match in search_entities(cfg.gold_ids[module_match], cfg.gold_ids[module_match], line[1], line[2]):
-                        if (module_match, entity_match[0]) in no_database[line[0]]:
-                            continue
-                        if (module_match, entity_match[1]) in no_database[line[0]]:
-                            continue
+                for module_match in search_modules(job, cfg.matched_ids, pattern):
+                    for entity_match in search_entities(job, cfg.matched_ids[module_match], cfg.matched_ids[module_match],
+                                                        line[1], line[2], no_database[line[0]], no_database[line[0]]):
                         print(line[0], module_match, entity_match[0], entity_match[1], file=partids_f)
                 continue
 
             exit_with_error(f"Syntax error in partition command \"{' '.join(line)}\"")
 
 def make_partitions(args, cfg, job):
-    partition_ids(args, cfg)
+    partition_ids(args, cfg, job)
     plugin_path = root_path() + '/../share/yosys/plugins' # for install
     if (not os.path.exists(plugin_path)):
         plugin_path = root_path() # for development
@@ -664,7 +655,7 @@ def recode_ids(args, cfg, job):
             if len(line) in [2]:
                 for module_match in match_module_re(cfg.gold_ids, pattern[0]):
                     if module_match in cfg.gate_ids:
-                        for entity_match, _ in match_entity_re(cfg.gold_ids[module_match], cfg.gate_ids[module_match], pattern[1], None):
+                        for entity_match, _ in match_entity_re(cfg.matched_ids[module_match], cfg.gate_ids[module_match], pattern[1], None):
                             print(module_match, entity_match, line[0], line[1], file=f)
                     else:
                         exit_with_error(f"Module '{module_match}' must exist in gate design.")
