@@ -872,7 +872,7 @@ def parse_strategies(args, cfg):
 class EqyPartition:
     net_index_re = re.compile(r"^(.*)\[(\d+)\]$")
 
-    def __init__(self, line, args, cfg):
+    def __init__(self, line, args, cfg, job):
         fields = iter(line.split())
         self.module = next(fields)
         self.name = next(fields)
@@ -887,12 +887,18 @@ class EqyPartition:
             for key, value in json.load(f).items():
                 setattr(self, key, value)
 
+        if self.gold_module["unused"]:
+            job.warning(f"Partition {self.name} contains unused gold inputs.")
+
+        if self.gate_module["unused"]:
+            job.warning(f"Partition {self.name} contains unused gate inputs.")
+
 def make_scripts(args, cfg, job, strategies):
     partitions = []
 
     with open(args.workdir + "/partition.list") as f:
         for line in f:
-            partitions.append(EqyPartition(line, args, cfg))
+            partitions.append(EqyPartition(line, args, cfg, job))
 
     if not os.path.isdir(args.workdir + "/strategies"):
         os.mkdir(args.workdir + "/strategies")
