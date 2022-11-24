@@ -11,19 +11,39 @@ read_verilog -nowb -noblackbox +/xilinx/cells_sim.v
 read_verilog -formal picorv32_vivado.v
 prep -top picorv32
 
-[match *]
+[match picorv32]
+gold-match /^reg_op1\[(\d+)\]$/ pcpi_rs1_OBUF[\1]
+gold-match /^reg_op2\[(\d+)\]$/ pcpi_rs2_OBUF[\1]
 gate-nomatch /^mem_(wstrb|wdata|addr)_reg\[\d+\].Q$/
 gate-match /^(.*)_reg\[(\d+)\].Q$/ \1[\2]
+gold-match /^pcpi_rs[12]\[\d+\]$/
+gold-match /^mem_la_(addr\[\d+\]|read|write)$/
+gold-match mem_valid
+gold-match trap
 nodefault
 
-[collect *]
+[collect picorv32]
 bind /^mem_la_(addr\[\d+\]|read|write)$/
 bind mem_valid
 bind trap
 
+[collect picorv32]
+solo-group /^alu_out_q\[\d+\]$/
+solo-group /^count_instr\[\d+\]$/
+solo-group /^cpu_state\[\d+\]$/
+solo-group /^decoded_.*\[\d+\]$/
+solo-group /^mem_.*\[\d+\]$/
+solo-group /^latched_rd\[\d+\]$/
+solo-group /^pcpi_(rs1|rs2|insn)\[\d+\]$/
+solo-group /^reg_op1\[\d+\]$/
+solo-group /^reg_op2\[\d+\]$/
+solo-group /^reg_out\[\d+\]$/
+solo-group /^reg_sh\[\d+\]$/
+solo-group /^reg_(next_pc|pc)\[\d+\]$/
+
 [strategy simple]
 use satseq
-depth 10
+depth 3
 
 [strategy dummy]
 use dummy
