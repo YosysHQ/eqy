@@ -123,6 +123,12 @@ of nets matching the (dependent) second pattern, and is grouping them accordingl
 The ``nogroup <pattern>`` command prevents all further ``group`` commands from
 matching the specified nets.
 
+solo-group
+..........
+
+The ``solo-group <pattern>`` command is a convenient shortcut for running
+both ``solo`` and ``group`` on the same pattern.
+
 bind and nobind
 ...............
 

@@ -530,16 +530,20 @@ def partition_ids(args, cfg):
                         print(line[0], module_match, entity_match, file=partids_f)
                 continue
 
-            if line[0] == "group" and len(line) == 2:
+            if line[0] in ("group", "solo-group") and len(line) == 2:
                 for module_match in search_modules(cfg.gold_ids, pattern):
                     first_entity = None
                     for entity_match, _ in search_entities(cfg.gold_ids[module_match], None, line[1], None):
-                        if (module_match, entity_match) in no_database[line[0]]:
+                        if (module_match, entity_match) in no_database["group"]:
                             continue
+                        if line[0] == "solo-group":
+                            if (module_match, entity_match) in no_database["solo"]:
+                                continue
+                            print("solo", module_match, entity_match, file=partids_f)
                         if first_entity is None:
                             first_entity = entity_match
                         else:
-                            print(line[0], module_match, first_entity, entity_match, file=partids_f)
+                            print("group", module_match, first_entity, entity_match, file=partids_f)
                 continue
 
             if line[0] == "group" and len(line) == 3:
@@ -923,10 +927,12 @@ def make_scripts(args, cfg, job, strategies):
 \telif grep FAIL $^ >/dev/null ; then \\
 \t\techo "FAIL (cached)" > $@; \\
 \telse \\
+\t\techo \"Running strategy '{strategy.name}' on '{partition.name}'..\"; \\
 \t\tbash -c \"cd strategies/{partition.name}/{strategy.name}; source run.sh\"; \\
 \tfi\n""" , file=make_f)
                 else:
                     print(f"strategies/{partition.name}/{strategy.name}/status:", file=make_f)
+                    print(f"\t@echo \"Running strategy '{strategy.name}' on '{partition.name}'..\"", file=make_f)
                     print(f"\t@bash -c \"cd strategies/{partition.name}/{strategy.name}; source run.sh\"\n", file=make_f)
                 prev_strategy = f"strategies/{partition.name}/{strategy.name}/status"
             if prev_strategy is None:
