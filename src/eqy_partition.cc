@@ -1187,6 +1187,7 @@ void EqyPartitionWorker::merge_partitions()
 				if ('A' <= c && c <= 'Z') r += c;
 				if ('0' <= c && c <= '9') r += c;
 				if ('.' == c || c == '_') r += c;
+				if (c == '[') r += '.';
 			}
 			return r;
 		};
