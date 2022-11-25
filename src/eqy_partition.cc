@@ -782,7 +782,7 @@ struct Partition
 			}
 
 			if (GetSize(cp)) {
-				Wire *cpw = out_mod->addWire("\\__cp", GetSize(po));
+				Wire *cpw = out_mod->addWire("\\__cp", GetSize(cp));
 				cpw->port_output = in_gold;
 				cpw->port_input = !in_gold;
 				cpw->port_id = ++port_idx;
