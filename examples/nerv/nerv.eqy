@@ -1,0 +1,28 @@
+[gold]
+read_verilog -formal nerv.sv
+hierarchy -check -top nerv
+proc
+memory -nomap
+prep -top nerv
+
+memory_map
+
+# only keep FF outputs, avoids partitioning on signals that were changed by optimizations
+rename -hide t:$dff %co x:* %% w:* %D
+
+
+[gate]
+read_verilog -formal -icells nerv_synth.v
+prep -top nerv
+
+[collect *]
+# grouping all of the register file makes things a lot faster
+group regfile*
+
+# would be among the unused signals of the regfile partition which fails without this
+bind dmem_wdata
+
+[strategy sby]
+use sby
+depth 2
+engine smtbmc bitwuzla
