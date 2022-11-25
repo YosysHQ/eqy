@@ -794,9 +794,10 @@ class EqySatseqStrategy(EqyStrategy):
 
 
 class EqySbyStrategy(EqyStrategy):
-    default_scfg = dict(engine='smtbmc', depth=5)
+    default_scfg = dict(engine='smtbmc', depth=5, xprop=True)
     parse_opt_engine = EqyStrategy.string_opt_parser
     parse_opt_depth = EqyStrategy.int_opt_parser
+    parse_opt_xprop = EqyStrategy.bool_opt_parser
 
     def write(self, job, partition):
         with open(self.path(partition.name, f"{partition.name}.sby"), "w") as sby_f:
@@ -811,7 +812,22 @@ class EqySbyStrategy(EqyStrategy):
 
                 [script]
                 read_ilang {partition.name}.il
-                miter -equiv -cross -make_assert -flatten gold.{partition.name} gate.{partition.name} miter
+            """[1:-1]), file=sby_f)
+
+            if self.scfg.xprop:
+                print(textwrap.dedent(f"""
+                    formalff -ff2anyinit gate.{partition.name}
+                    setundef -anyseq gate.{partition.name}
+                    miter -equiv -cross -make_assert -ignore_gold_x -flatten gold.{partition.name} gate.{partition.name} miter
+                    dffunmap
+                    xprop -formal -split-ports -assume-encoding -assume-def-inputs miter
+                """[1:-1]), file=sby_f)
+            else:
+                print(textwrap.dedent(f"""
+                    miter -equiv -cross -make_assert -flatten gold.{partition.name} gate.{partition.name} miter
+                """[1:-1]), file=sby_f)
+
+            print(textwrap.dedent(f"""
                 hierarchy -top miter
 
                 [files]
