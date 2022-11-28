@@ -816,7 +816,7 @@ class EqySbyStrategy(EqyStrategy):
 
             if self.scfg.xprop:
                 print(textwrap.dedent(f"""
-                    formalff -ff2anyinit gate.{partition.name}
+                    formalff -clk2ff -ff2anyinit gate.{partition.name}
                     setundef -anyseq gate.{partition.name}
                     miter -equiv -cross -make_assert -ignore_gold_x -flatten gold.{partition.name} gate.{partition.name} miter
                     dffunmap
