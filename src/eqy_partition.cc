@@ -78,6 +78,9 @@ struct EqyPartitionWorker
 	dict<Cell*, Cell*> gold_matched_cells;
 	dict<Cell*, Cell*> gate_matched_cells;
 
+	std::vector<tuple<int, SigBit, SigBit>> grouped_matches;
+	pool<std::pair<IdString, IdString>> match_group_names;
+
 	Partition *partition(int index)
 	{
 		return partitions.at(index).get();
@@ -153,6 +156,8 @@ struct EqyPartitionWorker
 	{
 		gold_bit = gold_sigmap(gold_bit);
 		gate_bit = gate_sigmap(gate_bit);
+
+		grouped_matches.push_back({match_group_names.size() - 1, gold_bit, gate_bit});
 
 		if (!gold_bit.wire)
 			return;
@@ -230,6 +235,12 @@ struct EqyPartitionWorker
 
 	void add_match(IdString gold_id, IdString gate_id, std::string indent = "")
 	{
+		auto group = std::make_pair(gold_id, gate_id);
+		if (match_group_names.count(group)) {
+			return;
+		}
+		match_group_names.insert(group);
+
 		log_debug("%sid match: %s <-> %s\n", indent.c_str(), log_id(gold_id), log_id(gate_id));
 
 		Cell *gold_cell = gold->cell(gold_id);
@@ -265,6 +276,7 @@ struct EqyPartitionWorker
 	void create_partitions();
 	void merge_partitions();
 	void finalize_partitions(std::ofstream &partition_list_file);
+	void create_matchfilter();
 };
 
 struct Partition
@@ -1284,6 +1296,65 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 	}
 }
 
+void EqyPartitionWorker::create_matchfilter()
+{
+	std::ofstream ofile;
+	std::string filename = "matchfilters/" + gold->name.substr(6) + ".il";
+	ofile.open(filename.c_str(), std::ofstream::trunc);
+	if (ofile.fail())
+		log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
+
+	Design *design = new Design();
+	gold = gold->clone();
+	gate = gate->clone();
+	design->add(gold);
+	design->add(gate);
+
+	int last_id = 0;
+
+	SigSpec gold_matchbits, gate_matchbits;
+
+	grouped_matches.push_back({0, State::Sx, State::Sx});
+
+	for (auto &match_bit : grouped_matches)
+	{
+		int match_id = std::get<0>(match_bit);
+		auto gold_bit = std::get<1>(match_bit);
+		auto gate_bit = std::get<2>(match_bit);
+		if (match_id != last_id && !gold_matchbits.empty()) {
+			auto pair = *match_group_names.element(match_group_names.size() - 1 - match_id);
+			auto name = stringf("\\%s__match__%s", pair.first.substr(1).c_str(), pair.second.substr(1).c_str());
+			auto gold_wire = gold->addWire(name);
+			auto gate_wire = gate->addWire(name);
+			gold_wire->port_output = true;
+			gate_wire->port_output = true;
+
+			gold->connect(gold_wire, gold_matchbits);
+			gate->connect(gate_wire, gate_matchbits);
+
+			gold_matchbits = SigSpec();
+			gate_matchbits = SigSpec();
+		}
+
+		if (gold_bit.wire)
+			gold_bit.wire = gold->wire(gold_bit.wire->name);
+		if (gate_bit.wire)
+			gate_bit.wire = gold->wire(gate_bit.wire->name);
+
+		gold_matchbits.append(gold_bit);
+		gate_matchbits.append(gate_bit);
+
+		last_id = match_id;
+	}
+
+	gold->fixup_ports();
+	gate->fixup_ports();
+
+	Backend::backend_call(design, &ofile, filename, "rtlil");
+
+	delete design;
+}
+
 struct EqyPartitionPass : public Pass
 {
 	EqyPartitionPass() : Pass("eqy_partition", "partition combined design for eqy") { }
@@ -1312,7 +1383,7 @@ struct EqyPartitionPass : public Pass
 		delete partition;
 	}
 
-	void partition_worker(Design *design, bool full_module_mode,
+	void partition_worker(Design *design, bool full_module_mode, bool matchfilter_mode,
 			const dict<std::string, std::vector<std::pair<std::string, std::string>>> &matched_ids,
 			const dict<std::string, std::vector<std::vector<std::string>>> &partiton_ids,
 			std::ofstream &partition_list_file)
@@ -1343,6 +1414,11 @@ struct EqyPartitionPass : public Pass
 					for (auto w : gold->wires())
 						if (w->port_id)
 							worker.add_match(w->name, w->name);
+
+					if (matchfilter_mode) {
+						worker.create_matchfilter();
+						continue;
+					}
 
 					if (partiton_ids.count(gold->name.substr(6)))
 						for (auto line : partiton_ids.at(gold->name.substr(6)))
@@ -1431,6 +1507,7 @@ struct EqyPartitionPass : public Pass
 	{
 		std::string matched_ids_filename, partition_ids_filename, partition_list_filename;
 		bool full_module_mode = false;
+		bool matchfilter_mode = false;
 
 		size_t argidx;
 		for (argidx = 1; argidx < args.size(); argidx++)
@@ -1451,6 +1528,10 @@ struct EqyPartitionPass : public Pass
 				full_module_mode = true;
 				continue;
 			}
+			if ((args[argidx] == "-matchfilter")) {
+				matchfilter_mode = true;
+				continue;
+			}
 			break;
 		}
 		extra_args(args, argidx, design, false);
@@ -1459,11 +1540,15 @@ struct EqyPartitionPass : public Pass
 
 		// TBD: handle absent arguments
 		auto matched_ids = read_matched_ids(matched_ids_filename);
-		auto partition_ids = read_partition_ids(partition_ids_filename);
-		std::ofstream partition_list_file(partition_list_filename, std::ofstream::out);
+		dict<std::string, std::vector<std::vector<std::string>>> partition_ids;
+		if (!matchfilter_mode)
+			partition_ids = read_partition_ids(partition_ids_filename);
+		std::ofstream partition_list_file;
+		if (!matchfilter_mode)
+			partition_list_file = std::ofstream(partition_list_filename, std::ofstream::out);
 
 		log_push();
-		partition_worker(design, full_module_mode, matched_ids, partition_ids, partition_list_file);
+		partition_worker(design, full_module_mode, matchfilter_mode, matched_ids, partition_ids, partition_list_file);
 		log_pop();
 	}
 } EqyPartitionPass;
