@@ -4,23 +4,176 @@ splitnets on
 [gold]
 read_verilog -formal picorv32.v
 prep -top picorv32
+memory_map
 simplemap
+clean
 
 [gate]
 logger -nowarn limited.support.for.tri-state.*/cells_sim.v
 read_verilog -nowb -noblackbox +/xilinx/cells_sim.v
 read_verilog -formal picorv32_vivado.v
 prep -top picorv32
+flatten t:OBUF t:IBUF
+clean
+
+[match *]
+nodefault
+
+
+##############################################################
+#
+# PicoRV32 Register File Outputs
+
+[gold]
+rename -hide picorv32/reg_op*
+clean
+
+[gate]
+rename -hide picorv32/pcpi_rs?_OBUF*
+clean
 
 [match picorv32]
-gold-match /^reg_op(1|2)\[(\d+)\]$/ pcpi_rs\1_OBUF[\2]
+gold-match /^pcpi_rs(1|2)\[(\d+)\]$/ pcpi_rs\1[\2]
+
+[collect picorv32]
+solo-group /^pcpi_(rs1|rs2)\[\d+\]$/
+
+##############################################################
+#
+# PicoRV32 Equivalent Points
+
+[match picorv32]
+gold-match clk
+
+gold-match alu_eq
+gold-match alu_lts
+gold-match alu_ltu
+gold-match alu_out_0
+gold-match alu_out_q[[]*
+
+gold-match cpuregs_wrdata[[]*
+gold-match eoi[[]*
+gold-match irq[[]*
+
+gold-match decoded_imm[[]*
+gold-match decoded_imm_j[[]*
+gold-match decoded_rd[[]*
+gold-match decoded_rs1[[]*
+gold-match decoder_pseudo_trigger
+
+gold-match instr_add
+gold-match instr_addi
+gold-match instr_and
+gold-match instr_andi
+gold-match instr_auipc
+gold-match instr_beq
+gold-match instr_bge
+gold-match instr_bgeu
+gold-match instr_blt
+gold-match instr_bltu
+gold-match instr_bne
+gold-match instr_jal
+gold-match instr_jalr
+gold-match instr_lb
+gold-match instr_lbu
+gold-match instr_lh
+gold-match instr_lhu
+gold-match instr_lui
+gold-match instr_lw
+gold-match instr_or
+gold-match instr_ori
+gold-match instr_rdcycle
+gold-match instr_rdcycleh
+gold-match instr_rdinstr
+gold-match instr_rdinstrh
+gold-match instr_sb
+gold-match instr_sh
+gold-match instr_sll
+gold-match instr_slli
+gold-match instr_slt
+gold-match instr_slti
+gold-match instr_sltiu
+gold-match instr_sltu
+gold-match instr_sra
+gold-match instr_srai
+gold-match instr_srl
+gold-match instr_srli
+gold-match instr_sub
+gold-match instr_sw
+gold-match instr_trap
+gold-match instr_xor
+gold-match instr_xori
+
+gold-match is_alu_reg_imm
+gold-match is_alu_reg_reg
+gold-match is_beq_bne_blt_bge_bltu_bgeu
+gold-match is_compare
+gold-match is_jalr_addi_slti_sltiu_xori_ori_andi
+gold-match is_lb_lh_lw_lbu_lhu
+gold-match is_lbu_lhu_lw
+gold-match is_lui_auipc_jal
+gold-match is_lui_auipc_jal_jalr_addi_add_sub
+gold-match is_rdcycle_rdcycleh_rdinstr_rdinstrh
+gold-match is_sb_sh_sw
+gold-match is_sll_srl_sra
+gold-match is_slli_srli_srai
+gold-match is_slti_blt_slt
+gold-match is_sltiu_bltu_sltu
+
+gold-match latched_branch
+gold-match latched_is_lu
+gold-match latched_rd[[]*
+gold-match latched_store
+gold-match mem_addr[[]*
+gold-match mem_do_prefetch
+gold-match mem_do_rdata
+gold-match mem_do_wdata
+gold-match mem_done
+gold-match mem_instr
+gold-match mem_la_addr[[]*
+gold-match mem_la_read
+gold-match mem_la_wdata[[]*
+gold-match mem_la_write
+gold-match mem_la_wstrb[[]*
+gold-match mem_rdata[[]*
+gold-match mem_ready
+gold-match mem_valid
+gold-match mem_wdata[[]*
+gold-match mem_wordsize[[]*
+gold-match mem_wstrb[[]*
+gold-match mem_xfer
+gold-match pcpi_insn[[]*
+gold-match pcpi_rd[[]*
+gold-match pcpi_ready
+gold-match pcpi_valid
+gold-match pcpi_wait
+gold-match pcpi_wr
+gold-match reg_out[[]*
+gold-match reg_sh[[]*
+gold-match resetn
+gold-match trace_data[[]*
+gold-match trace_valid
+gold-match trap
+
+gold-match count_cycle[[]* \0_reg.Q
+gold-match count_instr[[]* \0_reg.Q
+gold-match cpu_state[[]* \0_reg.Q
+gold-match mem_rdata_q[[]* \0_reg.Q
+gold-match mem_state[[]* \0_reg.Q
+gold-match reg_next_pc[[]* \0_reg.Q
+gold-match reg_pc[[]* \0_reg.Q
+
+##############################################################
+#
+# Partitioning and Strategies
+
+[match picorv32]
 gate-nomatch /^mem_(wstrb|wdata|addr)_reg\[\d+\].Q$/
 gate-match /^(.*)_reg\[(\d+)\].Q$/ \1[\2]
-gold-match /^(pcpi_rs[12]|eoi|trace_data)\[\d+\]$/
+gold-match /^(eoi|trace_data)\[\d+\]$/
 gold-match /^mem_la_(addr\[\d+\]|read|write)$/
 gold-match mem_valid
 gold-match trap
-nodefault
 
 [collect picorv32]
 solo-group /^eoi\[\d+\]$/
@@ -32,12 +185,12 @@ solo-group /^cpu_state\[\d+\]$/
 solo-group /^decoded_.*\[\d+\]$/
 solo-group /^mem_.*\[\d+\]$/
 solo-group /^latched_rd\[\d+\]$/
-solo-group /^pcpi_(rs1|rs2|insn)\[\d+\]$/
-solo-group /^reg_op1\[\d+\]$/
-solo-group /^reg_op2\[\d+\]$/
 solo-group /^reg_out\[\d+\]$/
 solo-group /^reg_sh\[\d+\]$/
 solo-group /^reg_(next_pc|pc)\[\d+\]$/
+solo-group /^cpuregs_wrdata\[\d+\]$/
+solo-group /^pcpi_insn\[\d+\]$/
+solo-group /^(instr|is)_/
 
 [collect picorv32]
 bind /^mem_la_(addr\[\d+\]|read|write)$/

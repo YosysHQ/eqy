@@ -402,6 +402,7 @@ class Pattern:
             else:
                 p.type = "shell"
                 p.expr = pattern
+                # p.regex = fnmatch.translate(pattern)
             self.patterns.append(p)
 
 
@@ -416,7 +417,7 @@ class Pattern:
                     return (name, groups, groupdict)
                 continue
             if p.type == "shell":
-                if fnmatch.fnmatch(name, p.expr):
+                if fnmatch.fnmatchcase(name, p.expr):
                     return (name, [name], {})
                 continue
             assert False
@@ -463,9 +464,10 @@ def search_entities(job, ids, other_ids, expr, other_expr, excl=set(), other_exc
     if not found_first:
         if other_expr is None:
             job.warning(f"Cannot find entity {expr}.")
+            print(lhs.patterns)
         else:
             job.warning(f"Cannot find first entity in {expr} {other_expr}.")
-    if not found_second:
+    elif not found_second:
         job.warning(f"Cannot find second entity in {expr} {other_expr}.")
 
     return matches
