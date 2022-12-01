@@ -128,7 +128,8 @@ def parse_args():
         assert ctx.args.eqyfile is None
         assert len(ctx.args.init_config_file) == 4
         with open(ctx.args.init_config_file[0], 'w') as config:
-            config.write("""[options]
+            config.write("""\
+[options]
 
 [gold]
 read -sv {2}
@@ -164,6 +165,10 @@ def read_config(ctx):
     ctx.options = types.SimpleNamespace()
     ctx.options.splitnets = False
     ctx.options.insbuf = True
+
+    ctx.options.matchfilter_depth = 20
+    ctx.options.matchfilter_vcd = False
+    ctx.options.matchfilter_engine = "smtbmc bitwuzla"
 
     section = None
     sectionarg = None
@@ -205,14 +210,23 @@ def read_config(ctx):
                 continue
 
             if section == "options":
-                fields = line.split()
-                if len(fields) != 2:
-                    exit_with_error(f"syntax error in {section} section in {ctx.eqyfile.name} line {linenr}: {line}")
-                if not hasattr(ctx.options, fields[0]):
-                    exit_with_error(f"unknown option '{fields[0]}' in {ctx.eqyfile.name} line {linenr}: {line}")
-                if type(getattr(ctx.options, fields[0])) is bool and fields[1] in ("on", "off"):
-                    setattr(ctx.options, fields[0], fields[1] == "on")
-                    continue
+                fields = line.split(None, 1)
+                if len(fields) == 2:
+                    if not hasattr(ctx.options, fields[0]):
+                        exit_with_error(f"unknown option '{fields[0]}' in {ctx.eqyfile.name} line {linenr}: {line}")
+                    if type(getattr(ctx.options, fields[0])) is bool and fields[1] in ("on", "off"):
+                        setattr(ctx.options, fields[0], fields[1] == "on")
+                        continue
+                    if type(getattr(ctx.options, fields[0])) is str:
+                        setattr(ctx.options, fields[0], fields[1])
+                        continue
+                    if type(getattr(ctx.options, fields[0])) is int:
+                        try:
+                            setattr(ctx.options, fields[0], int(fields[1]))
+                        except ValueError:
+                            pass
+                        else:
+                            continue
                 exit_with_error(f"syntax error in {section} section in {ctx.eqyfile.name} line {linenr}: {line}")
 
             if section in simple_sections:
@@ -715,14 +729,14 @@ def make_matchfilter(args, cfg, job):
         if not fn.endswith(".il"): continue
         modnames.append(modname := fn[:-3])
         with open(f"{args.workdir}/matchfilters/{modname}.sby", "w") as sby_file:
-            print(f"""
+            print(f"""\
 [options]
 mode cover
-depth 20
-# vcd off
+depth {cfg.options.matchfilter_depth}
+vcd {"on" if cfg.options.matchfilter_vcd else "off"}
 
 [engines]
-smtbmc bitwuzla
+{cfg.options.matchfilter_engine}
 
 [script]
 read_rtlil ../../{modname}.il

@@ -236,9 +236,8 @@ struct EqyPartitionWorker
 	void add_match(IdString gold_id, IdString gate_id, std::string indent = "")
 	{
 		auto group = std::make_pair(gold_id, gate_id);
-		if (match_group_names.count(group)) {
+		if (match_group_names.count(group))
 			return;
-		}
 		match_group_names.insert(group);
 
 		log_debug("%sid match: %s <-> %s\n", indent.c_str(), log_id(gold_id), log_id(gate_id));
@@ -1310,22 +1309,24 @@ void EqyPartitionWorker::create_matchfilter()
 	design->add(gold);
 	design->add(gate);
 
-	int last_id = 0;
-
+	int last_id = -1;
 	SigSpec gold_matchbits, gate_matchbits;
+	grouped_matches.push_back({-1, State::Sx, State::Sx});
 
-	grouped_matches.push_back({0, State::Sx, State::Sx});
+	for (auto wire : gold->wires()) wire->port_output = false;
+	for (auto wire : gate->wires()) wire->port_output = false;
 
 	for (auto &match_bit : grouped_matches)
 	{
 		int match_id = std::get<0>(match_bit);
 		auto gold_bit = std::get<1>(match_bit);
 		auto gate_bit = std::get<2>(match_bit);
+
 		if (match_id != last_id && !gold_matchbits.empty()) {
-			auto pair = *match_group_names.element(match_group_names.size() - 1 - match_id);
+			auto pair = *match_group_names.element(match_group_names.size() - 1 - last_id);
 			auto name = stringf("\\%s__match__%s", pair.first.substr(1).c_str(), pair.second.substr(1).c_str());
-			auto gold_wire = gold->addWire(name);
-			auto gate_wire = gate->addWire(name);
+			auto gold_wire = gold->addWire(name, GetSize(gold_matchbits));
+			auto gate_wire = gate->addWire(name, GetSize(gate_matchbits));
 			gold_wire->port_output = true;
 			gate_wire->port_output = true;
 
