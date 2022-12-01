@@ -710,6 +710,33 @@ def make_matchfilter(args, cfg, job):
 
     job.run()
 
+    modnames = list()
+    for fn in os.listdir(f"{args.workdir}/matchfilters/"):
+        if not fn.endswith(".il"): continue
+        modnames.append(modname := fn[:-3])
+        with open(f"{args.workdir}/matchfilters/{modname}.sby", "w") as sby_file:
+            print(f"""
+[options]
+mode cover
+depth 20
+# vcd off
+
+[engines]
+btor btormc
+
+[script]
+read_rtlil ../../{modname}.il
+formalff -clk2ff -ff2anyinit gate.{modname}
+setundef -anyseq gate.{modname}
+chformal -remove
+miter -equiv -make_cover -ignore_gold_x -flatten gold.{modname} gate.{modname} miter
+dffunmap
+xprop -formal -split-ports -assume-def-inputs -required miter
+hierarchy -top miter
+""", file=sby_file)
+
+    return modnames
+
 class EqyStrategy:
     default_scfg = {}
 
@@ -1095,7 +1122,18 @@ def main():
     match_ids(ctx.args, ctx, ctx.job)
 
     if ctx.args.matchfiltermode:
-        make_matchfilter(ctx.args, ctx, ctx.job)
+        modnames = make_matchfilter(ctx.args, ctx, ctx.job)
+
+        if not ctx.args.setupmode:
+            for mod in modnames:
+                def check_retcode_f(name):
+                    def check_retcode(retcode):
+                        if (retcode != 0):
+                            exit_with_error(f"SBY task {name} returned a non-zero exit code.")
+                    return check_retcode
+                run_task = EqyTask(ctx.job, f"sby.{mod}", [], f"cd '{ctx.args.workdir}/matchfilters' && sby -f '{mod}.sby'")
+                run_task.exit_callback = check_retcode_f(f"sby.{mod}")
+            ctx.job.run()
 
     else:
         make_partitions(ctx.args, ctx, ctx.job)
