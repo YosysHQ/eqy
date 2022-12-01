@@ -1,0 +1,19 @@
+[gold]
+read_verilog -sv -sv nerv.sv
+prep -top nerv
+memory_map
+
+[gate]
+read_verilog -sv nerv_change.sv
+prep -top nerv
+memory_map
+
+[collect *]
+group regfile*
+join imm_*
+join insn*
+
+[strategy sby]
+use sby
+depth 2
+engine smtbmc bitwuzla

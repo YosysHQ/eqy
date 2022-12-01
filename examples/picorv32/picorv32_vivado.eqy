@@ -164,7 +164,7 @@ gold-match decoded_imm[]   \1_reg[\2].Q
 gold-match decoded_imm_j[] \1_reg[\2].Q
 gold-match decoded_rd[]    \1_reg[\2].Q
 gold-match latched_rd[]    \1_reg[\2].Q
-# gold-match mem_addr[]      \1_reg[\2].Q
+# gold-match mem_addr[]    \1_reg[\2].Q
 gold-match mem_rdata_q[]   \1_reg[\2].Q
 gold-match mem_state[]     \1_reg[\2].Q
 # gold-match mem_wdata[]   \1_reg[\2].Q
