@@ -568,6 +568,12 @@ def partition_ids(args, cfg, job):
         for pattern, line in cfg.collect:
             line = line.split()
 
+            if solo_mode := (line[0] in ("solo-group", "solo-jgroup", "solo-join") and len(line) == 2):
+                line[0] = line[0][5:]
+
+            if jgroup_mode := (line[0] == "jgroup") and len(line) == 2:
+                line[0] = "group"
+
             if line[0] in ("nobind", "nojoin", "nogroup", "nosolo") and len(line) == 2:
                 for module_match in search_modules(job, cfg.matched_ids, pattern):
                     for entity_match, _ in search_entities(job, cfg.matched_ids[module_match], None, line[1], None, no_database[line[0][2:]]):
@@ -577,21 +583,23 @@ def partition_ids(args, cfg, job):
             if line[0] in ("bind", "join", "solo") and len(line) == 2:
                 for module_match in search_modules(job, cfg.matched_ids, pattern):
                     for entity_match, _ in search_entities(job, cfg.matched_ids[module_match], None, line[1], None, no_database[line[0]]):
+                        if solo_mode and (module_match, entity_match) not in no_database["solo"]:
+                            print("solo", module_match, entity_match, file=partids_f)
                         print(line[0], module_match, entity_match, file=partids_f)
                 continue
 
-            if line[0] in ("group", "solo-group") and len(line) == 2:
+            if line[0] == "group" and len(line) == 2:
                 for module_match in search_modules(job, cfg.matched_ids, pattern):
                     first_entity = None
                     for entity_match, _ in search_entities(job, cfg.matched_ids[module_match], None, line[1], None, no_database["group"]):
-                        if line[0] == "solo-group":
-                            if (module_match, entity_match) in no_database["solo"]:
-                                continue
+                        if solo_mode and (module_match, entity_match) not in no_database["solo"]:
                             print("solo", module_match, entity_match, file=partids_f)
+                        if jgroup_mode and (module_match, entity_match) not in no_database["join"]:
+                            print("join", module_match, entity_match, file=partids_f)
                         if first_entity is None:
                             first_entity = entity_match
                         else:
-                            print("group", module_match, first_entity, entity_match, file=partids_f)
+                            print(line[0], module_match, first_entity, entity_match, file=partids_f)
                 continue
 
             if line[0] == "group" and len(line) == 3:
