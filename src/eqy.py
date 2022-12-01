@@ -842,7 +842,7 @@ class EqySbyStrategy(EqyStrategy):
                     setundef -anyseq gate.{partition.name}
                     miter -equiv -cross -make_assert -ignore_gold_x -flatten gold.{partition.name} gate.{partition.name} miter
                     dffunmap
-                    xprop -formal -split-ports -assume-encoding -assume-def-inputs miter
+                    xprop -formal -split-ports -assume-def-inputs miter
                 """[1:-1]), file=sby_f)
             else:
                 print(textwrap.dedent(f"""
