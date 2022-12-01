@@ -38,9 +38,10 @@ gold-match /^pcpi_rs(1|2)\[(\d+)\]$/ pcpi_rs\1[\2]
 [collect picorv32]
 solo-group /^pcpi_(rs1|rs2)\[\d+\]$/
 
+
 ##############################################################
 #
-# PicoRV32 Equivalent Points
+# PicoRV32 Other Equivalent Points
 
 [match picorv32]
 gold-match clk
@@ -49,16 +50,16 @@ gold-match alu_eq
 gold-match alu_lts
 gold-match alu_ltu
 gold-match alu_out_0
-gold-match alu_out_q[[]*
+# gold-match alu_out_q[]
 
-gold-match cpuregs_wrdata[[]*
-gold-match eoi[[]*
-gold-match irq[[]*
+gold-match cpuregs_wrdata[]
+gold-match eoi[]
+gold-match irq[]
 
-gold-match decoded_imm[[]*
-gold-match decoded_imm_j[[]*
-gold-match decoded_rd[[]*
-gold-match decoded_rs1[[]*
+# gold-match decoded_imm[]
+# gold-match decoded_imm_j[]
+# gold-match decoded_rd[]
+gold-match decoded_rs1[]
 gold-match decoder_pseudo_trigger
 
 gold-match instr_add
@@ -122,78 +123,85 @@ gold-match is_sltiu_bltu_sltu
 
 gold-match latched_branch
 gold-match latched_is_lu
-gold-match latched_rd[[]*
+# gold-match latched_rd[]
 gold-match latched_store
-gold-match mem_addr[[]*
+gold-match mem_addr[]
 gold-match mem_do_prefetch
 gold-match mem_do_rdata
 gold-match mem_do_wdata
 gold-match mem_done
 gold-match mem_instr
-gold-match mem_la_addr[[]*
+gold-match mem_la_addr[]
 gold-match mem_la_read
-gold-match mem_la_wdata[[]*
+gold-match mem_la_wdata[]
 gold-match mem_la_write
-gold-match mem_la_wstrb[[]*
-gold-match mem_rdata[[]*
+gold-match mem_la_wstrb[]
+gold-match mem_rdata[]
 gold-match mem_ready
 gold-match mem_valid
-gold-match mem_wdata[[]*
-gold-match mem_wordsize[[]*
-gold-match mem_wstrb[[]*
+gold-match mem_wdata[]
+# gold-match mem_wordsize[]
+gold-match mem_wstrb[]
 gold-match mem_xfer
-gold-match pcpi_insn[[]*
-gold-match pcpi_rd[[]*
+gold-match pcpi_insn[]
+gold-match pcpi_rd[]
 gold-match pcpi_ready
 gold-match pcpi_valid
 gold-match pcpi_wait
 gold-match pcpi_wr
-gold-match reg_out[[]*
-gold-match reg_sh[[]*
+# gold-match reg_out[]
+# gold-match reg_sh[]
 gold-match resetn
-gold-match trace_data[[]*
+gold-match trace_data[]
 gold-match trace_valid
 gold-match trap
 
-gold-match count_cycle[[]* \0_reg.Q
-gold-match count_instr[[]* \0_reg.Q
-gold-match cpu_state[[]* \0_reg.Q
-gold-match mem_rdata_q[[]* \0_reg.Q
-gold-match mem_state[[]* \0_reg.Q
-gold-match reg_next_pc[[]* \0_reg.Q
-gold-match reg_pc[[]* \0_reg.Q
+gold-match alu_out_q[]     \1_reg[\2].Q
+gold-match count_cycle[]   \1_reg[\2].Q
+gold-match count_instr[]   \1_reg[\2].Q
+gold-match cpu_state[]     \1_reg[\2].Q
+gold-match decoded_imm[]   \1_reg[\2].Q
+gold-match decoded_imm_j[] \1_reg[\2].Q
+gold-match decoded_rd[]    \1_reg[\2].Q
+gold-match latched_rd[]    \1_reg[\2].Q
+# gold-match mem_addr[]      \1_reg[\2].Q
+gold-match mem_rdata_q[]   \1_reg[\2].Q
+gold-match mem_state[]     \1_reg[\2].Q
+# gold-match mem_wdata[]   \1_reg[\2].Q
+gold-match mem_wordsize[]  \1_reg[\2].Q
+# gold-match mem_wstrb[]   \1_reg[\2].Q
+gold-match reg_next_pc[]   \1_reg[\2].Q
+gold-match reg_out[]       \1_reg[\2].Q
+gold-match reg_pc[]        \1_reg[\2].Q
+gold-match reg_sh[]        \1_reg[\2].Q
 
 ##############################################################
 #
 # Partitioning and Strategies
 
 [match picorv32]
-gate-nomatch /^mem_(wstrb|wdata|addr)_reg\[\d+\].Q$/
-gate-match /^(.*)_reg\[(\d+)\].Q$/ \1[\2]
-gold-match /^(eoi|trace_data)\[\d+\]$/
-gold-match /^mem_la_(addr\[\d+\]|read|write)$/
-gold-match mem_valid
-gold-match trap
+# gold-match *
+# gate-match /^(.*)_reg\[(\d+)\].Q$/ \1[\2]
 
 [collect picorv32]
-solo-group /^eoi\[\d+\]$/
-solo-group /^trace_data\[\d+\]$/
-solo-group /^count_cycle\[\d+\]$/
-solo-group /^alu_out_q\[\d+\]$/
-solo-group /^count_instr\[\d+\]$/
-solo-group /^cpu_state\[\d+\]$/
-solo-group /^decoded_.*\[\d+\]$/
-solo-group /^mem_.*\[\d+\]$/
-solo-group /^latched_rd\[\d+\]$/
-solo-group /^reg_out\[\d+\]$/
-solo-group /^reg_sh\[\d+\]$/
-solo-group /^reg_(next_pc|pc)\[\d+\]$/
-solo-group /^cpuregs_wrdata\[\d+\]$/
-solo-group /^pcpi_insn\[\d+\]$/
-solo-group /^(instr|is)_/
+solo-group eoi[]
+solo-group trace_data[]
+solo-group count_cycle[]
+solo-group alu_out_q[]
+solo-group count_instr[]
+solo-group cpu_state[]
+solo-group decoded_*[]
+solo-group mem_*[]
+solo-group latched_rd[]
+solo-group reg_out[]
+solo-group reg_sh[]
+solo-group /reg_(next_pc|pc)\[\d+\]/
+solo-group cpuregs_wrdata[]
+solo-group pcpi_insn[]
+solo-group /(instr|is)_.*/
 
 [collect picorv32]
-bind /^mem_la_(addr\[\d+\]|read|write)$/
+bind /mem_la_(addr\[\d+\]|read|write)/
 bind mem_valid
 bind trap
 

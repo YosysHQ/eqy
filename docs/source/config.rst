@@ -82,9 +82,9 @@ modules matching that pattern, or all modules if the pattern is omitted.
 .. code-block:: text
 
    [match axi_xbar_*]
-   gate-match *_ff \0
+   gold-match *_ff[] \2_reg[\3].Q
 
-TBD: gold-match, gate-match, gold-nomatch, gate-nomatch
+TBD: gold-match, gate-match, final-gold-match, final-gate-match, gold-nomatch, gate-nomatch
 
 Collect sections
 ----------------
@@ -282,6 +282,12 @@ statements.
 In commands that accept pairs of patterns, numeric backreferences (\0, \1, \2) and
 named backreferences (\g<1>, \g<name>) are replaced in the second pattern by
 the contents of the corresponding group from the first pattern.
+
+In shell wildcard patterns, the entire name is stored in \0 and each wildcard
+char (``?``, ``*``, or ``[abcd]`` groups) stores the matching text in a numbered
+group. The special string ``[]`` in shell wildcard patterns match to an integer
+in square brackets, storing the text preceding the square brackets in \1 and the
+integer in the group corresponding to the ``[]`` token.
 
 If the first pattern in a pair used the at-sign syntax for attributes, then \g<name>
 in the second pattern is replaced with the attribute name and \g<value> with

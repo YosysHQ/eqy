@@ -19,7 +19,7 @@
 #
 import argparse, types, re, glob
 import os, sys, tempfile, shutil
-import shlex, fnmatch, textwrap
+import shlex, textwrap
 import click, json, collections
 ##yosys-sys-path##
 
@@ -102,7 +102,8 @@ def parse_args():
             action=DictAction, dest="exe_paths",
             help="configure which executable to use for the respective tool")
 
-    args = parser.parse_args()
+    ctx = types.SimpleNamespace()
+    ctx.args = parser.parse_args()
 
     exe_paths = {
         "yosys": os.getenv("YOSYS", "yosys"),
@@ -115,15 +116,15 @@ def parse_args():
         "pono": os.getenv("PONO", "pono"),
     }
 
-    for k, v in args.exe_paths.items():
+    for k, v in ctx.args.exe_paths.items():
         exe_paths[k] = v
 
-    args.exe_paths = exe_paths
+    ctx.args.exe_paths = exe_paths
 
-    if args.init_config_file is not None:
-        assert args.eqyfile is None
-        assert len(args.init_config_file) == 4
-        with open(args.init_config_file[0], 'w') as config:
+    if ctx.args.init_config_file is not None:
+        assert ctx.args.eqyfile is None
+        assert len(ctx.args.init_config_file) == 4
+        with open(ctx.args.init_config_file[0], 'w') as config:
             config.write("""[options]
 
 [gold]
@@ -137,36 +138,35 @@ prep -top {1}
 [strategy simple]
 use satseq
 depth 10
-""".format(*args.init_config_file))
-        print("eqy template config written to '{}'.".format(args.init_config_file[0]), file=sys.stderr)
+""".format(*ctx.args.init_config_file))
+        print("eqy template config written to '{}'.".format(ctx.args.init_config_file[0]), file=sys.stderr)
         sys.exit(0)
 
-    return args
+    return ctx
 
-def read_config(configfile):
-    if configfile is None:
+def read_config(ctx):
+    if ctx.args.eqyfile is None:
         exit_with_error("No config file given")
 
-    cfg = types.SimpleNamespace()
     simple_sections = ["options", "gold", "gate"]
     pattern_sections = ["recode", "match", "collect", "partition"]
     named_sections = ["strategy"]
     # TODO: properly initialize options according to meaning
     # how about adding sections only as headers are encountered, so that we can check for existence?
     for s in simple_sections + pattern_sections:
-        setattr(cfg, s, list())
+        setattr(ctx, s, list())
     for s in named_sections:
-        setattr(cfg, s, dict())
+        setattr(ctx, s, dict())
 
-    cfg.options = types.SimpleNamespace()
-    cfg.options.splitnets = False
-    cfg.options.insbuf = True
+    ctx.options = types.SimpleNamespace()
+    ctx.options.splitnets = False
+    ctx.options.insbuf = True
 
     section = None
     sectionarg = None
     match_default = True
     linenr = 0
-    for line in configfile:
+    for line in ctx.args.eqyfile:
         linenr += 1
 
         # take this out if we want to do --pycode--
@@ -190,10 +190,10 @@ def read_config(configfile):
                 continue
             if len(entries) == 2 and entries[0] in named_sections:
                 section, sectionarg = entries
-                if sectionarg not in getattr(cfg, section):
-                    getattr(cfg, section)[sectionarg] = list()
+                if sectionarg not in getattr(ctx, section):
+                    getattr(ctx, section)[sectionarg] = list()
                 else:
-                    exit_with_error(f"duplicated {section} section '{sectionarg}' in {configfile.name} line {linenr}")
+                    exit_with_error(f"duplicated {section} section '{sectionarg}' in {ctx.eqyfile.name} line {linenr}")
                 continue
 
         else:
@@ -204,33 +204,32 @@ def read_config(configfile):
             if section == "options":
                 fields = line.split()
                 if len(fields) != 2:
-                    exit_with_error(f"syntax error in {section} section in {configfile.name} line {linenr}: {line}")
-                if not hasattr(cfg.options, fields[0]):
-                    exit_with_error(f"unknown option '{fields[0]}' in {configfile.name} line {linenr}: {line}")
-                if type(getattr(cfg.options, fields[0])) is bool and fields[1] in ("on", "off"):
-                    setattr(cfg.options, fields[0], fields[1] == "on")
+                    exit_with_error(f"syntax error in {section} section in {ctx.eqyfile.name} line {linenr}: {line}")
+                if not hasattr(ctx.options, fields[0]):
+                    exit_with_error(f"unknown option '{fields[0]}' in {ctx.eqyfile.name} line {linenr}: {line}")
+                if type(getattr(ctx.options, fields[0])) is bool and fields[1] in ("on", "off"):
+                    setattr(ctx.options, fields[0], fields[1] == "on")
                     continue
-                exit_with_error(f"syntax error in {section} section in {configfile.name} line {linenr}: {line}")
+                exit_with_error(f"syntax error in {section} section in {ctx.eqyfile.name} line {linenr}: {line}")
 
             if section in simple_sections:
-                getattr(cfg, section).append(line)
+                getattr(ctx, section).append(line)
                 continue
 
             if section in pattern_sections:
-                getattr(cfg, section).append((sectionarg, line))
+                getattr(ctx, section).append((sectionarg, line))
                 continue
 
             if section in named_sections:
-                getattr(cfg, section)[sectionarg].append(line)
+                getattr(ctx, section)[sectionarg].append(line)
                 continue
 
-        exit_with_error(f"syntax error in {configfile.name} line {linenr}")
+        exit_with_error(f"syntax error in {ctx.eqyfile.name} line {linenr}")
 
     if match_default:
-        cfg.match.append(("*", "gold-match *"))
+        ctx.match.append(("*", "gold-match *"))
 
-    return cfg
-
+    return ctx
 
 
 def setup_workdir(args):
@@ -371,7 +370,30 @@ def read_ids(filename):
 
 class Pattern:
     repl_re = re.compile(r"\\([0-9]+)|\\g<([^>]+)>")
-    pattern_re = re.compile(r"(/(?:[^/]|\\/)+/i?|(?:[a-zA-Z0-9_.*?]|\\.|\[[^\]]+\])+),?")
+    pattern_re = re.compile(r"(/(?:[^/]|\\/)+/i?|(?:[a-zA-Z0-9_.*?]|\\.|\[[^\]]*\])+),?")
+
+    @staticmethod
+    def shell_pattern_to_regex(pattern):
+        chars = iter(pattern)
+        regex = list()
+        for tok in chars:
+            if tok == "*":
+                regex.append("(.*)")
+                continue
+            if tok == "?":
+                regex.append("(.)")
+                continue
+            if tok == "[":
+                for char in chars:
+                    tok += char
+                    if char == "]": break
+                if tok == "[]":
+                    regex = ["("] + regex + [r")\[(\d+)\]"]
+                else:
+                    regex.append(f"({tok})")
+                continue
+            regex.append(tok)
+        return re.compile("".join(regex))
 
     def __init__(self, pattern, groups, groupdict):
         def repl(match):
@@ -398,27 +420,22 @@ class Pattern:
                     p.regex = re.compile(pattern[1:-2], re.I)
                 else:
                     assert pattern.endswith("/")
-                    p.regex = re.compile(pattern[1:-1], re.I)
+                    p.regex = re.compile(pattern[1:-1])
             else:
                 p.type = "shell"
                 p.expr = pattern
-                # p.regex = fnmatch.translate(pattern)
+                p.regex = self.shell_pattern_to_regex(pattern)
             self.patterns.append(p)
-
 
     def match(self, name, metadata):
         for p in self.patterns:
             # TBD: Attribute Patterns
             # TBD: Partition Patterns
-            if p.type == "regex":
-                if m := p.regex.search(name):
+            if p.type in ("regex", "shell"):
+                if m := p.regex.fullmatch(name):
                     groups = [m.group()] + list(m.groups())
                     groupdict = m.groupdict()
                     return (name, groups, groupdict)
-                continue
-            if p.type == "shell":
-                if fnmatch.fnmatchcase(name, p.expr):
-                    return (name, [name], {})
                 continue
             assert False
         return None
@@ -428,7 +445,7 @@ class Pattern:
             return [(self.direct, [self.direct], {})]
 
         results = list()
-        for name, metadata in ids.items():
+        for name, metadata in sorted(ids.items()):
             if name == ".":
                 continue
             if (m := self.match(name, metadata)) is not None:
@@ -438,7 +455,7 @@ class Pattern:
 def search_modules(job, ids, expr, excl=set()):
     matches = []
     pattern = Pattern(expr, [], {})
-    for key in ids:
+    for key in sorted(ids):
         if pattern.match(key, {}):
             if key not in excl: matches.append(key)
     return matches
@@ -464,7 +481,6 @@ def search_entities(job, ids, other_ids, expr, other_expr, excl=set(), other_exc
     if not found_first:
         if other_expr is None:
             job.warning(f"Cannot find entity {expr}.")
-            print(lhs.patterns)
         else:
             job.warning(f"Cannot find first entity in {expr} {other_expr}.")
     elif not found_second:
@@ -483,6 +499,8 @@ def match_ids(args, cfg, job):
                 continue
             match_counter = 0
             print(f"# [{pattern}] {' '.join(line)}", file=f)
+            if final_mode := line[0] in ("final-gold-match", "final-gate-match"):
+                line[0] = line[0][6:]
             if line[0] == "gold-match" and len(line) in [2, 3]:
                 for module_match in search_modules(job, cfg.gold_ids, pattern):
                     if module_match in cfg.gate_ids: #TODO: is this the right way to deal with missing module hierarchy?
@@ -492,8 +510,9 @@ def match_ids(args, cfg, job):
                             match_counter += 1
                             print(module_match, entity_match[0], entity_match[1], file=f)
                             cfg.matched_ids[module_match][entity_match[0]] = cfg.gold_ids[module_match][entity_match[0]]
-                            used_gold_ids[module_match].add(entity_match[0])
-                            used_gate_ids[module_match].add(entity_match[1])
+                            if final_mode:
+                                used_gold_ids[module_match].add(entity_match[0])
+                                used_gate_ids[module_match].add(entity_match[1])
             elif line[0] == "gate-match" and len(line) in [2, 3]:
                 for module_match in search_modules(job, cfg.gate_ids, pattern):
                     if module_match in cfg.gold_ids:
@@ -503,8 +522,9 @@ def match_ids(args, cfg, job):
                             match_counter += 1
                             print(module_match, entity_match[1], entity_match[0], file=f)
                             cfg.matched_ids[module_match][entity_match[1]] = cfg.gold_ids[module_match][entity_match[1]]
-                            used_gate_ids[module_match].add(entity_match[0])
-                            used_gold_ids[module_match].add(entity_match[1])
+                            if final_mode:
+                                used_gate_ids[module_match].add(entity_match[0])
+                                used_gold_ids[module_match].add(entity_match[1])
             elif line[0] == "gold-nomatch" and len(line) == 2:
                 for module_match in search_modules(job, cfg.gold_ids, pattern):
                     for entity_match in search_entities(job, cfg.gold_ids[module_match], None, line[1], None, used_gold_ids[module_match]):
@@ -638,7 +658,7 @@ def make_partitions(args, cfg, job):
         print("plugin -i {}/eqy_partition.so".format(plugin_path), file=f)
         print("read_ilang combined.il".format(args.workdir), file=f)
         if cfg.options.insbuf:
-            print("insbuf", file=f)
+            print("insbuf -chain", file=f)
         print("{dbg}eqy_partition -matched_ids matched.ids -partition_ids partition.ids -create_partition_list partition.list".format(dbg="debug " if args.debugmode else ""), file=f)
     if not os.path.isdir(args.workdir + "/partitions"):
         os.mkdir(args.workdir + "/partitions")
@@ -915,11 +935,11 @@ class EqyPartition:
             job.warning(f"Partition {self.name} contains {len(self.gate_module.unused)} unused gate inputs.")
 
 def make_scripts(args, cfg, job, strategies):
-    partitions = []
+    cfg.partitions = []
 
     with open(args.workdir + "/partition.list") as f:
         for line in f:
-            partitions.append(EqyPartition(line, args, cfg, job))
+            cfg.partitions.append(EqyPartition(line, args, cfg, job))
 
     if not os.path.isdir(args.workdir + "/strategies"):
         os.mkdir(args.workdir + "/strategies")
@@ -927,7 +947,7 @@ def make_scripts(args, cfg, job, strategies):
     with open(f"{args.workdir}/strategies.mk", "w") as make_f:
         print(".DEFAULT_GOAL := all\n", file=make_f)
         targets = []
-        for partition in partitions:
+        for partition in cfg.partitions:
             if not os.path.isdir(f"{args.workdir}/strategies/{partition.name}"):
                 os.mkdir(f"{args.workdir}/strategies/{partition.name}")
             prev_strategy = None
@@ -985,18 +1005,15 @@ def run_scripts(args, cfg, job):
     def check_output(line):
         nonlocal failing_partitions_count
         if line.startswith("* "):
-            match = re.match(r"^\* Failed to prove equivalence", line)
-            if match:
+            if match := re.match(r"^\* Failed to prove equivalence", line):
                 job.update_status("FAIL")
                 summary_messages.append(click.style(line[2:], fg="red", bold=True))
                 failing_partitions_count += 1
+            elif match := re.match(r"^\* Successfully proved designs equivalent", line):
+                job.update_status("PASS")
+                summary_messages.append(click.style(line[2:], fg="green", bold=True))
             else:
-                match = re.match(r"^\* Successfully proved designs equivalent", line)
-                if match:
-                    job.update_status("PASS")
-                    summary_messages.append(click.style(line[2:], fg="green", bold=True))
-                else:
-                    summary_messages.append(click.style(line[2:], bold=true))
+                summary_messages.append(click.style(line[2:], bold=true))
             return None
         return line
 
@@ -1009,7 +1026,7 @@ def run_scripts(args, cfg, job):
     job.run()
 
     if failing_partitions_count:
-        job.warning(f"Failed to prove equivalence for {failing_partitions_count} partitions:")
+        job.warning(f"Failed to prove equivalence for {failing_partitions_count}/{len(cfg.partitions)} partitions:")
     for line in summary_messages:
         job.log(line)
 
@@ -1020,44 +1037,43 @@ def validate_config(args, cfg):
             exit_with_error("section [{}] missing".format(s))
 
 def main():
-    args = parse_args()
-    cfg = read_config(args.eqyfile)
+    ctx = parse_args()
+    read_config(ctx)
 
-    if args.debugmode:
-        print("args =", args)
-        print("cfg =", cfg)
+    if ctx.args.debugmode:
+        print("ctx =", ctx)
 
-    validate_config(args, cfg)
-    strategies = parse_strategies(args, cfg)
-    setup_workdir(args)
+    validate_config(ctx.args, ctx)
+    strategies = parse_strategies(ctx.args, ctx)
+    setup_workdir(ctx.args)
 
-    job = EqyJob(args, cfg, [])
+    ctx.job = EqyJob(ctx.args, ctx, [])
 
-    if args.purgelist is not None:
-        for pattern in args.purgelist:
+    if ctx.args.purgelist is not None:
+        for pattern in ctx.args.purgelist:
             for path in glob.glob(f"{args.workdir}/strategies/{pattern}/status"):
-                job.log(f"Removing '{path}'.")
+                ctx.job.log(f"Removing '{path}'.")
                 os.remove(path)
 
-    build_gate_gold(args, cfg, job)
-    build_combined(args, cfg, job)
+    build_gate_gold(ctx.args, ctx, ctx.job)
+    build_combined(ctx.args, ctx, ctx.job)
 
-    cfg.gold_ids = read_ids(args.workdir + "/gold.ids")
-    cfg.gate_ids = read_ids(args.workdir + "/gate.ids")
+    ctx.gold_ids = read_ids(ctx.args.workdir + "/gold.ids")
+    ctx.gate_ids = read_ids(ctx.args.workdir + "/gate.ids")
 
-    if args.debugmode:
-        gold_id_count = sum([len(cfg.gold_ids[n]) for n in cfg.gold_ids])
-        gate_id_count = sum([len(cfg.gate_ids[n]) for n in cfg.gate_ids])
-        job.log(f"Created ID database with {gold_id_count} gold ids and {gate_id_count} gate ids.")
+    if ctx.args.debugmode:
+        gold_id_count = sum([len(ctx.gold_ids[n]) for n in ctx.gold_ids])
+        gate_id_count = sum([len(ctx.gate_ids[n]) for n in ctx.gate_ids])
+        ctx.job.log(f"Created ID database with {gold_id_count} gold ids and {gate_id_count} gate ids.")
 
-    recode_ids(args, cfg, job)
-    match_ids(args, cfg, job)
-    make_partitions(args, cfg, job)
-    make_scripts(args, cfg, job, strategies)
+    recode_ids(ctx.args, ctx, ctx.job)
+    match_ids(ctx.args, ctx, ctx.job)
+    make_partitions(ctx.args, ctx, ctx.job)
+    make_scripts(ctx.args, ctx, ctx.job, strategies)
 
-    if args.commands:
+    if ctx.args.commands:
         ys_task_index = 0
-        for command, partition in args.commands:
+        for command, partition in ctx.args.commands:
             command = command.replace("\\", "\\\\").replace("'", "\\'")
             def check_retcode_f(index):
                 def check_retcode(retcode):
@@ -1068,12 +1084,12 @@ def main():
                 ys_task_index += 1
                 run_task = EqyTask(job, f"yosys.{ys_task_index}", [], f"yosys -p '{command}' {path}")
                 run_task.exit_callback = check_retcode_f(ys_task_index)
-        job.run()
+        ctx.job.run()
 
-    elif not args.setupmode:
-        run_scripts(args, cfg, job)
+    elif not ctx.args.setupmode:
+        run_scripts(ctx.args, ctx, ctx.job)
 
-    job.final()
+    ctx.job.final()
 
 if __name__ == '__main__':
     main()
