@@ -811,8 +811,10 @@ class EqySatseqStrategy(EqyStrategy):
 
         with open(self.path(partition.name, "run.ys"), "w") as ys_f:
             print(f"read_ilang ../../../partitions/{partition.name}.il", file=ys_f)
+            print(f"formalff -clk2ff -ff2anyinit gate.{partition.name}", file=ys_f)
+            print(f"setundef -anyseq gate.{partition.name}", file=ys_f)
             print(f"miter -equiv -cross -make_assert -ignore_gold_x -flatten gold.{partition.name} gate.{partition.name} miter", file=ys_f)
-            print(f"sat -tempinduct -set-init-undef -set-def-inputs -maxsteps {self.scfg.depth} -prove-asserts -show-public -dump_vcd trace.vcd miter", file=ys_f)
+            print(f"sat -tempinduct -set-init-undef -set-def-formal -set-def-inputs -maxsteps {self.scfg.depth} -prove-asserts -show-public -dump_vcd trace.vcd miter", file=ys_f)
 
 
 class EqySbyStrategy(EqyStrategy):
