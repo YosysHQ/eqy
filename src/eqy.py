@@ -722,7 +722,7 @@ depth 20
 # vcd off
 
 [engines]
-btor btormc
+smtbmc bitwuzla
 
 [script]
 read_rtlil ../../{modname}.il
