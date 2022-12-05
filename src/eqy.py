@@ -1186,7 +1186,7 @@ def main():
         build_get_ids(ctx.args, ctx, ctx.job)
         build_recode(ctx.args, ctx, ctx.job)
     else:
-        shutil.move(f"{ctx.args.workdir}/gate.il", f"{ctx.args.workdir}/gate_recoded.il")
+        shutil.copyfile(f"{ctx.args.workdir}/gate.il", f"{ctx.args.workdir}/gate_recoded.il")
         
     build_combined(ctx.args, ctx, ctx.job)
 
