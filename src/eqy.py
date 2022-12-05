@@ -1139,7 +1139,7 @@ def run_scripts(args, cfg, job):
                 job.update_status("PASS")
                 summary_messages.append(click.style(line[2:], fg="green", bold=True))
             else:
-                summary_messages.append(click.style(line[2:], bold=true))
+                summary_messages.append(click.style(line[2:], bold=True))
             return None
         return line
 
