@@ -201,7 +201,7 @@ def read_config(ctx):
                 if sectionarg not in getattr(ctx, section):
                     getattr(ctx, section)[sectionarg] = list()
                 else:
-                    exit_with_error(f"duplicated {section} section '{sectionarg}' in {ctx.eqyfile.name} line {linenr}")
+                    exit_with_error(f"duplicated {section} section '{sectionarg}' in {ctx.args.eqyfile.name} line {linenr}")
                 continue
 
         else:
@@ -213,7 +213,7 @@ def read_config(ctx):
                 fields = line.split(None, 1)
                 if len(fields) == 2:
                     if not hasattr(ctx.options, fields[0]):
-                        exit_with_error(f"unknown option '{fields[0]}' in {ctx.eqyfile.name} line {linenr}: {line}")
+                        exit_with_error(f"unknown option '{fields[0]}' in {ctx.args.eqyfile.name} line {linenr}: {line}")
                     if type(getattr(ctx.options, fields[0])) is bool and fields[1] in ("on", "off"):
                         setattr(ctx.options, fields[0], fields[1] == "on")
                         continue
@@ -227,7 +227,7 @@ def read_config(ctx):
                             pass
                         else:
                             continue
-                exit_with_error(f"syntax error in {section} section in {ctx.eqyfile.name} line {linenr}: {line}")
+                exit_with_error(f"syntax error in {section} section in {ctx.args.eqyfile.name} line {linenr}: {line}")
 
             if section in simple_sections:
                 getattr(ctx, section).append(line)
@@ -241,7 +241,7 @@ def read_config(ctx):
                 getattr(ctx, section)[sectionarg].append(line)
                 continue
 
-        exit_with_error(f"syntax error in {ctx.eqyfile.name} line {linenr}")
+        exit_with_error(f"syntax error in {ctx.args.eqyfile.name} line {linenr}")
 
     if match_default:
         ctx.match.append(("*", "gold-match *"))
