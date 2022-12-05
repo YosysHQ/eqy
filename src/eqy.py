@@ -357,9 +357,9 @@ def recode_ids(args, cfg, job):
             if len(line) == 0:
                 continue
             if len(line) in [2]:
-                for module_match in match_module_re(gold_ids, pattern[0]):
+                for module_match in search_modules(job, gold_ids, pattern[0]):
                     if module_match in cfg.gate_ids:
-                        for entity_match, _ in match_entity_re(gold_ids[module_match], gate_ids[module_match], pattern[1], None):
+                        for entity_match, _ in search_entities(job, gold_ids[module_match], gate_ids[module_match], pattern[1], None):
                             print(module_match, entity_match, line[0], line[1], file=f)
                     else:
                         exit_with_error(f"Module '{module_match}' must exist in gate design.")
@@ -1177,7 +1177,7 @@ def main():
 
     if ctx.args.purgelist is not None:
         for pattern in ctx.args.purgelist:
-            for path in glob.glob(f"{args.workdir}/strategies/{pattern}/status"):
+            for path in glob.glob(f"{ctx.args.workdir}/strategies/{pattern}/status"):
                 ctx.job.log(f"Removing '{path}'.")
                 os.remove(path)
 
@@ -1227,9 +1227,9 @@ def main():
                         if (retcode != 0):
                             exit_with_error(f"Yosys task {index} returned a non-zero exit code.")
                     return check_retcode
-                for path in glob.glob(f"{args.workdir}/partitions/{partition}.il"):
+                for path in glob.glob(f"{ctx.args.workdir}/partitions/{partition}.il"):
                     ys_task_index += 1
-                    run_task = EqyTask(job, f"yosys.{ys_task_index}", [], f"yosys -p '{command}' {path}")
+                    run_task = EqyTask(ctx.job, f"yosys.{ys_task_index}", [], f"yosys -p '{command}' {path}")
                     run_task.exit_callback = check_retcode_f(ys_task_index)
             ctx.job.run()
 
