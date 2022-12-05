@@ -71,18 +71,6 @@ struct EqyRecodePass : public Pass
 
 		extra_args(args, argidx, design, false);
 
-		if (saved_designs.find("gold") == saved_designs.end())
-			log_error("Design \"gold\" not found in saved designs.");
-		if (saved_designs.find("gate") == saved_designs.end())
-			log_error("Design \"gate\" not found in saved designs.");
-		Design *gold_design = saved_designs.at("gold");
-		Design *gate_design = saved_designs.at("gate");
-
-		IdString gold_top = gold_design->top_module()->name;
-		IdString gate_top = gate_design->top_module()->name;
-		if (gold_top != gate_top)
-			log_error("Top modules of gold and gate do not have the same name.\n");
-
 		log_header(design, "Executing EQY RECODE task.\n");
 
         auto recode_data = read_recode_data(recode_filename);
