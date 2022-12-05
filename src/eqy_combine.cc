@@ -42,6 +42,9 @@ struct EqyCombinePass : public Pass
 	log("    -gate_ids <filename>\n");
 	log("        Dump IDs of public cells and wires in gate module to file\n");
 	log("\n");
+	log("    -nocombine\n");
+	log("        Skip generating miter, just generate IDs\n");
+	log("\n");
 }
 
 	void co_flatten_worker(RTLIL::Selection &sel, Design *work, Design *other, Module *mod)
@@ -134,6 +137,7 @@ struct EqyCombinePass : public Pass
 		FILE *gate_ids = nullptr;
 
 		size_t argidx;
+		bool nocombine = false;
 		for (argidx = 1; argidx < args.size(); argidx++)
 		{
 			if ((args[argidx] == "-gold_ids") && argidx+1 < args.size()) {
@@ -144,6 +148,10 @@ struct EqyCombinePass : public Pass
 			if ((args[argidx] == "-gate_ids") && argidx+1 < args.size()) {
 				gate_ids = fopen(args[++argidx].c_str(), "w");
 				if (!gate_ids) log_cmd_error("Can't create file %s.\n", args[argidx].c_str());
+				continue;
+			}
+			if (args[argidx] == "-nocombine") {
+				nocombine = true;
 				continue;
 			}
 			break;
@@ -190,6 +198,8 @@ struct EqyCombinePass : public Pass
 				log_error("Unmatched module exists in gate that does not exist in gold. This should not happen. Please report this bug.\n");
 			if (gate_ids) print_ids(gate_ids, m);
 		}
+
+		if (nocombine) return;
 
 		for (auto mod : design->modules())
 		{
