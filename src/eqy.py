@@ -1182,8 +1182,12 @@ def main():
                 os.remove(path)
 
     build_gate_gold(ctx.args, ctx, ctx.job)
-    build_get_ids(ctx.args, ctx, ctx.job)
-    build_recode(ctx.args, ctx, ctx.job)
+    if (ctx.recode is not None and len(ctx.recode)>0):
+        build_get_ids(ctx.args, ctx, ctx.job)
+        build_recode(ctx.args, ctx, ctx.job)
+    else:
+        shutil.move(f"{ctx.args.workdir}/gate.il", f"{ctx.args.workdir}/gate_recoded.il")
+        
     build_combined(ctx.args, ctx, ctx.job)
 
     ctx.gold_ids = read_ids(ctx.args.workdir + "/gold.ids")
