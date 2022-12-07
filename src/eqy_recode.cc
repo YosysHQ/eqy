@@ -116,10 +116,18 @@ struct EqyRecodePass : public Pass
 				int i = 0;
 				std::string default_val;
 				std::string other_val;
+				
+				size_t gate_size = gold_w->width;
+				size_t gold_size = gate_w->width;
+				if (entity.second.size() < 2)
+					log_error("There must be at least two mapping values for '%s' of '%s'.\n", entity.first.c_str(), mod.first.c_str());
 				for (auto map : entity.second) {
+					if (gate_size != map.second.size())
+						log_error("Mapping gate value '%s' not proper width.\n", map.second.c_str());
+					if (gold_size != map.first.size())
+						log_error("Mapping gate value '%s' not proper width.\n", map.first.c_str());
 					if (i) {
-						Const val = Const::from_string(map.second);
-						gate_m->addEq(NEW_ID, gate_w, val, sig[i-1]);
+						gate_m->addEq(NEW_ID, gate_w, Const::from_string(map.second), sig[i-1]);
 						other_val = map.first + other_val;
 					} else {
 						default_val = map.first;
