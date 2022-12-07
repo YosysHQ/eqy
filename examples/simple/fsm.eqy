@@ -1,0 +1,19 @@
+[options]
+
+[gold]
+read_verilog -DGOLD fsm.sv
+prep -top top
+
+[gate]
+read_verilog -DGATE fsm.sv
+prep -top top
+
+[match top]
+
+[collect top]
+
+[partition top]
+
+[strategy simple]
+use satseq
+depth 10
