@@ -109,9 +109,8 @@ struct EqyRecodePass : public Pass
 				Wire *new_wire = gate_m->addWire(name, gold_w->width);
 				new_wire->start_offset = gold_w->start_offset;
 				new_wire->upto = gold_w->upto;
-				new_wire->attributes = gold_w->attributes;
 
-				RTLIL::Wire *all_cases_wire = gate_m->addWire(NEW_ID, entity.second.size()-1);
+				RTLIL::Wire *all_cases_wire = gate_m->addWire(NEW_ID, entity.second.size());
 				SigSpec sig = SigSpec(all_cases_wire);
 				int i = 0;
 				std::string default_val;
@@ -119,22 +118,16 @@ struct EqyRecodePass : public Pass
 				
 				size_t gate_size = gate_w->width;
 				size_t gold_size = gold_w->width;
-				if (entity.second.size() < 2)
-					log_error("There must be at least two mapping values for '%s' of '%s'.\n", entity.first.c_str(), mod.first.c_str());
 				for (auto map : entity.second) {
 					if (gate_size != map.second.size())
 						log_error("Mapping gate value '%s' not proper width.\n", map.second.c_str());
 					if (gold_size != map.first.size())
 						log_error("Mapping gold value '%s' not proper width.\n", map.first.c_str());
-					if (i) {
-						gate_m->addEq(NEW_ID, gate_w, Const::from_string(map.second), sig[i-1]);
-						other_val = map.first + other_val;
-					} else {
-						default_val = map.first;
-					}
+					gate_m->addEq(NEW_ID, gate_w, Const::from_string(map.second), sig[all_cases_wire->width-i-1]);
+					other_val += map.first;
 					i++;
 				}
-				gate_m->addPmux(NEW_ID, Const::from_string(default_val), Const::from_string(other_val), sig, new_wire);
+				gate_m->addPmux(NEW_ID, RTLIL::Const(State::Sx, gold_size), Const::from_string(other_val), sig, new_wire);
 			}
 		}
 	}
