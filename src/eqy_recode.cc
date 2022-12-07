@@ -40,20 +40,20 @@ struct EqyRecodePass : public Pass
 		}
 		return matched_ids;
 	}
-    
-    void help() override
+
+	void help() override
 	{
-        //   |---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|
-        log("\n");
-        log("    eqy_recode -recode file\n");
-        log("\n");
-        log("Update gate design and add logic for recoding specified states.\n");
-        log("For use by EQY.\n");
-        log("\n");
-        log("    -recode <filename>\n");
-        log("        Recode data mapping per module entity values.\n");
-        log("\n");
-    }
+		//   |---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|
+		log("\n");
+		log("    eqy_recode -recode file\n");
+		log("\n");
+		log("Update gate design and add logic for recoding specified states.\n");
+		log("For use by EQY.\n");
+		log("\n");
+		log("    -recode <filename>\n");
+		log("        Recode data mapping per module entity values.\n");
+		log("\n");
+	}
 
 	void execute(std::vector<std::string> args, Design *design) override
 	{
@@ -83,7 +83,7 @@ struct EqyRecodePass : public Pass
 		if (gold_top != gate_top)
 			log_error("Top modules of gold and gate do not have the same name.\n");
 
-        auto recode_data = read_recode_data(recode_filename);
+		auto recode_data = read_recode_data(recode_filename);
 
 		if (recode_data.empty()) return;
 
