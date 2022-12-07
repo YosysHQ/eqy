@@ -1,4 +1,4 @@
-test: aliases/PASS counter/PASS ex_amend/PASS ex_bind/PASS ex_group/PASS ex_join/PASS
+test: aliases/PASS counter/PASS ex_amend/PASS ex_bind/PASS ex_group/PASS ex_join/PASS fsm/PASS
 
 aliases/PASS: aliases.eqy aliases.sv
 	eqy -f aliases.eqy
@@ -18,7 +18,10 @@ ex_group/PASS: ex_group.eqy ex_group.sv
 ex_join/PASS: ex_join.eqy ex_join.sv
 	eqy -f ex_join.eqy
 
+fsm/PASS: fsm.eqy fsm.sv
+	eqy -f fsm.eqy
+
 clean:
-	rm -rf aliases/ counter/ ex_amend/ ex_bind/ ex_group/ ex_join/
+	rm -rf aliases/ counter/ ex_amend/ ex_bind/ ex_group/ ex_join/ fsm/
 
 .PHONY: test clean

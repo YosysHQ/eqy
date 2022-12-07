@@ -1,0 +1,25 @@
+[options]
+
+[gold]
+read_verilog -DGOLD fsm.sv
+prep -top top
+
+[gate]
+read_verilog -DGATE fsm.sv
+prep -top top
+
+[match top]
+
+[collect top]
+
+[partition top]
+
+[recode top currentstate]
+0001 00
+0010 01
+0100 10
+1000 11
+
+[strategy simple]
+use satseq
+depth 10
