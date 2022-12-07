@@ -105,9 +105,28 @@ struct EqyRecodePass : public Pass
 				if (!gold_w)
 					log_error("Wire '%s' not found in gold.\n", entity.first.c_str());
 				gate_m->rename(gate_w, new_name);
+				gate_w = gate_m->wire(new_name);
 				Wire *new_wire = gate_m->addWire(name, gold_w->width);
 				new_wire->start_offset = gold_w->start_offset;
 				new_wire->upto = gold_w->upto;
+				new_wire->attributes = gold_w->attributes;
+
+				RTLIL::Wire *all_cases_wire = gate_m->addWire(NEW_ID, entity.second.size()-1);
+				SigSpec sig = SigSpec(all_cases_wire);
+				int i = 0;
+				std::string default_val;
+				std::string other_val;
+				for (auto map : entity.second) {
+					if (i) {
+						Const val = Const::from_string(map.second);
+						gate_m->addEq(NEW_ID, gate_w, val, sig[i-1]);
+						other_val = map.first + other_val;
+					} else {
+						default_val = map.first;
+					}
+					i++;
+				}
+				gate_m->addPmux(NEW_ID, Const::from_string(default_val), Const::from_string(other_val), sig, new_wire);
 			}
 		}
 	}
