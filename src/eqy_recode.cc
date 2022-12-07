@@ -111,7 +111,7 @@ struct EqyRecodePass : public Pass
 				new_wire->upto = gold_w->upto;
 
 				SigSpec sig;
-				std::string other_val;
+				std::string val;
 				size_t gate_size = gate_w->width;
 				size_t gold_size = gold_w->width;
 				for (auto map : entity.second) {
@@ -121,11 +121,11 @@ struct EqyRecodePass : public Pass
 						log_error("Mapping gold value '%s' not proper width.\n", map.first.c_str());
 					RTLIL::Wire *y_wire = gate_m->addWire(NEW_ID);
 					gate_m->addEq(NEW_ID, gate_w, Const::from_string(map.second), y_wire);
-					other_val += map.first;
+					val.append(map.first);
 					sig.append(y_wire);
 				}
 				sig.reverse();
-				gate_m->addPmux(NEW_ID, RTLIL::Const(State::Sx, gold_size), Const::from_string(other_val), sig, new_wire);
+				gate_m->addPmux(NEW_ID, RTLIL::Const(State::Sx, gold_size), Const::from_string(val), sig, new_wire);
 			}
 		}
 	}
