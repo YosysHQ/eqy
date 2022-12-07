@@ -358,7 +358,7 @@ def recode_ids(args, cfg, job):
                 continue
             if len(line) in [2]:
                 for module_match in search_modules(job, gold_ids, pattern[0]):
-                    if module_match in cfg.gate_ids:
+                    if module_match in gate_ids:
                         for entity_match, _ in search_entities(job, gold_ids[module_match], gate_ids[module_match], pattern[1], None):
                             print(module_match, entity_match, line[0], line[1], file=f)
                     else:
