@@ -29,25 +29,25 @@ module top (
 `endif
 
 `ifdef GATE
-	(*keep *) reg [3:0] currentstate = 4'b1110;
+	(*keep *) reg [1:0] currentstate = 2'b00;
 	always @ (posedge clk)
 	begin
 		case (currentstate)
-			4'b1110 : begin
+			2'b00 : begin
 				o <= 2'b01;
-				currentstate <= 4'b1101;
+				currentstate <= 2'b01;
 			end
-			4'b1101 :  begin
+			2'b01 :  begin
 				o <= 2'b10;
-				currentstate <= 4'b1011;
+				currentstate <= 2'b10;
 			end
-			4'b1011:  begin
+			2'b10:  begin
 				o <= 2'b11;
-				currentstate <= 4'b0111;
+				currentstate <= 2'b11;
 			end
 			default :  begin
 				o <= 2'b00;
-				currentstate <= 4'b1110;
+				currentstate <= 2'b00;
 			end
 		endcase
 	end

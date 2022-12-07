@@ -15,10 +15,10 @@ prep -top top
 [partition top]
 
 [recode top currentstate]
-0001 1110
-0010 1101
-0100 1011
-1000 0111
+0001 00
+0010 01
+0100 10
+1000 11
 
 [strategy simple]
 use satseq
