@@ -374,6 +374,8 @@ def build_recode(args, ctx, job):
         plugin_path = root_path() # for development
     with open(args.workdir + "/recode.ys", "w") as f:
         print("plugin -i {}/eqy_recode.so".format(plugin_path), file=f)
+        print("read_ilang {}/gold.il".format(args.workdir), file=f)
+        print("design -stash gold", file=f)
         print("read_ilang {}/gate.il".format(args.workdir), file=f)
         print("{dbg}eqy_recode -recode {wd}/recode.ids".format(dbg="debug " if args.debugmode else "", wd=args.workdir), file=f)
         print("write_ilang {}/gate_recoded.il".format(args.workdir), file=f)
