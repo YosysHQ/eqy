@@ -7,6 +7,7 @@
 read_verilog -formal picorv32.v
 prep -top picorv32
 memory_map
+splitcells
 clean
 
 [gate]
@@ -73,6 +74,10 @@ solo-jgroup latched_rd
 solo-jgroup mem_*
 solo-jgroup pcpi_insn
 solo-jgroup trace_data
+
+
+[partition picorv32]
+ramend * *
 
 # [collect picorv32]
 # bind /mem_la_(addr|read|write)/

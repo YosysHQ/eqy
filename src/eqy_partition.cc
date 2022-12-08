@@ -288,6 +288,10 @@ struct Partition
 	int merged_into = -1;
 	int index;
 
+	pool<int> info_merged_hier;
+	pool<int> info_merged_flat;
+	pool<int> info_amended;
+
 	// A 'finalized' partition has either been written to an output file, or was replaced
 	// as partition to-be-written by merging it into another partition, making that other
 	// partition responsible for proving the POs that used to belong to this partition.
@@ -322,6 +326,10 @@ struct Partition
 		Partition *other = worker->create_partition();
 		merged_into = other->index;
 		finalized = true;
+
+		other->info_merged_hier.insert(index);
+		other->info_merged_flat.insert(index);
+		other->info_merged_flat.insert(info_merged_flat.begin(), info_merged_flat.end());
 
 		log("  Cloning partition %d into non-primitive partition %d.\n", index, merged_into);
 
@@ -361,6 +369,10 @@ struct Partition
 
 		other->finalized = true;
 		other->merged_into = index;
+
+		info_merged_hier.insert(other->index);
+		info_merged_flat.insert(other->index);
+		info_merged_flat.insert(other->info_merged_flat.begin(), other->info_merged_flat.end());
 
 		if (other->name_priority) {
 			if (name_priority && name_priority < other->name_priority) {
@@ -438,6 +450,7 @@ struct Partition
 	{
 		log_assert(!finalized);
 		log_assert(other->primitive);
+		info_amended.insert(other->index);
 
 		for (auto bit : other->inbits) {
 			if (!gold_bits.count(bit)) {
@@ -1067,8 +1080,35 @@ void EqyPartitionWorker::merge_partitions()
 						}
 					}
 					p = p->make_get_nonprimitive();
-					log("    Amending PI partition %d.\n", p->index);
+					log("    Amending PI partition %d with PO partition %d.\n", p->index, generator->index);
 					p->amend_with.insert(generator->index);
+				}
+			}
+			continue;
+		}
+
+		if (rule[0] == "ramend" && GetSize(rule) == 3) {
+			pool<int> generators;
+			for (auto bit : gold_sigmap(gold->wire("\\" + rule[1]))) {
+				if (!po_primitive_index.count(bit))
+					continue;
+				auto generator = partition(po_primitive_index.at(bit));
+				log_assert(generator->primitive);
+				log("  PO bit %s belongs to primitive partition %d\n", log_signal(bit), generator->index);
+				generators.insert(generator->index);
+			}
+			for (auto bit : gold_sigmap(gold->wire("\\" + rule[2]))) {
+				if (!pi_primitives_index.count(bit))
+					continue;
+				for (auto idx : pi_partitions_index.at(bit)) {
+					auto p = partition(idx);
+					log("  PI bit %s belongs to partition %d\n", log_signal(bit), p->index);
+					p = p->make_get_nonprimitive();
+					for (auto q_idx : generators) {
+						auto q = partition(q_idx);
+						log("    Amending PI partition %d with PO partition %d.\n", p->index, q->index);
+						p->amend_with.insert(q->index);
+					}
 				}
 			}
 			continue;
@@ -1235,6 +1275,52 @@ void EqyPartitionWorker::merge_partitions()
 				break;
 			}
 		}
+	}
+
+	log_spacer();
+	log("Partition Summary:\n");
+	log("  Primitive Partitions:\n");
+	for (auto &p_ptr : partitions) {
+		auto p = p_ptr.get();
+		if (!p->primitive) continue;
+		std::string label;
+		SigSpec sorted_outbits = p->outbits;
+		sorted_outbits.sort_and_unify();
+		for (auto chunk : sorted_outbits) {
+			std::string new_label = log_signal(chunk);
+			if (label.empty() || (GetSize(new_label) < GetSize(label)) ||
+					(GetSize(new_label) == GetSize(label) && new_label < label))
+				label = new_label;
+		}
+		log("     %3d: %s\n", p->index, label.c_str());
+
+	}
+	log("  Final Partitions:\n");
+	for (auto &p_ptr : partitions) {
+		auto p = p_ptr.get();
+		if (p->finalized) continue;
+		log("     %3d: %s\n", p->index, p->names.front().c_str());
+	}
+	log("  Partition Matrix:\n");
+	log("           ");
+	for (auto &q_ptr : partitions) {
+		auto q = q_ptr.get();
+		if (!q->primitive) continue;
+		log("%d", q->index % 10);
+	}
+	log("\n");
+	for (auto &p_ptr : partitions) {
+		auto p = p_ptr.get();
+		if (p->finalized) continue;
+		log("     %3d   ", p->index);
+		for (auto &q_ptr : partitions) {
+			auto q = q_ptr.get();
+			if (!q->primitive) continue;
+			log("%c", p->info_merged_hier.count(q->index) ? 'X' :
+					p->info_merged_flat.count(q->index) ? '*' :
+					p->info_amended.count(q->index) ? '+' : '.');
+		}
+		log("\n");
 	}
 }
 
@@ -1489,8 +1575,8 @@ struct EqyPartitionPass : public Pass
 		std::string line;
 		for (int linenr=1; std::getline(partition_names_file, line); linenr++) {
 			std::vector<std::string> things = split_tokens(line);
-			if ((things[0] == "name" || things[0] == "group" || things[0] == "merge" ||
-					things[0] == "path" || things[0] == "amend") && GetSize(things) == 4) {
+			if ((things[0] == "name" || things[0] == "group" || things[0] == "merge" || things[0] == "path" ||
+					things[0] == "amend" || things[0] == "ramend") && GetSize(things) == 4) {
 				partition_ids[things[1]].push_back({things[0], things[2], things[3]});
 				continue;
 			}

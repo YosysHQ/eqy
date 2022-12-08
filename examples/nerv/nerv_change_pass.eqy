@@ -1,5 +1,5 @@
 [gold]
-read_verilog -sv -sv nerv.sv
+read_verilog -sv nerv.sv
 prep -top nerv
 memory_map
 

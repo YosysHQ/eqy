@@ -742,6 +742,13 @@ def partition_ids(args, cfg, job):
                         print(line[0], module_match, entity_match[0], entity_match[1], file=partids_f)
                 continue
 
+            if line[0] in "ramend" and len(line) == 3:
+                for module_match in search_modules(job, cfg.matched_ids, pattern):
+                    for entity_match in search_entities(job, cfg.matched_ids[module_match], cfg.matched_ids[module_match],
+                                                        line[1], line[2], no_database["amend"], no_database["amend"]):
+                        print(line[0], module_match, entity_match[0], entity_match[1], file=partids_f)
+                continue
+
             exit_with_error(f"Syntax error in partition command \"{' '.join(line)}\"")
 
 def make_partitions(args, cfg, job):
