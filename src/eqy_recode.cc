@@ -125,6 +125,14 @@ struct EqyRecodePass : public Pass
 					sig.append(y_wire);
 				}
 				sig.reverse();
+
+				RTLIL::Wire *a_wire = gate_m->addWire(NEW_ID);
+				gate_m->addEq(NEW_ID, sig, Const(State::S0, sig.size()), a_wire);
+
+				std::string assert_name = stringf("$recode_missing$%s", log_id(new_name));
+				auto assert_cell = gate_m->addAssert(assert_name, gate_m->Not(NEW_ID,a_wire), State::S1);
+				assert_cell->set_bool_attribute(ID::keep);
+
 				gate_m->addPmux(NEW_ID, RTLIL::Const(State::Sx, gold_size), Const::from_string(val), sig, new_wire);
 			}
 		}
