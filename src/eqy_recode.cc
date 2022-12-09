@@ -97,7 +97,7 @@ struct EqyRecodePass : public Pass
 				log_error("Module '%s' not found in gold.\n", mod.first.c_str());
 			for (auto entity : mod.second) {
 				IdString name = RTLIL::escape_id(entity.first);
-				IdString new_name = RTLIL::escape_id("__original__" + entity.first);
+				IdString new_name = NEW_ID;
 				Wire *gate_w = gate_m->wire(name);
 				if (!gate_w)
 					log_error("Wire '%s' not found in gate.\n", entity.first.c_str());
