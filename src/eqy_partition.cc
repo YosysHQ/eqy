@@ -460,14 +460,21 @@ struct Partition
 		}
 
 		for (auto bit : other->outbits) {
+			if (outbits.count(bit))
+				continue;
 			if (inbits.count(bit))
 				inbits.erase(bit);
 			auto gate_bit = worker->gold_matches.at(bit);
+		#if 0
+			crossbits.insert(bit);
+			gate_bits.insert(gate_bit);
+		#else
 			auto gate_cell = get<0>(worker->gate_drivers.at(gate_bit));
 			if (gate_cells.count(gate_cell) == 0) {
 				crossbits.insert(bit);
 				gate_bits.insert(gate_bit);
 			}
+		#endif
 		}
 
 		log_assert(other->crossbits.empty());
@@ -715,6 +722,8 @@ struct Partition
 				log_debug("  %s partition bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
 				if (!mapped_wires.count(w)) {
 					Wire *ww = out_mod->addWire(w->name, GetSize(w));
+					if (ww->name.isPublic())
+						ww->set_bool_attribute(ID::keep);
 					log_debug("  %s partition wire: %s\n", in_gold ? "gold" : "gate", log_id(w));
 					// TBD: Copy some of the wire metadata
 					mapped_wires[w] = ww;
@@ -755,8 +764,8 @@ struct Partition
 						SigBit out_bit;
 						if (bit.wire == nullptr)
 							out_bit = bit;
-						else if (c->output(conn.first) && inbits.count(in_gold ? bit :
-								worker->gate_matches.at(bit, bit)))
+						else if (c->output(conn.first) && (inbits.count(in_gold ? bit : worker->gate_matches.at(bit, bit)) ||
+								(!in_gold && crossbits.count(worker->gate_matches.at(bit, bit)))))
 							out_bit = out_mod->addWire(NEW_ID);
 						else if (mapped_bits.count(bit))
 							out_bit = mapped_bits.at(bit);
@@ -989,6 +998,11 @@ void EqyPartitionWorker::merge_partitions()
 					log("    Skipping partition marked final.\n");
 					continue;
 				}
+				for (auto &n : p->names)
+					if (rule[2] == n) {
+						log("    Partition already has this name.\n");
+						goto next_name_bit;
+					}
 				if (name_database.count(rule[2])) {
 					auto target = partition(name_database.at(rule[2]))->make_get_nonprimitive();
 					if (target->marked_final) {
@@ -1003,6 +1017,7 @@ void EqyPartitionWorker::merge_partitions()
 					name_database[rule[2]] = p->index;
 					p->names.push_back(rule[2]);
 				}
+			next_name_bit:;
 			}
 			continue;
 		}
@@ -1022,7 +1037,7 @@ void EqyPartitionWorker::merge_partitions()
 				if (first == nullptr) {
 					first = p->make_get_nonprimitive();
 					log("    Using partition %d as merge target.\n", first->index);
-				} else {
+				} else if (first != p) {
 					log("    Merging partition %d into partition %d.\n", p->index, first->index);
 					first->merge(p);
 				}
@@ -1072,12 +1087,12 @@ void EqyPartitionWorker::merge_partitions()
 						continue;
 					}
 					if (GetSize(rule) == 3) {
-						bool found_bit = false;
 						for (auto match_bit : match_sig)
-							found_bit |= p->gold_bits.count(match_bit);
-						if (!found_bit) {
-							log("    Skipping PI partition %d as it doesn't match the condition signal.\n", idx);
-						}
+							if (p->gold_bits.count(match_bit))
+								goto amend_found_condition_bit;
+						log("    Skipping PI partition %d as it doesn't match the condition signal.\n", idx);
+						continue;
+					amend_found_condition_bit:;
 					}
 					p = p->make_get_nonprimitive();
 					log("    Amending PI partition %d with PO partition %d.\n", p->index, generator->index);
@@ -1088,7 +1103,7 @@ void EqyPartitionWorker::merge_partitions()
 		}
 
 		if (rule[0] == "ramend" && GetSize(rule) == 3) {
-			pool<int> generators;
+			pool<int> generators, consumers;
 			for (auto bit : gold_sigmap(gold->wire("\\" + rule[1]))) {
 				if (!po_primitive_index.count(bit))
 					continue;
@@ -1098,18 +1113,16 @@ void EqyPartitionWorker::merge_partitions()
 				generators.insert(generator->index);
 			}
 			for (auto bit : gold_sigmap(gold->wire("\\" + rule[2]))) {
-				if (!pi_primitives_index.count(bit))
+				if (!po_partition_index.count(bit))
 					continue;
-				for (auto idx : pi_partitions_index.at(bit)) {
-					auto p = partition(idx);
-					log("  PI bit %s belongs to partition %d\n", log_signal(bit), p->index);
-					p = p->make_get_nonprimitive();
-					for (auto q_idx : generators) {
-						auto q = partition(q_idx);
-						log("    Amending PI partition %d with PO partition %d.\n", p->index, q->index);
-						p->amend_with.insert(q->index);
-					}
-				}
+				auto consumer = partition(po_partition_index.at(bit));
+				log("  Condition bit %s belongs to partition %d\n", log_signal(bit), consumer->index);
+				consumers.insert(consumer->make_get_nonprimitive()->index);
+			}
+			for (auto p : consumers)
+			for (auto q : generators) {
+				log("    Amending partition %d with partition %d.\n", p, q);
+				partition(p)->amend_with.insert(q);
 			}
 			continue;
 		}
@@ -1316,7 +1329,8 @@ void EqyPartitionWorker::merge_partitions()
 		for (auto &q_ptr : partitions) {
 			auto q = q_ptr.get();
 			if (!q->primitive) continue;
-			log("%c", p->info_merged_hier.count(q->index) ? 'X' :
+			log("%c", p == q ? '#' :
+					p->info_merged_hier.count(q->index) ? 'X' :
 					p->info_merged_flat.count(q->index) ? '*' :
 					p->info_amended.count(q->index) ? '+' : '.');
 		}

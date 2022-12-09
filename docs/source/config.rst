@@ -123,12 +123,6 @@ of nets matching the (dependent) second pattern, and is grouping them accordingl
 The ``nogroup <pattern>`` command prevents all further ``group`` commands from
 matching the specified nets.
 
-solo-group
-..........
-
-The ``solo-group <pattern>`` command is a convenient shortcut for running
-both ``solo`` and ``group`` on the same pattern.
-
 bind and nobind
 ...............
 
@@ -147,6 +141,15 @@ from such a net into the same primary partition.
 The ``nojoin`` command prevents further ``join`` commands from matching
 the given nets.
 
+solo-group and solo-join
+........................
+
+The ``solo-group <pattern>`` command is a convenient shortcut for running
+both ``solo`` and ``group`` on the same pattern.
+
+The ``solo-join <pattern>`` command is a convenient shortcut for running
+both ``solo`` and ``join`` on the same pattern.
+
 Partition sections
 ------------------
 
@@ -158,12 +161,12 @@ to modules matching that pattern, or all modules if the pattern is omitted.
 .. code-block:: text
 
    [partition axi_xbar_*]
-   name /^(reader|buffer|arbiter|writer)_([0-7])$/ pipeline_\1
+   name pipeline_\1 /^(reader|buffer|arbiter|writer)_([0-7])$/
 
 name and noname
 ...............
 
-The ``name <pattern> <string>`` command is looking for nets matching the given pattern,
+The ``name <string> <pattern>`` command is looking for nets matching the given pattern,
 and then applies the given name to the partition that contains that net as primary
 output.
 

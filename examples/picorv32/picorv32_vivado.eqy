@@ -15,7 +15,8 @@ logger -nowarn limited.support.for.tri-state.*/cells_sim.v
 read_verilog -nowb -noblackbox +/xilinx/cells_sim.v
 read_verilog -formal picorv32_vivado.v
 prep -top picorv32
-flatten t:OBUF t:IBUF
+flatten t:GND t:VCC t:OBUF t:IBUF
+opt -noff -keepdc -fast
 clean
 
 
@@ -66,27 +67,57 @@ gold-nomatch reg_sh
 # Partitioning and Strategies
 
 [collect picorv32]
-solo-jgroup cpuregs_wrdata
-solo-jgroup decoded_*
-solo-jgroup eoi
-solo-jgroup /(instr|is)_.*/
-solo-jgroup latched_rd
-solo-jgroup mem_*
-solo-jgroup pcpi_insn
-solo-jgroup trace_data
-
+solo-join trace_valid
+solo-join pcpi_valid
+solo-join eoi
+solo-join cpuregs_wrdata
+solo-join decoded_*
+solo-join /(instr|is)_.*/
+solo-join latched_rd
+solo-join mem_*
+solo-join pcpi_insn
+solo-join trace_data
+solo-join alu_*
 
 [partition picorv32]
-ramend * *
 
-# [collect picorv32]
-# bind /mem_la_(addr|read|write)/
-# bind mem_valid
-# bind trap
+# passing
+name trivial eoi
+name trivial trace_data
+name trivial trace_valid
+name trivial pcpi_valid
+name trivial mem_xfer
+final eoi
 
-[strategy simple]
-use satseq
-depth 3
+# passing
+name is_passing is_sltiu_bltu_sltu
+name is_passing is_slti_blt_slt
+name is_passing is_rdcycle_rdcycleh_rdinstr_rdinstrh
+name is_passing is_lui_auipc_jal
+name is_passing is_lbu_lhu_lw
+final is_lbu_lhu_lw
 
-[strategy dummy]
-use dummy
+# passing
+merge alu_*
+
+# failing
+merge is_*
+merge instr_*
+merge mem_*
+merge decoded_*
+
+# more failing
+# - cpuregs_wrdata
+# - latched_rd
+# - pcpi_insn (UNKNOWN)
+# - pcpi_rs1
+# - trap
+
+[partition picorv32]
+#ramend * pcpi_rs[12]
+#noamend *
+
+[strategy sby]
+use sby
+depth 10
+engine smtbmc bitwuzla
