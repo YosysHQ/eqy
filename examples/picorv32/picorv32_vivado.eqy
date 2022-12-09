@@ -99,6 +99,7 @@ final is_lbu_lhu_lw
 
 # passing
 merge alu_*
+final pcpi_insn
 
 # failing
 merge is_*
@@ -109,7 +110,6 @@ merge decoded_*
 # more failing
 # - cpuregs_wrdata
 # - latched_rd
-# - pcpi_insn (UNKNOWN)
 # - pcpi_rs1
 # - trap
 
@@ -121,3 +121,7 @@ merge decoded_*
 use sby
 depth 10
 engine smtbmc bitwuzla
+
+[strategy pdr]
+use sby
+engine abc pdr
