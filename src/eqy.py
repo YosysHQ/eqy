@@ -753,6 +753,8 @@ def make_partitions(args, cfg, job):
         if cfg.options.insbuf:
             print("insbuf -chain", file=f)
         print("{dbg}eqy_partition -matched_ids matched.ids -partition_ids partition.ids -create_partition_list partition.list".format(dbg="debug " if args.debugmode else ""), file=f)
+    if not os.path.isdir(args.workdir + "/modules"):
+        os.mkdir(args.workdir + "/modules")
     if not os.path.isdir(args.workdir + "/partitions"):
         os.mkdir(args.workdir + "/partitions")
 
@@ -799,14 +801,14 @@ vcd {"on" if cfg.options.matchfilter_vcd else "off"}
 {cfg.options.matchfilter_engine}
 
 [script]
+read_verilog -sv ../../{modname}.sv
 read_rtlil ../../{modname}.il
+hierarchy -top miter; proc
 formalff -clk2ff -ff2anyinit gate.{modname}
 setundef -anyseq gate.{modname}
 chformal -remove
-miter -equiv -make_cover -ignore_gold_x -flatten gold.{modname} gate.{modname} miter
-dffunmap
+flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean
 xprop -formal -split-ports -assume-def-inputs -required miter
-hierarchy -top miter
 """, file=sby_file)
 
     return modnames
@@ -934,10 +936,12 @@ class EqySatseqStrategy(EqyStrategy):
             """[1:-1]), file=run_f)
 
         with open(self.path(partition.name, "run.ys"), "w") as ys_f:
+            print(f"read_verilog -sv ../../../partitions/{partition.name}.sv", file=ys_f)
             print(f"read_ilang ../../../partitions/{partition.name}.il", file=ys_f)
+            print(f"hierarchy -top miter; proc", file=ys_f)
             print(f"formalff -clk2ff -ff2anyinit gate.{partition.name}", file=ys_f)
             print(f"setundef -anyseq gate.{partition.name}", file=ys_f)
-            print(f"miter -equiv -cross -make_assert -ignore_gold_x -flatten gold.{partition.name} gate.{partition.name} miter", file=ys_f)
+            print(f"flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean", file=ys_f)
             print(f"sat -tempinduct -set-init-undef -set-def-formal -set-def-inputs -maxsteps {self.scfg.depth} -prove-asserts -show-public -dump_vcd trace.vcd miter", file=ys_f)
 
 
@@ -959,25 +963,22 @@ class EqySbyStrategy(EqyStrategy):
                 {self.scfg.engine}
 
                 [script]
+                read_verilog -sv ../../../../../partitions/{partition.name}.sv
                 read_ilang ../../../../../partitions/{partition.name}.il
+                hierarchy -top miter; proc
             """[1:-1]), file=sby_f)
 
             if self.scfg.xprop:
                 print(textwrap.dedent(f"""
                     formalff -clk2ff -ff2anyinit gate.{partition.name}
                     setundef -anyseq gate.{partition.name}
-                    miter -equiv -cross -make_assert -ignore_gold_x -flatten gold.{partition.name} gate.{partition.name} miter
-                    dffunmap
+                    flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean
                     xprop -formal -split-ports -assume-def-inputs miter
                 """[1:-1]), file=sby_f)
             else:
                 print(textwrap.dedent(f"""
-                    miter -equiv -cross -make_assert -flatten gold.{partition.name} gate.{partition.name} miter
+                    flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean
                 """[1:-1]), file=sby_f)
-
-            print(textwrap.dedent(f"""
-                hierarchy -top miter
-            """[1:-1]), file=sby_f)
 
         with open(self.path(partition.name, "run.sh"), "w") as run_f:
             print(textwrap.dedent(f"""

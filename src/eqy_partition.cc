@@ -272,6 +272,8 @@ struct EqyPartitionWorker
 	}
 
 	Partition *create_partition();
+	Partition *create_full_partition();
+
 	void create_partitions();
 	void merge_partitions();
 	void finalize_partitions(std::ofstream &partition_list_file);
@@ -304,6 +306,9 @@ struct Partition
 	// A 'marked final' partition should not be modified by any further [partition] commands.
 	bool marked_final = false;
 
+	// A special partition that contains everything, mostly for debugging
+	bool full_part = false;
+
 	pool<SigBit> inbits, outbits, crossbits;
 	pool<SigBit> gold_bits, gate_bits;
 	pool<Cell*> gold_cells, gate_cells;
@@ -320,6 +325,7 @@ struct Partition
 		}
 
 		log_assert(!finalized);
+		log_assert(!full_part);
 
 		if (!primitive) return this;
 
@@ -366,6 +372,9 @@ struct Partition
 	{
 		log_assert(!finalized);
 		log_assert(!other->finalized);
+
+		log_assert(!full_part);
+		log_assert(!other->full_part);
 
 		other->finalized = true;
 		other->merged_into = index;
@@ -450,6 +459,10 @@ struct Partition
 	{
 		log_assert(!finalized);
 		log_assert(other->primitive);
+
+		log_assert(!full_part);
+		log_assert(!other->full_part);
+
 		info_amended.insert(other->index);
 
 		for (auto bit : other->inbits) {
@@ -488,8 +501,8 @@ struct Partition
 		pool<SigBit> found_matched_bits;
 		gold_bit = worker->gold_sigmap(gold_bit);
 
-		log_assert(primitive);
 		log_assert(!finalized);
+		log_assert(full_part || primitive);
 		log_assert(worker->queue.count(gold_bit));
 		worker->queue.erase(gold_bit);
 
@@ -537,23 +550,30 @@ struct Partition
 						run_other = !outbits.count(gold_bit);
 						outbits.insert(gold_bit);
 						worker->queue.erase(gold_bit);
-						worker->po_primitive_index[gold_bit] = index;
-						worker->po_partition_index[gold_bit] = index;
+						if (!full_part) {
+							worker->po_primitive_index[gold_bit] = index;
+							worker->po_partition_index[gold_bit] = index;
+						}
 						if (inbits.count(gold_bit)) {
 							inbits.erase(gold_bit);
-							worker->pi_primitives_index[gold_bit].erase(index);
-							if (worker->pi_primitives_index[gold_bit].empty())
-								worker->pi_primitives_index.erase(gold_bit);
-							worker->pi_partitions_index[gold_bit].erase(index);
-							if (worker->pi_partitions_index[gold_bit].empty())
-								worker->pi_partitions_index.erase(gold_bit);
+							if (!full_part) {
+								worker->pi_primitives_index[gold_bit].erase(index);
+								if (worker->pi_primitives_index[gold_bit].empty())
+									worker->pi_primitives_index.erase(gold_bit);
+								worker->pi_partitions_index[gold_bit].erase(index);
+								if (worker->pi_partitions_index[gold_bit].empty())
+									worker->pi_partitions_index.erase(gold_bit);
+							}
 						}
-					} else if (!worker->bind_database.count(gold_bit)) {
+					} else if (full_part ? !worker->gold_drivers.count(gold_bit) :
+							!worker->bind_database.count(gold_bit)) {
 						isinput = true;
 						run_other = !inbits.count(gold_bit);
 						inbits.insert(gold_bit);
-						worker->pi_primitives_index[gold_bit].insert(index);
-						worker->pi_partitions_index[gold_bit].insert(index);
+						if (!full_part) {
+							worker->pi_primitives_index[gold_bit].insert(index);
+							worker->pi_partitions_index[gold_bit].insert(index);
+						}
 					}
 				}
 				else
@@ -598,7 +618,7 @@ struct Partition
 				if (cell->input(conn.first))
 					for (auto bit : conn.second)
 						add_bit_f(bit, in_gold, false, increase_indent(indent));
-				if (cell->output(conn.first))
+				if (!full_part && cell->output(conn.first))
 					for (auto bit : gg_sigmap(conn.second))
 						if (gg_matches.count(bit) && !worker->solo_database.count(bit))
 							found_matched_bits.insert(in_gold ? bit : gg_matches.at(bit));
@@ -608,40 +628,43 @@ struct Partition
 		log("Adding bit %s to partition %d.\n", log_signal(gold_bit), index);
 		add_bit_f(gold_bit, true, true, stringf("p%d>  ", index));
 
-		pool<SigBit> empty = {};
+		if (!full_part)
+		{
+			pool<SigBit> empty = {};
 
-		for (auto &bit : worker->aliases.at(worker->raliases.at(gold_bit, gold_bit), empty))
-			if (!worker->solo_database.count(bit))
-				found_matched_bits.insert(bit);
+			for (auto &bit : worker->aliases.at(worker->raliases.at(gold_bit, gold_bit), empty))
+				if (!worker->solo_database.count(bit))
+					found_matched_bits.insert(bit);
 
-		if (worker->solo_database.count(gold_bit))
-			found_matched_bits.clear();
+			if (worker->solo_database.count(gold_bit))
+				found_matched_bits.clear();
 
-		if (worker->group_database.count(gold_bit))
-			for (auto &bit : worker->group_database.at(gold_bit))
-				found_matched_bits.insert(bit);
+			if (worker->group_database.count(gold_bit))
+				for (auto &bit : worker->group_database.at(gold_bit))
+					found_matched_bits.insert(bit);
 
-		for (auto &bit : found_matched_bits) {
-			if (worker->queue.count(bit))
-				add(bit);
-			else if (worker->po_primitive_index.count(bit)) {
-				int idx = worker->po_primitive_index.at(bit);
-				if (idx != index) {
-					log("Adding bit %s to partition %d by merging partition %d.\n", log_signal(bit), index, idx);
-					merge(worker->partition(idx));
+			for (auto &bit : found_matched_bits) {
+				if (worker->queue.count(bit))
+					add(bit);
+				else if (worker->po_primitive_index.count(bit)) {
+					int idx = worker->po_primitive_index.at(bit);
+					if (idx != index) {
+						log("Adding bit %s to partition %d by merging partition %d.\n", log_signal(bit), index, idx);
+						merge(worker->partition(idx));
+					}
 				}
 			}
 		}
 	}
 
-	Design *finalize(IdString partname, const std::string &json_filename)
+	Design *finalize(IdString partname, const std::string &filename_prefix)
 	{
 		log_assert(!finalized);
 		finalized = true;
 
 		log("Finalizing partition %d as %s.\n", index, log_id(partname));
 
-		std::ofstream json_file(json_filename.c_str(), std::ofstream::trunc);
+		std::ofstream json_file((filename_prefix + ".json").c_str(), std::ofstream::trunc);
 		json_file << stringf("{\n");
 		json_file << stringf("  \"partition\": {\n");
 		json_file << stringf("    \"index\": %d,\n", index);
@@ -687,7 +710,10 @@ struct Partition
 		Module *mod_gold = partdesign->addModule("\\gold." + partname.substr(1));
 		Module *mod_gate = partdesign->addModule("\\gate." + partname.substr(1));
 
-		auto copy_mod_contents = [&](bool in_gold, const SigSpec &pi, const SigSpec &po, const SigSpec &cp, const SigSig &conn)->void
+		std::vector<pair<int, IdString>> pi_layout, cp_layout, mp_layout, po_layout;
+
+		auto copy_mod_contents = [&](bool in_gold, const SigSpec &pi, const SigSpec &cp,
+				const SigSpec &mp, const SigSpec &po, const SigSig &conn)->void
 		{
 			json_file << stringf("  \"%s_module\": {\n", in_gold ? "gold" : "gate");
 			json_file << stringf("    \"name\": \"%s\",\n", log_id(mod_gold));
@@ -705,8 +731,9 @@ struct Partition
 
 			pool<SigBit> pio_bits;
 			pio_bits.insert(pi.begin(), pi.end());
-			pio_bits.insert(po.begin(), po.end());
 			pio_bits.insert(cp.begin(), cp.end());
+			pio_bits.insert(mp.begin(), mp.end());
+			pio_bits.insert(po.begin(), po.end());
 
 			pool<SigBit> unused_inputs;
 
@@ -722,13 +749,13 @@ struct Partition
 				log_debug("  %s partition bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
 				if (!mapped_wires.count(w)) {
 					Wire *ww = out_mod->addWire(w->name, GetSize(w));
-					if (ww->name.isPublic())
-						ww->set_bool_attribute(ID::keep);
 					log_debug("  %s partition wire: %s\n", in_gold ? "gold" : "gate", log_id(w));
 					// TBD: Copy some of the wire metadata
 					mapped_wires[w] = ww;
 				}
-				if (w->name.isPublic() && !pio_bits.count(bit))
+				if (pio_bits.count(bit))
+					mapped_wires.at(w)->set_bool_attribute(ID::keep);
+				else if (w->name.isPublic())
 					json_bits[unescape_id(w->name)].insert(bit.offset);
 				mapped_bits[bit] = SigBit(mapped_wires.at(w), bit.offset);
 			}
@@ -790,32 +817,47 @@ struct Partition
 			json_file << stringf("    \"bitcount\": %d\n", GetSize(gg_bits));
 			json_file << stringf("  }%s\n", in_gold ? "," : "");
 
-			SigSpec out_pi, out_po, out_cp;
+			SigSpec out_pi, out_po, out_cp, out_mp;
 			for (auto bit : sigmap(pi))
 				out_pi.append(bit.is_wire() ? mapped_bits.at(bit) : bit);
-			for (auto bit : sigmap(po))
-				out_po.append(bit.is_wire() ? mapped_bits.at(bit) : bit);
 			for (auto bit : sigmap(cp))
 				out_cp.append(bit.is_wire() ? mapped_bits.at(bit) : bit);
+			for (auto bit : sigmap(mp))
+				out_mp.append(bit.is_wire() ? mapped_bits.at(bit) : bit);
+			for (auto bit : sigmap(po))
+				out_po.append(bit.is_wire() ? mapped_bits.at(bit) : bit);
 
 			int port_idx = 0;
+			auto create_segments = [&](const std::vector<pair<int, IdString>> &layout, bool port_input, bool port_output) {
+				SigSpec segments;
+				for (auto element : layout) {
+					Wire *w = out_mod->addWire(element.second, element.first);
+					w->set_bool_attribute(ID::keep);
+					w->port_input = port_input;
+					w->port_output = port_output;
+					if (port_input || port_output)
+						w->port_id = ++port_idx;
+					segments.append(w);
+				}
+				return segments;
+			};
 
 			if (GetSize(pi)) {
+			#if 0
 				Wire *piw = out_mod->addWire("\\__pi", GetSize(pi));
+				piw->set_bool_attribute(ID::keep);
 				piw->port_input = true;
 				piw->port_id = ++port_idx;
 				out_mod->connect(out_pi, piw);
-			}
-
-			if (GetSize(po)) {
-				Wire *pow = out_mod->addWire("\\__po", GetSize(po));
-				pow->port_output = true;
-				pow->port_id = ++port_idx;
-				out_mod->connect(pow, out_po);
+			#else
+				out_mod->connect(out_pi, create_segments(pi_layout, true, false));
+			#endif
 			}
 
 			if (GetSize(cp)) {
+			#if 0
 				Wire *cpw = out_mod->addWire("\\__cp", GetSize(cp));
+				cpw->set_bool_attribute(ID::keep);
 				cpw->port_output = in_gold;
 				cpw->port_input = !in_gold;
 				cpw->port_id = ++port_idx;
@@ -823,42 +865,66 @@ struct Partition
 					out_mod->connect(cpw, out_cp);
 				else
 					out_mod->connect(out_cp, cpw);
+			#else
+				if (in_gold)
+					out_mod->connect(create_segments(cp_layout, false, true), out_cp);
+				else
+					out_mod->connect(out_cp, create_segments(cp_layout, true, false));
+			#endif
+			}
+
+			if (GetSize(mp)) {
+			#if 0
+				Wire *mpw = out_mod->addWire("\\__mp", GetSize(po));
+				mpw->set_bool_attribute(ID::keep);
+				pow->port_output = true;
+				pow->port_id = ++port_idx;
+				out_mod->connect(mpw, out_mp);
+			#else
+				out_mod->connect(create_segments(mp_layout, false, true), out_mp);
+			#endif
+			}
+
+			if (GetSize(po)) {
+			#if 0
+				Wire *pow = out_mod->addWire("\\__po", GetSize(po));
+				pow->set_bool_attribute(ID::keep);
+				pow->port_output = true;
+				pow->port_id = ++port_idx;
+				out_mod->connect(pow, out_po);
+			#else
+				out_mod->connect(create_segments(po_layout, false, true), out_po);
+			#endif
 			}
 
 			out_mod->fixup_ports();
 		};
 
-		dict<SigBit, int> gate_pi_positions;
-
-		SigSpec gold_pi, gold_po, gold_cp, gate_pi, gate_po, gate_cp;
+		SigSpec gold_pi, gold_cp, gold_mp, gold_po;
+		SigSpec gate_pi, gate_cp, gate_mp, gate_po;
 		SigSig gold_conn, gate_conn;
 
-		for (auto bit : inbits)
 		{
-			auto gate_bit = worker->gold_matches.at(bit);
-			if (gate_pi_positions.count(gate_bit)) {
-				int idx = gate_pi_positions.at(gate_bit);
-				log("  partition pi alias for bit %d: %s := %s <-> %s\n", idx, log_signal(bit), log_signal(gold_pi[idx]), log_signal(gate_bit));
-				gold_conn.first.append(bit);
-				gold_conn.second.append(gold_pi[idx]);
-			} else if (!gate_bit.wire) {
-				log("  partition pi alias for constant: %s <-> %s\n", log_signal(bit), log_signal(gate_bit));
-				gold_conn.first.append(bit);
-				gold_conn.second.append(gate_bit);
-			} else {
-				log("  partition pi bit %d: %s <-> %s\n", GetSize(gold_pi), log_signal(bit), log_signal(gate_bit));
-				gate_pi_positions[gate_bit] = GetSize(gold_pi);
-				gold_pi.append(bit);
-				gate_pi.append(gate_bit);
+			dict<SigBit, int> gate_pi_positions;
+			for (auto bit : inbits)
+			{
+				auto gate_bit = worker->gold_matches.at(bit);
+				if (gate_pi_positions.count(gate_bit)) {
+					int idx = gate_pi_positions.at(gate_bit);
+					log("  partition pi alias for bit %d: %s := %s <-> %s\n", idx, log_signal(bit), log_signal(gold_pi[idx]), log_signal(gate_bit));
+					gold_conn.first.append(bit);
+					gold_conn.second.append(gold_pi[idx]);
+				} else if (!gate_bit.wire) {
+					log("  partition pi alias for constant: %s <-> %s\n", log_signal(bit), log_signal(gate_bit));
+					gold_conn.first.append(bit);
+					gold_conn.second.append(gate_bit);
+				} else {
+					log("  partition pi bit %d: %s <-> %s\n", GetSize(gold_pi), log_signal(bit), log_signal(gate_bit));
+					gate_pi_positions[gate_bit] = GetSize(gold_pi);
+					gold_pi.append(bit);
+					gate_pi.append(gate_bit);
+				}
 			}
-		}
-
-		for (auto bit : outbits)
-		{
-			auto gate_bit = worker->gold_matches.at(bit);
-			log("  partition po bit %d: %s <-> %s\n", GetSize(gold_po), log_signal(bit), log_signal(gate_bit));
-			gold_po.append(bit);
-			gate_po.append(gate_bit);
 		}
 
 		for (auto bit : crossbits)
@@ -869,10 +935,206 @@ struct Partition
 			gate_cp.append(gate_bit);
 		}
 
-		copy_mod_contents(true, gold_pi, gold_po, gold_cp, gold_conn);
-		copy_mod_contents(false, gate_pi, gate_po, gate_cp, gate_conn);
+		for (auto bit : gold_bits)
+		{
+			if (!worker->gold_matches.count(bit)) continue;
+			if (inbits.count(bit)) continue;
+			if (outbits.count(bit)) continue;
+			if (crossbits.count(bit)) continue;
+			auto gate_bit = worker->gold_matches.at(bit);
+			log("  partition mp bit %d: %s <-> %s\n", GetSize(gold_mp), log_signal(bit), log_signal(gate_bit));
+			gold_mp.append(bit);
+			gate_mp.append(gate_bit);
+		}
+
+		for (auto bit : outbits)
+		{
+			auto gate_bit = worker->gold_matches.at(bit);
+			log("  partition po bit %d: %s <-> %s\n", GetSize(gold_po), log_signal(bit), log_signal(gate_bit));
+			gold_po.append(bit);
+			gate_po.append(gate_bit);
+		}
+
+		auto sort_sig_pair =[&](SigSpec &sig1, SigSpec &sig2) {
+			std::vector<pair<SigBit,SigBit>> bitpairs;
+			for (int i = 0; i < GetSize(sig1); i++)
+				bitpairs.emplace_back(sig1[i], sig2[i]);
+			std::sort(bitpairs.begin(), bitpairs.end(), [&](const pair<SigBit,SigBit> &a, const pair<SigBit,SigBit> &b) {
+				log_assert(a.first.wire && a.second.wire && b.first.wire && b.second.wire);
+				if (a.first.wire != b.first.wire) return a.first.wire->name.str() < b.first.wire->name.str();
+				if (a.second.wire != b.second.wire) return a.second.wire->name.str() < b.second.wire->name.str();
+				if (a.first.offset != b.first.offset) return a.first.offset < b.first.offset;
+				if (a.second.offset != b.second.offset) return a.second.offset < b.second.offset;
+				return false;
+			});
+			sig1 = SigSpec();
+			sig2 = SigSpec();
+			for (int i = 0; i < GetSize(bitpairs); i++) {
+				sig1.append(bitpairs[i].first);
+				sig2.append(bitpairs[i].second);
+			}
+		};
+
+		sort_sig_pair(gold_pi, gate_pi);
+		sort_sig_pair(gold_cp, gate_cp);
+		sort_sig_pair(gold_mp, gate_mp);
+		sort_sig_pair(gold_po, gate_po);
+
+		auto create_layout = [&](std::vector<pair<int, IdString>> &layout, const SigSpec &sig, const char *prefix) {
+			for (auto chunk : sig.chunks()) {
+				log_assert(chunk.wire);
+				IdString name = chunk.width == chunk.wire->width ?
+						stringf("%s%s", prefix, chunk.wire->name.c_str()+1) : chunk.width == 1 ?
+						stringf("%s%s__%d", prefix, chunk.wire->name.c_str()+1, chunk.offset) :
+						stringf("%s%s__%d_%d", prefix, chunk.wire->name.c_str()+1, chunk.offset+chunk.width-1, chunk.offset);
+				layout.emplace_back(chunk.width, name);
+			}
+		};
+
+		create_layout(pi_layout, gold_pi, "\\__pi_");
+		create_layout(cp_layout, gold_cp, "\\__cp_");
+		create_layout(mp_layout, gold_mp, "\\__mp_");
+		create_layout(po_layout, gold_po, "\\__po_");
+
+		copy_mod_contents(true, gold_pi, gold_cp, gold_mp, gold_po, gold_conn);
+		copy_mod_contents(false, gate_pi, gate_cp, gate_mp, gate_po, gate_conn);
 
 		json_file << stringf("}\n");
+
+		std::ofstream vlog_file((filename_prefix + ".sv").c_str(), std::ofstream::trunc);
+
+		vlog_file << "module miter (\n";
+		std::vector<std::string> port_decls;
+		for (auto it : pi_layout)
+			port_decls.push_back(stringf("input  [%3d:0] %s", it.first-1, it.second.c_str()));
+		for (auto it : cp_layout) {
+			port_decls.push_back(stringf("output [%3d:0] %s__gold", it.first-1, it.second.c_str()));
+			port_decls.push_back(stringf("input  [%3d:0] %s__gate", it.first-1, it.second.c_str()));
+			port_decls.push_back(stringf("output         %s__okay", it.second.c_str()));
+		}
+		for (auto it : mp_layout) {
+			port_decls.push_back(stringf("output [%3d:0] %s__gold", it.first-1, it.second.c_str()));
+			port_decls.push_back(stringf("output [%3d:0] %s__gate", it.first-1, it.second.c_str()));
+			port_decls.push_back(stringf("output         %s__okay", it.second.c_str()));
+		}
+		for (auto it : po_layout) {
+			port_decls.push_back(stringf("output [%3d:0] %s__gold", it.first-1, it.second.c_str()));
+			port_decls.push_back(stringf("output [%3d:0] %s__gate", it.first-1, it.second.c_str()));
+			port_decls.push_back(stringf("output         %s__okay", it.second.c_str()));
+		}
+		for (int i = 0; i < GetSize(port_decls); i++)
+			vlog_file << "  " << port_decls[i] << (i+1 < GetSize(port_decls) ? " ,\n" : "\n");
+		vlog_file << ");\n";
+
+		for (auto gold : {true, false}) {
+			vlog_file << "  " << (gold ? mod_gold : mod_gate)->name.str() << " " << (gold ? "gold" : "gate") << " (\n";
+			port_decls.clear();
+			for (auto it : pi_layout)
+				port_decls.push_back(stringf(".%s (%s )", it.second.c_str(), it.second.c_str()));
+			for (auto it : cp_layout)
+				port_decls.push_back(stringf(".%s (%s__%s )", it.second.c_str(), it.second.c_str(), (gold ? "gold" : "gate")));
+			for (auto it : mp_layout)
+				port_decls.push_back(stringf(".%s (%s__%s )", it.second.c_str(), it.second.c_str(), (gold ? "gold" : "gate")));
+			for (auto it : po_layout)
+				port_decls.push_back(stringf(".%s (%s__%s )", it.second.c_str(), it.second.c_str(), (gold ? "gold" : "gate")));
+			for (int i = 0; i < GetSize(port_decls); i++)
+				vlog_file << "    " << port_decls[i] << (i+1 < GetSize(port_decls) ? ",\n" : "\n");
+			vlog_file << "  );\n";
+		}
+
+		for (auto it : cp_layout)
+			vlog_file << stringf("  compare_signals #(%d) %s__cmp (%s__gold , %s__gate , %s__okay );\n",
+					it.first, it.second.c_str(), it.second.c_str(), it.second.c_str(), it.second.c_str());
+		for (auto it : mp_layout)
+			vlog_file << stringf("  compare_signals #(%d) %s__cmp (%s__gold , %s__gate , %s__okay );\n",
+					it.first, it.second.c_str(), it.second.c_str(), it.second.c_str(), it.second.c_str());
+		for (auto it : po_layout)
+			vlog_file << stringf("  compare_signals #(%d) %s__cmp (%s__gold , %s__gate , %s__okay );\n",
+					it.first, it.second.c_str(), it.second.c_str(), it.second.c_str(), it.second.c_str());
+
+		for (auto it : cp_layout)
+			vlog_file << stringf("  always @* assume(%s__okay );\n", it.second.c_str());
+
+		vlog_file << "`ifdef CHECK_MATCH_POINTS\n";
+		for (auto it : mp_layout)
+			vlog_file << stringf("  always @* assert(%s__okay );\n", it.second.c_str());
+		vlog_file << "`endif\n";
+
+		for (auto it : po_layout)
+			vlog_file << stringf("  always @* assert(%s__okay );\n", it.second.c_str());
+
+		vlog_file << "`ifdef COVER_CROSS_POINTS\n";
+		for (auto it : cp_layout)
+			vlog_file << stringf("  always @* cover(^%s__gold !== 1'bx);\n", it.second.c_str());
+		vlog_file << "`endif\n";
+
+		vlog_file << "`ifdef COVER_MATCH_POINTS\n";
+		for (auto it : mp_layout) {
+			vlog_file << stringf("  always @* cover(^%s__gold !== 1'bx);\n", it.second.c_str());
+			vlog_file << stringf("  always @* cover(^%s__gate !== 1'bx);\n", it.second.c_str());
+		}
+		vlog_file << "`endif\n";
+
+		for (auto it : po_layout) {
+			vlog_file << stringf("  always @* cover(^%s__gold !== 1'bx);\n", it.second.c_str());
+			vlog_file << stringf("  always @* cover(^%s__gate !== 1'bx);\n", it.second.c_str());
+		}
+
+		vlog_file << "endmodule\n";
+		vlog_file << "module compare_signals #(parameter WIDTH=1) (input [WIDTH-1:0] in_gold, in_gate, output reg out);\n";
+		vlog_file << "  integer i;\n";
+		vlog_file << "  always @* begin\n";
+		vlog_file << "    out = 1;\n";
+		vlog_file << "    for (i = 0; i < WIDTH; i = i+1)\n";
+		vlog_file << "      out = out && (in_gold[i] === 1'bx || in_gold[i] === in_gate[i]);\n";
+		vlog_file << "  end\n";
+		vlog_file << "endmodule\n";
+
+		for (auto gold : {true, false}) {
+			vlog_file << stringf("module %s (\n", (gold ? mod_gold : mod_gate)->name.c_str());
+			port_decls.clear();
+			for (auto it : pi_layout)
+				port_decls.push_back(stringf("input  [%3d:0] %s", it.first-1, it.second.c_str()));
+			for (auto it : cp_layout)
+				port_decls.push_back(stringf("%s [%3d:0] %s", gold ? "output" : "input ", it.first-1, it.second.c_str()));
+			for (auto it : mp_layout)
+				port_decls.push_back(stringf("output [%3d:0] %s", it.first-1, it.second.c_str()));
+			for (auto it : po_layout)
+				port_decls.push_back(stringf("output [%3d:0] %s", it.first-1, it.second.c_str()));
+			for (int i = 0; i < GetSize(port_decls); i++)
+				vlog_file << "  " << port_decls[i] << (i+1 < GetSize(port_decls) ? " ,\n" : "\n");
+			vlog_file << ");\n";
+			vlog_file << "endmodule\n";
+		}
+
+		std::ofstream sby_file((filename_prefix + ".sby").c_str(), std::ofstream::trunc);
+		sby_file << "[tasks]\n";
+		sby_file << "prove prv\n";
+		sby_file << "check chk\n";
+		sby_file << "cover cvr\n";
+		sby_file << "prove_all prv all\n";
+		sby_file << "check_all chk all default\n";
+		sby_file << "cover_all cvr all\n";
+		sby_file << "\n";
+		sby_file << "[options]\n";
+		sby_file << "depth 10\n";
+		sby_file << "prv: mode prove\n";
+		sby_file << "chk: mode bmc\n";
+		sby_file << "cvr: mode cover\n";
+		sby_file << "\n";
+		sby_file << "[script]\n";
+		sby_file << "all: verilog_defaults -add -D CHECK_MATCH_POINTS\n";
+		sby_file << "all: verilog_defaults -add -D COVER_CROSS_POINTS\n";
+		sby_file << "all: verilog_defaults -add -D COVER_MATCH_POINTS\n";
+		sby_file << "read_verilog -sv ../../" << partname.substr(1) << ".sv\n";
+		sby_file << "read_ilang ../../" << partname.substr(1) << ".il\n";
+		sby_file << "hierarchy -top miter; proc; flatten -wb; dffunmap\n";
+		sby_file << "opt_expr -keepdc -undriven; opt_clean\n";
+		sby_file << "xprop -formal -split-ports -assume-def-inputs miter\n";
+		sby_file << "\n";
+		sby_file << "[engines]\n";
+		sby_file << "smtbmc bitwuzla\n";
+
 		return partdesign;
 	}
 };
@@ -951,6 +1213,22 @@ Partition *EqyPartitionWorker::create_partition()
 {
 	partitions.push_back(std::unique_ptr<Partition>(new Partition(this)));
 	return partitions.back().get();
+}
+
+Partition *EqyPartitionWorker::create_full_partition()
+{
+	log_assert(queue.empty());
+	auto *full_partition = create_partition();
+	full_partition->full_part = true;
+	for (auto w : gold->wires()) {
+		if (!w->port_output) continue;
+		for (auto bit : gold_sigmap(w))
+			if (gold_matches.count(bit))
+				queue.insert(bit);
+	}
+	while (!queue.empty())
+		full_partition->add(*queue.begin());
+	return full_partition;
 }
 
 void EqyPartitionWorker::create_partitions()
@@ -1345,14 +1623,13 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 		Partition *partition = it.get();
 		if (partition->finalized) continue;
 
-		std::string partname = partition->name_priority ?
+		std::string partname = partition->full_part ? gold->name.substr(6) : partition->name_priority ?
 				stringf("%s.%s", gold->name.substr(6).c_str(), partition->names.front().c_str()) :
 				stringf("%s.%d", gold->name.substr(6).c_str(), partition->index);
-		std::string filename = stringf("partitions/%s.il", partname.c_str());
-		std::string json_filename = stringf("partitions/%s.json", partname.c_str());
+		std::string filename_prefix = stringf("%s/%s", partition->full_part ? "modules" : "partitions", partname.c_str());
 
 		IdString partid = "\\" + partname;
-		Design *partdesign = partition->finalize(partid, json_filename);
+		Design *partdesign = partition->finalize(partid, filename_prefix);
 
 		pool<SigBit> unused_gold_inputs = partition->inbits;
 		for (auto cell : partition->gold_cells)
@@ -1361,33 +1638,36 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 					if (unused_gold_inputs.count(bit))
 						unused_gold_inputs.erase(bit);
 
-		partition_list_file << unescape_id(gold->name).substr(5) << " ";
-		partition_list_file << partname;
+		if (!partition->full_part)
+		{
+			partition_list_file << unescape_id(gold->name).substr(5) << " ";
+			partition_list_file << partname;
 
-		bool has_memory = false;
-		for (auto module : partdesign->modules()) {
-			if (!has_memory)
-				has_memory = !Mem::get_all_memories(module).empty();
+			bool has_memory = false;
+			for (auto module : partdesign->modules()) {
+				if (!has_memory)
+					has_memory = !Mem::get_all_memories(module).empty();
+			}
+
+			if (has_memory)
+				partition_list_file << " memory";
+
+			partition_list_file << " :";
+			SigSpec outsig(partition->outbits);
+			outsig.sort();
+
+			for (auto chunk : outsig.chunks())
+				if (chunk.offset == 0 && chunk.width == chunk.wire->width != 1)
+					partition_list_file << stringf(" %s", unescape_id(chunk.wire->name).c_str());
+				else if (chunk.width == 1)
+					partition_list_file << stringf(" %s[%d]", unescape_id(chunk.wire->name).c_str(), chunk.offset);
+				else
+					partition_list_file << stringf(" %s[%d:%d]", unescape_id(chunk.wire->name).c_str(), chunk.offset+chunk.width-1, chunk.offset);
+
+			partition_list_file << "\n";
 		}
 
-		if (has_memory)
-			partition_list_file << " memory";
-
-		partition_list_file << " :";
-		SigSpec outsig(partition->outbits);
-		outsig.sort();
-
-		for (auto chunk : outsig.chunks())
-			if (chunk.offset == 0 && chunk.width == chunk.wire->width != 1)
-				partition_list_file << stringf(" %s", unescape_id(chunk.wire->name).c_str());
-			else if (chunk.width == 1)
-				partition_list_file << stringf(" %s[%d]", unescape_id(chunk.wire->name).c_str(), chunk.offset);
-			else
-				partition_list_file << stringf(" %s[%d:%d]", unescape_id(chunk.wire->name).c_str(), chunk.offset+chunk.width-1, chunk.offset);
-
-		partition_list_file << "\n";
-
-		Backend::backend_call(partdesign, nullptr, filename, "rtlil");
+		Backend::backend_call(partdesign, nullptr, filename_prefix + ".il", "rtlil");
 		partdesign->check();
 		Pass::call(partdesign, "check -assert -initdrv");
 		delete partdesign;
@@ -1550,6 +1830,7 @@ struct EqyPartitionPass : public Pass
 					//worker.check_integrity();
 
 					log_header(design, "Finalize partitions for module %s.\n", gold->name.substr(6).c_str());
+					worker.create_full_partition();
 					worker.finalize_partitions(partition_list_file);
 				}
 				log_pop();
