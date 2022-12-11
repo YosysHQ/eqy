@@ -64,9 +64,6 @@ def parse_args(ctx):
     parser.add_argument("-m", "--setup", action="store_true", dest="setupmode",
             help="generate partitions and makefiles and exit")
 
-    parser.add_argument("--matchfilter", action="store_true", dest="matchfiltermode",
-            help="generate RTLIL to filter matched signals")
-
     parser.add_argument("-k", "--keep-going", action="store_true",
             help="keep going when some make targets can't be made")
 
@@ -162,10 +159,6 @@ def read_config(ctx):
     ctx.options = types.SimpleNamespace()
     ctx.options.splitnets = False
     ctx.options.insbuf = True
-
-    ctx.options.matchfilter_depth = 20
-    ctx.options.matchfilter_vcd = False
-    ctx.options.matchfilter_engine = "smtbmc bitwuzla"
 
     section = None
     sectionarg = None
@@ -766,53 +759,6 @@ def make_partitions(args, cfg, job):
 
     job.run()
 
-def make_matchfilter(args, cfg, job):
-    plugin_path = root_path() + '/../share/yosys/plugins' # for install
-    if (not os.path.exists(plugin_path)):
-        plugin_path = root_path() # for development
-    if not os.path.isdir(args.workdir + "/matchfilters"):
-        os.mkdir(args.workdir + "/matchfilters")
-    with open(args.workdir + "/matchfilter.ys", "w") as f:
-        print("plugin -i {}/eqy_partition.so".format(plugin_path), file=f)
-        print("read_ilang combined.il".format(args.workdir), file=f)
-        if cfg.options.insbuf:
-            print("insbuf", file=f)
-        print("{dbg}eqy_partition -matched_ids matched.ids -matchfilter".format(dbg="debug " if args.debugmode else ""), file=f)
-    matchfilter_task = EqyTask(job, "matchfilter", [], "cd {workdir}; {yosys} -ql matchfilter.log matchfilter.ys".format(yosys=args.exe_paths["yosys"], workdir=args.workdir))
-    def check_retcode(retcode):
-        if (retcode != 0):
-            exit_with_error(f"Failed to create matchfilters. For details see '{args.workdir}/matchfilter.log'.")
-    matchfilter_task.exit_callback = check_retcode
-
-    job.run()
-
-    modnames = list()
-    for fn in os.listdir(f"{args.workdir}/matchfilters/"):
-        if not fn.endswith(".il"): continue
-        modnames.append(modname := fn[:-3])
-        with open(f"{args.workdir}/matchfilters/{modname}.sby", "w") as sby_file:
-            print(f"""\
-[options]
-mode cover
-depth {cfg.options.matchfilter_depth}
-vcd {"on" if cfg.options.matchfilter_vcd else "off"}
-
-[engines]
-{cfg.options.matchfilter_engine}
-
-[script]
-read_verilog -sv ../../{modname}.sv
-read_rtlil ../../{modname}.il
-hierarchy -top miter; proc
-formalff -clk2ff -ff2anyinit gate.{modname}
-setundef -anyseq gate.{modname}
-chformal -remove
-flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean
-xprop -formal -split-ports -assume-def-inputs -required miter
-""", file=sby_file)
-
-    return modnames
-
 class EqyStrategy:
     default_scfg = {}
 
@@ -938,11 +884,12 @@ class EqySatseqStrategy(EqyStrategy):
         with open(self.path(partition.name, "run.ys"), "w") as ys_f:
             print(f"read_verilog -sv ../../../partitions/{partition.name}.sv", file=ys_f)
             print(f"read_ilang ../../../partitions/{partition.name}.il", file=ys_f)
-            print(f"hierarchy -top miter; proc", file=ys_f)
+            print(f"hierarchy -top miter; proc; chformal -cover -remove", file=ys_f)
             print(f"formalff -clk2ff -ff2anyinit gate.{partition.name}", file=ys_f)
             print(f"setundef -anyseq gate.{partition.name}", file=ys_f)
             print(f"flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean", file=ys_f)
-            print(f"sat -tempinduct -set-init-undef -set-def-formal -set-def-inputs -maxsteps {self.scfg.depth} -prove-asserts -show-public -dump_vcd trace.vcd miter", file=ys_f)
+            print(f"sat -tempinduct -set-init-undef -set-def-formal -set-def-inputs -maxsteps {self.scfg.depth} " + \
+                    f"-set-assumes -prove-asserts -show-public -dump_vcd trace.vcd miter", file=ys_f)
 
 
 class EqySbyStrategy(EqyStrategy):
@@ -1199,43 +1146,29 @@ def main():
 
     match_ids(ctx.args, ctx, ctx.job)
 
-    if ctx.args.matchfiltermode:
-        modnames = make_matchfilter(ctx.args, ctx, ctx.job)
+    make_partitions(ctx.args, ctx, ctx.job)
+    make_scripts(ctx.args, ctx, ctx.job, strategies)
 
-        if not ctx.args.setupmode:
-            for mod in modnames:
-                def check_retcode_f(name):
-                    def check_retcode(retcode):
-                        if (retcode != 0):
-                            exit_with_error(f"SBY task {name} returned a non-zero exit code.")
-                    return check_retcode
-                run_task = EqyTask(ctx.job, f"sby.{mod}", [], f"cd '{ctx.args.workdir}/matchfilters' && sby -f '{mod}.sby'")
-                run_task.exit_callback = check_retcode_f(f"sby.{mod}")
-            ctx.job.run()
+    if ctx.args.commands:
+        ys_task_index = 0
+        for command, partition in ctx.args.commands:
+            command = command.replace("\\", "\\\\").replace("'", "\\'")
+            def check_retcode_f(index):
+                def check_retcode(retcode):
+                    if (retcode != 0):
+                        exit_with_error(f"Yosys task {index} returned a non-zero exit code.")
+                return check_retcode
+            for path in glob.glob(f"{ctx.args.workdir}/partitions/{partition}.il"):
+                ys_task_index += 1
+                run_task = EqyTask(ctx.job, f"yosys.{ys_task_index}", [], f"yosys -p '{command}' {path}")
+                run_task.exit_callback = check_retcode_f(ys_task_index)
+        ctx.job.run()
 
-    else:
-        make_partitions(ctx.args, ctx, ctx.job)
-        make_scripts(ctx.args, ctx, ctx.job, strategies)
-
-        if ctx.args.commands:
-            ys_task_index = 0
-            for command, partition in ctx.args.commands:
-                command = command.replace("\\", "\\\\").replace("'", "\\'")
-                def check_retcode_f(index):
-                    def check_retcode(retcode):
-                        if (retcode != 0):
-                            exit_with_error(f"Yosys task {index} returned a non-zero exit code.")
-                    return check_retcode
-                for path in glob.glob(f"{ctx.args.workdir}/partitions/{partition}.il"):
-                    ys_task_index += 1
-                    run_task = EqyTask(ctx.job, f"yosys.{ys_task_index}", [], f"yosys -p '{command}' {path}")
-                    run_task.exit_callback = check_retcode_f(ys_task_index)
-            ctx.job.run()
-
-        elif not ctx.args.setupmode:
-            run_scripts(ctx.args, ctx, ctx.job)
+    elif not ctx.args.setupmode:
+        run_scripts(ctx.args, ctx, ctx.job)
 
     ctx.job.final()
+    sys.exit(ctx.job.retcode)
 
 if __name__ == '__main__':
     main()
