@@ -209,18 +209,23 @@ sticky net as primary input.
 The ``nosticky <pattern>`` command preents further ``sticky`` commands from matching
 the given net.
 
-amend and noamend
-.................
+amend, ramend, and noamend
+..........................
 
 The ``amend <pattern>`` command finds the primitive partition(s) generating the
 specified net(s), and amends all partitions using those signals with the gold
 definition of that signal.
 
 The ``amend <pattern> <pattern>`` command only amends partitions that are
-matching the second pattern.
+generating wires matching the second pattern.
 
-The ``noamend <pattern>`` command preents further ``amend`` commands from matching
-the given net.
+The ``amend`` command only amends partitions that are currently consuming
+the specified signal. The ``ramend`` command amends the target partition
+unconditionally. This is useful when the signals being amended are themself
+only used by other partitions that are being amended to the target partition.
+
+The ``noamend <pattern>`` command preents further ``amend`` and ``ramend``
+commands from matching the given net.
 
 final statements
 ................
