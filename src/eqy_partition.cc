@@ -1184,8 +1184,9 @@ struct Partition
 		sby_file << "# verilog_defaults -add -D NO_COVER_DEF_GATE_OUTPUTS\n";
 		sby_file << "read_verilog -sv ../../" << partname.substr(1) << ".sv\n";
 		sby_file << "read_ilang ../../" << partname.substr(1) << ".il\n";
-		sby_file << "hierarchy -top miter; proc; flatten -wb; dffunmap\n";
-		sby_file << "opt_expr -keepdc -undriven; opt_clean\n";
+		sby_file << "hierarchy -top miter; proc\n";
+		sby_file << "formalff -clk2ff -ff2anyinit gate." << partname.substr(1) << "\n";
+		sby_file << "flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean\n";
 		sby_file << "xprop -formal -split-ports -assume-def-inputs miter\n";
 		sby_file << "\n";
 		sby_file << "[engines]\n";
