@@ -1186,6 +1186,7 @@ struct Partition
 		sby_file << "read_ilang ../../" << partname.substr(1) << ".il\n";
 		sby_file << "hierarchy -top miter; proc\n";
 		sby_file << "formalff -clk2ff -ff2anyinit gate." << partname.substr(1) << "\n";
+		sby_file << "setundef -anyseq gate." << partname.substr(1) << "\n";
 		sby_file << "flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean\n";
 		sby_file << "xprop -formal -split-ports -assume-def-inputs miter\n";
 		sby_file << "\n";
