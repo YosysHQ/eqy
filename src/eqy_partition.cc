@@ -1173,10 +1173,9 @@ struct Partition
 		sby_file << "\n";
 		sby_file << "[script]\n";
 		sby_file << "# verilog_defaults -add -D DIRECT_CROSS_POINTS\n";
-		sby_file << "# verilog_defaults -add -D NO_ASSUME_DEFINED_INPUTS\n";
-		sby_file << "# verilog_defaults -add -D DIRECT_CROSS_POINTS\n";
 		sby_file << "# verilog_defaults -add -D CHECK_MATCH_POINTS\n";
 		sby_file << "# verilog_defaults -add -D NO_CHECK_OUTPUTS\n";
+		sby_file << "# verilog_defaults -add -D NO_ASSUME_DEFINED_INPUTS\n";
 		sby_file << "# verilog_defaults -add -D COVER_DEF_CROSS_POINTS\n";
 		sby_file << "# verilog_defaults -add -D COVER_DEF_GOLD_MATCH_POINTS\n";
 		sby_file << "# verilog_defaults -add -D COVER_DEF_GATE_MATCH_POINTS\n";

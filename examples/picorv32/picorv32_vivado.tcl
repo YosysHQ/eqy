@@ -1,8 +1,14 @@
 # Run with:
+# . /opt/Xilinx/Vivado/2021.2/settings64.sh
 # vivado -mode batch -nojournal -log picorv32_vivado.log -source picorv32_vivado.tcl
 
 set top picorv32
 read_verilog ${top}.v
+
+# synth_design -rtl -top $top
+# set keep_nets [get_nets cpu_state[*]]
+# set_property KEEP true $keep_nets
+# set_property DONT_TOUCH true $keep_nets
 
 set synth_opts "-verbose"
 lappend synth_opts -part xc7k70t-fbg676

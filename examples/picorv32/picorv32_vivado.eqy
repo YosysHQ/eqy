@@ -6,6 +6,7 @@
 [gold]
 read_verilog -formal picorv32.v
 prep -top picorv32
+splitnets picorv32/cpu_state
 memory_map
 splitcells
 clean
@@ -15,6 +16,8 @@ logger -nowarn limited.support.for.tri-state.*/cells_sim.v
 read_verilog -nowb -noblackbox +/xilinx/cells_sim.v
 read_verilog -formal picorv32_vivado.v
 prep -top picorv32
+splitnets picorv32/cpu_state0_out
+setundef -zero -undriven -init
 flatten t:GND t:VCC t:OBUF t:IBUF
 opt -noff -keepdc -fast
 clean
@@ -41,10 +44,28 @@ solo-group pcpi_rs[12]
 
 ##############################################################
 #
-# False Equivalent Points (via "eqy --matchfilter")
+# Vivado weirdly renames the CPU state FSM register:
+#     cpu_state0_out[*]       the value before the FF, i.e. the next state
+#     cpu_state_reg_n_0_[*]   the value after the FF, i.e. cpu_state
+# except bits 4 and 6, as bit 4 encodes the unused "ld_rs2" state,
+# and bit 6 (encoding for "fetch") ended up as 1-bit reg_next_pc wire.
 
-[options]
-matchfilter_depth 12
+[match picorv32]
+gold-match cpu_state[0] cpu_state_reg_n_0_[0]
+gold-match cpu_state[1] cpu_state_reg_n_0_[1]
+gold-match cpu_state[2] cpu_state_reg_n_0_[2]
+gold-match cpu_state[3] cpu_state_reg_n_0_[3]
+gold-match cpu_state[4] cpu_state0_out[4]
+gold-match cpu_state[5] cpu_state_reg_n_0_[5]
+gold-match cpu_state[6] reg_next_pc
+gold-match cpu_state[7] cpu_state_reg_n_0_[7]
+
+
+##############################################################
+#
+# False Equivalent Points
+# .. identified via picorv32_vivado/modules/picorv32.sby with
+# with CHECK_MATCH_POINTS enabled.
 
 [match picorv32]
 gold-nomatch count_instr
