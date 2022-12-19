@@ -4,8 +4,12 @@
 # Gate: Synthesis Output from Xilinx Vivado
 
 [gold]
-read_verilog -formal picorv32.v
-prep -top picorv32
+read_verilog picorv32.v
+read_verilog init.v
+prep -top testbench
+sim -w -clock clk -resetn resetn -n 40
+hierarchy -top picorv32
+
 splitnets picorv32/cpu_state
 memory_map
 splitcells
@@ -14,14 +18,19 @@ clean
 [gate]
 logger -nowarn limited.support.for.tri-state.*/cells_sim.v
 read_verilog -nowb -noblackbox +/xilinx/cells_sim.v
-read_verilog -formal picorv32_vivado.v
-prep -top picorv32
+read_verilog picorv32_vivado.v
+read_verilog init.v
+prep -top testbench
+uniquify; hierarchy
+sim -w -clock clk -resetn resetn -n 40
+rename testbench.uut picorv32
+hierarchy -top picorv32
+
 splitnets picorv32/cpu_state0_out
 setundef -zero -undriven -init
 flatten t:GND t:VCC t:OBUF t:IBUF
 opt -noff -keepdc -fast
 clean
-
 
 ##############################################################
 #

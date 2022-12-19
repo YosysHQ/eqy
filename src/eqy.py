@@ -882,6 +882,7 @@ class EqySatseqStrategy(EqyStrategy):
             """[1:-1]), file=run_f)
 
         with open(self.path(partition.name, "run.ys"), "w") as ys_f:
+            print(f"verilog_defaults -add -D CHECK_OUTPUTS", file=ys_f)
             print(f"read_verilog -sv ../../../partitions/{partition.name}.sv", file=ys_f)
             print(f"read_ilang ../../../partitions/{partition.name}.il", file=ys_f)
             print(f"hierarchy -top miter; proc; chformal -cover -remove", file=ys_f)
@@ -910,6 +911,7 @@ class EqySbyStrategy(EqyStrategy):
                 {self.scfg.engine}
 
                 [script]
+                verilog_defaults -add -D CHECK_OUTPUTS
                 read_verilog -sv ../../../../../partitions/{partition.name}.sv
                 read_ilang ../../../../../partitions/{partition.name}.il
                 hierarchy -top miter; proc

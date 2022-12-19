@@ -656,10 +656,11 @@ struct Partition
 		}
 	}
 
-	Design *finalize(IdString partname, const std::string &filename_prefix)
+	Design *finalize(IdString partname, const std::string &filename_prefix, bool &xprop_partition)
 	{
 		log_assert(!finalized);
 		finalized = true;
+		xprop_partition = false;
 
 		log("Finalizing partition %d as %s.\n", index, log_id(partname));
 
@@ -785,12 +786,15 @@ struct Partition
 					SigSpec s;
 					int bit_index = 0;
 					if (c->input(conn.first))
-						for (auto bit : conn.second) unused_inputs.erase(sigmap(bit));
+						for (auto bit : conn.second)
+							unused_inputs.erase(sigmap(bit));
 					for (auto bit : sigmap(conn.second)) {
 						SigBit out_bit;
-						if (bit.wire == nullptr)
+						if (bit.wire == nullptr) {
+							if (bit == State::Sx)
+								xprop_partition = true;
 							out_bit = bit;
-						else if (c->output(conn.first) && (inbits.count(in_gold ? bit : worker->gate_matches.at(bit, bit)) ||
+						} else if (c->output(conn.first) && (inbits.count(in_gold ? bit : worker->gate_matches.at(bit, bit)) ||
 								(!in_gold && crossbits.count(worker->gate_matches.at(bit, bit)))))
 							out_bit = out_mod->addWire(NEW_ID);
 						else if (mapped_bits.count(bit))
@@ -798,8 +802,12 @@ struct Partition
 						else
 							out_bit = out_mod->addWire(NEW_ID);
 						s.append(out_bit);
-						if (is_reg && conn.first == ID::Q && out_bit.is_wire())
-							out_initvals.set_init(out_bit, initvals(bit));
+						if (is_reg && conn.first == ID::Q && out_bit.is_wire()) {
+							auto initval = initvals(bit);
+							if (in_gold && initval == State::Sx)
+								xprop_partition = true;
+							out_initvals.set_init(out_bit, initval);
+						}
 						bit_index++;
 					}
 					log_debug("    port %s: %s => %s => %s\n", log_id(conn.first), log_signal(conn.second),
@@ -1059,7 +1067,7 @@ struct Partition
 			vlog_file << "  );\n";
 		}
 
-		vlog_file << "`ifndef NO_ASSUME_DEFINED_INPUTS\n";
+		vlog_file << "`ifdef ASSUME_DEFINED_INPUTS\n";
 		for (auto it : pi_layout)
 			vlog_file << stringf("  miter_def_prop #(%d, \"assume\") %s__assume (%s );\n",
 					it.first, it.second.c_str(), it.second.c_str());
@@ -1077,7 +1085,7 @@ struct Partition
 					it.first, it.second.c_str(), it.second.c_str(), it.second.c_str());
 		vlog_file << "`endif\n";
 
-		vlog_file << "`ifndef NO_CHECK_OUTPUTS\n";
+		vlog_file << "`ifdef CHECK_OUTPUTS\n";
 		for (auto it : po_layout)
 			vlog_file << stringf("  miter_cmp_prop #(%d, \"assert\") %s__assert (%s__gold , %s__gate );\n",
 					it.first, it.second.c_str(), it.second.c_str(), it.second.c_str());
@@ -1107,13 +1115,13 @@ struct Partition
 					it.first, it.second.c_str(), it.second.c_str());
 		vlog_file << "`endif\n";
 
-		vlog_file << "`ifndef NO_COVER_DEF_GOLD_OUTPUTS\n";
+		vlog_file << "`ifdef COVER_DEF_GOLD_OUTPUTS\n";
 		for (auto it : po_layout)
 			vlog_file << stringf("  miter_def_prop #(%d, \"cover\") %s__gold_cover (%s__gold );\n",
 					it.first, it.second.c_str(), it.second.c_str());
 		vlog_file << "`endif\n";
 
-		vlog_file << "`ifndef NO_COVER_DEF_GATE_OUTPUTS\n";
+		vlog_file << "`ifdef COVER_DEF_GATE_OUTPUTS\n";
 		for (auto it : po_layout)
 			vlog_file << stringf("  miter_def_prop #(%d, \"cover\") %s__gate_cover (%s__gate );\n",
 					it.first, it.second.c_str(), it.second.c_str());
@@ -1166,32 +1174,34 @@ struct Partition
 		sby_file << "prove cover :\n";
 		sby_file << "\n";
 		sby_file << "[options]\n";
+		sby_file << "vcd off\n";
 		sby_file << "depth 10\n";
 		sby_file << "check: mode bmc\n";
 		sby_file << "prove: mode prove\n";
 		sby_file << "cover: mode cover\n";
 		sby_file << "\n";
 		sby_file << "[script]\n";
+		sby_file << "verilog_defaults -add -D CHECK_OUTPUTS\n";
+		sby_file << "verilog_defaults -add -D CHECK_MATCH_POINTS\n";
+		sby_file << "verilog_defaults -add -D COVER_DEF_CROSS_POINTS\n";
+		sby_file << "verilog_defaults -add -D COVER_DEF_GOLD_MATCH_POINTS\n";
+		sby_file << "verilog_defaults -add -D COVER_DEF_GATE_MATCH_POINTS\n";
+		sby_file << "verilog_defaults -add -D COVER_DEF_GOLD_OUTPUTS\n";
+		sby_file << "verilog_defaults -add -D COVER_DEF_GATE_OUTPUTS\n";
 		sby_file << "# verilog_defaults -add -D DIRECT_CROSS_POINTS\n";
-		sby_file << "# verilog_defaults -add -D CHECK_MATCH_POINTS\n";
-		sby_file << "# verilog_defaults -add -D NO_CHECK_OUTPUTS\n";
-		sby_file << "# verilog_defaults -add -D NO_ASSUME_DEFINED_INPUTS\n";
-		sby_file << "# verilog_defaults -add -D COVER_DEF_CROSS_POINTS\n";
-		sby_file << "# verilog_defaults -add -D COVER_DEF_GOLD_MATCH_POINTS\n";
-		sby_file << "# verilog_defaults -add -D COVER_DEF_GATE_MATCH_POINTS\n";
-		sby_file << "# verilog_defaults -add -D NO_COVER_DEF_GOLD_OUTPUTS\n";
-		sby_file << "# verilog_defaults -add -D NO_COVER_DEF_GATE_OUTPUTS\n";
+		sby_file << "# verilog_defaults -add -D ASSUME_DEFINED_INPUTS\n";
 		sby_file << "read_verilog -sv ../../" << partname.substr(1) << ".sv\n";
 		sby_file << "read_ilang ../../" << partname.substr(1) << ".il\n";
 		sby_file << "hierarchy -top miter; proc\n";
 		sby_file << "formalff -clk2ff -ff2anyinit gate." << partname.substr(1) << "\n";
 		sby_file << "setundef -anyseq gate." << partname.substr(1) << "\n";
 		sby_file << "flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean\n";
+		if (!xprop_partition) sby_file << "# ";
 		sby_file << "xprop -formal -split-ports -assume-def-inputs miter\n";
 		sby_file << "\n";
 		sby_file << "[engines]\n";
 		sby_file << "prove: abc pdr\n";
-		sby_file << "smtbmc bitwuzla\n";
+		sby_file << "smtbmc bitwuzla --keep-going\n";
 
 		return partdesign;
 	}
@@ -1686,8 +1696,9 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 				stringf("%s.%d", gold->name.substr(6).c_str(), partition->index);
 		std::string filename_prefix = stringf("%s/%s", partition->full_part ? "modules" : "partitions", partname.c_str());
 
+		bool xprop_partition;
 		IdString partid = "\\" + partname;
-		Design *partdesign = partition->finalize(partid, filename_prefix);
+		Design *partdesign = partition->finalize(partid, filename_prefix, xprop_partition);
 
 		pool<SigBit> unused_gold_inputs = partition->inbits;
 		for (auto cell : partition->gold_cells)
@@ -1709,6 +1720,9 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 
 			if (has_memory)
 				partition_list_file << " memory";
+
+			if (xprop_partition)
+				partition_list_file << " xprop";
 
 			partition_list_file << " :";
 			SigSpec outsig(partition->outbits);
