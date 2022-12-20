@@ -791,7 +791,7 @@ struct Partition
 					for (auto bit : sigmap(conn.second)) {
 						SigBit out_bit;
 						if (bit.wire == nullptr) {
-							if (bit == State::Sx)
+							if (in_gold && bit == State::Sx)
 								xprop_partition = true;
 							out_bit = bit;
 						} else if (c->output(conn.first) && (inbits.count(in_gold ? bit : worker->gate_matches.at(bit, bit)) ||
@@ -1201,7 +1201,7 @@ struct Partition
 		sby_file << "\n";
 		sby_file << "[engines]\n";
 		sby_file << "prove: abc pdr\n";
-		sby_file << "smtbmc bitwuzla --keep-going\n";
+		sby_file << "smtbmc --keep-going bitwuzla\n";
 
 		return partdesign;
 	}

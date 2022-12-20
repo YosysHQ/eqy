@@ -1,8 +1,0 @@
-# Run with:
-# yosys -l picorv32_cmos.log picorv32_cmos.ys
-
-read_verilog picorv32.v
-synth -top picorv32
-abc -g cmos
-clean -purge
-write_verilog -noattr picorv32_cmos.v

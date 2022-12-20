@@ -4,12 +4,13 @@
 # Gate: Synthesis Output from Xilinx Vivado
 
 [gold]
-read_verilog picorv32.v
+read_verilog picorv32_modified.v
 read_verilog init.v
 prep -top testbench
-sim -w -clock clk -resetn resetn -n 40
+sim -w -clock clk -resetn resetn -n 100
 hierarchy -top picorv32
 
+setundef -zero -undriven -init
 splitnets picorv32/cpu_state
 memory_map
 splitcells
@@ -22,12 +23,12 @@ read_verilog picorv32_vivado.v
 read_verilog init.v
 prep -top testbench
 uniquify; hierarchy
-sim -w -clock clk -resetn resetn -n 40
+sim -w -clock clk -resetn resetn -n 100
 rename testbench.uut picorv32
 hierarchy -top picorv32
 
-splitnets picorv32/cpu_state0_out
 setundef -zero -undriven -init
+splitnets picorv32/cpu_state0_out
 flatten t:GND t:VCC t:OBUF t:IBUF
 opt -noff -keepdc -fast
 clean
@@ -144,14 +145,14 @@ merge decoded_*
 # - trap
 
 [partition picorv32]
-#ramend * pcpi_rs[12]
-#noamend *
+ramend * *
 
-[strategy sby]
-use sby
-depth 10
-engine smtbmc bitwuzla
+# [strategy sby]
+# use sby
+# depth 10
+# engine smtbmc bitwuzla
 
 [strategy pdr]
 use sby
 engine abc pdr
+timeout 1200

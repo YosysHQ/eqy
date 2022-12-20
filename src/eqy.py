@@ -894,10 +894,11 @@ class EqySatseqStrategy(EqyStrategy):
 
 
 class EqySbyStrategy(EqyStrategy):
-    default_scfg = dict(engine='smtbmc', depth=5, xprop=True)
+    default_scfg = dict(engine='smtbmc', depth=5, xprop=True, timeout=None)
     parse_opt_engine = EqyStrategy.string_opt_parser
     parse_opt_depth = EqyStrategy.int_opt_parser
     parse_opt_xprop = EqyStrategy.bool_opt_parser
+    parse_opt_timeout = EqyStrategy.int_opt_parser
 
     def write(self, job, partition):
         with open(self.path(partition.name, f"{partition.name}.sby"), "w") as sby_f:
@@ -905,7 +906,13 @@ class EqySbyStrategy(EqyStrategy):
                 [options]
                 mode prove
                 depth {self.scfg.depth}
-                expect pass,fail,unknown
+                expect pass,fail,unknown,timeout
+            """[1:-1]), file=sby_f)
+
+            if self.scfg.timeout:
+                print(f"timeout {self.scfg.timeout}", file=sby_f)
+
+            print(textwrap.dedent(f"""
 
                 [engines]
                 {self.scfg.engine}
@@ -943,6 +950,9 @@ class EqySbyStrategy(EqyStrategy):
                     ;;
                     UNKNOWN)
                         echo "Could not prove equivalence of partition '{partition.name}' using strategy '{self.name}': equivalence unknown"
+                    ;;
+                    TIMEOUT)
+                        echo "Could not prove equivalence of partition '{partition.name}' using strategy '{self.name}': timeout"
                     ;;
                     *)
                         cat {partition.name}/ERROR 2> /dev/null

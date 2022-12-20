@@ -1,0 +1,15 @@
+[options]
+
+[gold]
+read_verilog picorv32.v
+prep -top picorv32
+memory_map
+
+[gate]
+read_verilog picorv32_modified.v
+prep -top picorv32
+memory_map
+
+[strategy simple]
+use sby
+depth 10
