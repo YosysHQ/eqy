@@ -1,9 +1,24 @@
 help:
 	@echo ""
-	@echo "make test_gold.vcd"
-	@echo "make test_gate.vcd"
-	@echo "  run the testbench on either netlist"
+	@echo "make prove_vivado"
+	@echo "make prove_modified"
+	@echo "  run the formal equivalence proofs"
 	@echo ""
+	@echo "make vcdmatch"
+	@echo "  re-generate vcdmatch.out"
+	@echo ""
+	@echo "make vivado"
+	@echo "  re-run vivado synthesis"
+	@echo ""
+	@echo "make clean"
+	@echo "  remove temporary output files"
+	@echo ""
+
+prove_vivado:
+	eqy -fj6 picorv32_vivado.eqy
+
+prove_modified:
+	eqy -fj6 picorv32_modified.eqy
 
 test_gold.vcd: test_gold
 	vvp -N test_gold
@@ -20,5 +35,11 @@ test_gate:
 vcdmatch: test_gold.vcd test_gate.vcd
 	python3 vcdmatch.py > vcdmatch.out
 
+vivado:
+	rm -f picorv32_vivado.log
+	bash -c ". /opt/Xilinx/Vivado/2021.2/settings64.sh; vivado -mode batch -nojournal -log picorv32_vivado.log -source picorv32_vivado.tcl"
+
 clean:
-	rm -f test_gold.vcd test_gate.vcd test_gold test_gate vcdmatch.out
+	rm -f test_gold.vcd test_gate.vcd test_gold test_gate
+	rm -f init_gold.vcd init_gate.vcd vcdmatch.out
+	rm -rf picorv32_vivado picorv32_modified

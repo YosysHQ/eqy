@@ -12,6 +12,8 @@ class VcdData:
         self.currentPrefix = None
         self.currentTop = None
         self.references = None
+        self.bitnames = None
+        self.framecnt = None
 
     def enddefinitions(self, vcd, signals, cur_sig_vals):
         """Called by VCDVCD at $enddefinitions"""
@@ -19,20 +21,33 @@ class VcdData:
             for name in vcd.data[key].references:
                 if name.startswith(self.currentTop):
                     name = name[len(self.currentTop):]
+                    if name.startswith("\\"): name = name[1:]
                     break
             else:
                 continue
             if self.currentDepth == 0 or self.currentDepth > name.count("."):
-                self.references[key] = self.currentPrefix + name
+                name = self.currentPrefix + name
+                self.references[key] = name
+                for idx in range(int(vcd.data[key].size)):
+                    self.bitnames[name, idx] = f"{name}[{idx}]"
+        print(f"  found {len(self.references)} signals with {len(self.bitnames)} bits")
 
     def time(self, vcd, time, cur_sig_vals):
         """Called by VCDVCD whenever a new time is found."""
+        if cur_sig_vals[vcd.references_to_ids["testbench.clk"]] == '0':
+            return
+
+        self.framecnt += 1
+        if self.framecnt % 10000 == 0:
+            print(f"  frame #{self.framecnt} at {time}")
+
         if time not in self.data:
             self.data[time] = dict()
+
         frame = self.data[time]
         for key, name in self.references.items():
             for idx, bit in enumerate(reversed(cur_sig_vals[key])):
-                refbit = f"{name}[{idx}]"
+                refbit = self.bitnames[name, idx]
                 if bit == "1":
                     self.onebits.add(refbit)
                 elif bit == "0":
@@ -44,18 +59,22 @@ class VcdData:
         """Called by VCDVCD whenever the value of a signal changes."""
         pass
 
-    def parse(self, vcdfile, prefix, top, depth=0):
+    def parse(self, vcdfile, prefix, top, depth, signals):
         self.currentPrefix = prefix
         self.currentTop = top
         self.currentDepth = depth
         self.references = dict()
+        self.bitnames = dict()
+        self.framecnt = 0
 
-        vcd = VCDVCD(vcdfile, callbacks=self, store_tvs=False)
+        vcd = VCDVCD(vcdfile, signals=signals, callbacks=self, store_tvs=False)
 
         self.currentPrefix = None
         self.currentTop = None
         self.currentDepth = None
         self.references = None
+        self.bitnames = None
+        self.framecnt = None
 
 
 class SignalGroup:
@@ -70,9 +89,9 @@ class SignalDatabase:
     def __init__(self):
         self.vcdData = VcdData()
 
-    def parse(self, vcdfile, prefix, top):
+    def parse(self, vcdfile, prefix, top, signals=None):
         print(f"Reading {top} from {vcdfile} as {prefix}..")
-        self.vcdData.parse(vcdfile, prefix+".", top+".", 1)
+        self.vcdData.parse(vcdfile, prefix+".", top+".", 1, signals)
 
     def mk(self):
         self.groups.add(group := SignalGroup())
@@ -144,7 +163,6 @@ class SignalDatabase:
 
             self.cleanup()
 
-
     def print(self):
         for idx, group in enumerate(self.groups):
             print(f"Group {idx}:")
@@ -152,7 +170,8 @@ class SignalDatabase:
                 print(f"  {name}")
 
 db = SignalDatabase()
-db.parse("init_gold.vcd", "gold", "testbench.uut")
-db.parse("init_gate.vcd", "gate", "testbench.uut")
+db.parse("test_gold.vcd", "gold", "testbench.uut")
+db.parse("test_gate.vcd", "gate", "testbench.uut")
 db.process()
 db.print()
+
