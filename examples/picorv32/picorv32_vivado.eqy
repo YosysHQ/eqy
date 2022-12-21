@@ -1,13 +1,13 @@
 ##############################################################
 #
-# Gold: PicoRV32 Original Verilog HDL
+# Gold: Modified PicoRV32 Verilog HDL
 # Gate: Synthesis Output from Xilinx Vivado
 
 [gold]
 read_verilog picorv32_modified.v
 read_verilog init.v
 prep -top testbench
-sim -w -clock clk -resetn resetn -n 100
+sim -w -vcd init_gold.vcd -clock clk -resetn resetn -n 100
 hierarchy -top picorv32
 
 setundef -zero -undriven -init
@@ -22,14 +22,20 @@ read_verilog -nowb -noblackbox +/xilinx/cells_sim.v
 read_verilog picorv32_vivado.v
 read_verilog init.v
 prep -top testbench
-uniquify; hierarchy
-sim -w -clock clk -resetn resetn -n 100
-rename testbench.uut picorv32
+
+rename -hide t:GND t:VCC t:OBUF t:IBUF t:BUFG t:FDRE t:FDSE
+flatten t:GND t:VCC t:OBUF t:IBUF t:BUFG t:FDRE t:FDSE
+
+setattr -mod -set unique 1 picorv32
+uniquify t:RAM32X1D t:RAM32M
+opt -noff -keepdc -fast
+hierarchy
+
+sim -w -vcd init_gate.vcd -clock clk -resetn resetn -n 100
 hierarchy -top picorv32
 
 setundef -zero -undriven -init
 splitnets picorv32/cpu_state0_out
-flatten t:GND t:VCC t:OBUF t:IBUF
 opt -noff -keepdc -fast
 clean
 
@@ -85,6 +91,7 @@ gold-nomatch latched_branch
 gold-nomatch latched_is_lu
 gold-nomatch latched_store
 gold-nomatch mem_do_prefetch
+gold-nomatch mem_do_rinst
 gold-nomatch mem_rdata_word
 gold-nomatch mem_state
 gold-nomatch mem_wordsize
@@ -117,42 +124,39 @@ name trivial eoi
 name trivial trace_data
 name trivial trace_valid
 name trivial pcpi_valid
-name trivial mem_xfer
+name trivial pcpi_insn
 final eoi
 
 # passing
 name is_passing is_sltiu_bltu_sltu
 name is_passing is_slti_blt_slt
-name is_passing is_rdcycle_rdcycleh_rdinstr_rdinstrh
 name is_passing is_lui_auipc_jal
 name is_passing is_lbu_lhu_lw
 final is_lbu_lhu_lw
 
 # passing
+final trap
+final latched_rd
+final count_cycle
 merge alu_*
-final pcpi_insn
 
 # failing
-merge is_*
-merge instr_*
-merge mem_*
-merge decoded_*
-
-# more failing
-# - cpuregs_wrdata
-# - latched_rd
-# - pcpi_rs1
-# - trap
+#merge is_*
+#merge instr_*
+#merge mem_*
+#merge decoded_*
+#final cpuregs_wrdata
+#final pcpi_rs1
 
 [partition picorv32]
 ramend * *
 
-# [strategy sby]
-# use sby
-# depth 10
-# engine smtbmc bitwuzla
+[strategy sby]
+use sby
+depth 8
+engine smtbmc bitwuzla
 
 [strategy pdr]
 use sby
 engine abc pdr
-timeout 1200
+timeout 900

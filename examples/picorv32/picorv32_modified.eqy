@@ -1,3 +1,8 @@
+##############################################################
+#
+# Gold: Original PicoRV32 Verilog HDL
+# Gate: Modified PicoRV32 Verilog HDL
+
 [options]
 
 [gold]
@@ -10,6 +15,20 @@ read_verilog picorv32_modified.v
 prep -top picorv32
 memory_map
 
+[collect picorv32]
+join *
+group is_*
+group reg_*
+group mem_*
+group alu_*
+group dbg_*
+group pcpi_*
+group instr_*
+group count_*
+group latched_*
+group decoded_*
+group cpuregs[]
+
 [strategy simple]
-use sby
-depth 10
+use satseq
+depth 3

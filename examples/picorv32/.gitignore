@@ -1,2 +1,4 @@
 /picorv32_modified/
 /picorv32_vivado/
+/init_gate.vcd
+/init_gold.vcd
