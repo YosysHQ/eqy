@@ -1,4 +1,6 @@
 __pycache__/
+coverage_html/
+
 *.py[cod]
 *$py.class
 .*.swp
@@ -36,3 +38,8 @@ __pycache__/
 *.exe
 *.out
 *.app
+
+# Coverage info
+*.gcda
+*.gcno
+coverage.info
