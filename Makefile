@@ -55,10 +55,11 @@ test:
 
 coverage:
 	rm -rf coverage.info coverage_html
-	$(MAKE) EQY="python3 $$PWD/src/eqy.py" -C examples/simple clean
-	-$(MAKE) EQY="python3 $$PWD/src/eqy.py" -C examples/simple 
+	$(MAKE) -C examples/simple clean
+	-$(MAKE) EQY="coverage run $$PWD/src/eqy.py" -C examples/simple 
 	lcov --capture -d . --no-external -o coverage.info
 	genhtml coverage.info --output-directory coverage_html
+	cd examples/simple && coverage report
 
 clean:
 	$(MAKE) -C docs clean
