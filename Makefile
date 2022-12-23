@@ -54,16 +54,16 @@ test:
 	$(MAKE) -C examples/simple
 
 coverage:
-	rm -rf coverage.info coverage_html
+	rm -rf coverage.info coverage_html examples/simple/htmlcov
 	$(MAKE) -C examples/simple clean
 	-$(MAKE) EQY="coverage run $$PWD/src/eqy.py" -C examples/simple 
 	lcov --capture -d . --no-external -o coverage.info
 	genhtml coverage.info --output-directory coverage_html
-	cd examples/simple && coverage report
+	cd examples/simple && coverage report && coverage html
 
 clean:
 	$(MAKE) -C docs clean
 	$(MAKE) -C examples/simple clean
 	find . -name "*.gcda" -type f -delete
 	find . -name "*.gcno" -type f -delete
-	rm -rf docs/build src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so src/__pycache__ coverage.info coverage_html
+	rm -rf docs/build src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so src/__pycache__ coverage.info coverage_html examples/simple/htmlcov
