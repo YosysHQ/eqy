@@ -19,6 +19,8 @@ class VcdData:
         """Called by VCDVCD at $enddefinitions"""
         for key in vcd.data:
             for name in vcd.data[key].references:
+                if "BUF" in name: continue
+                if "dbg" in name: continue
                 if name.startswith(self.currentTop):
                     name = name[len(self.currentTop):]
                     if name.startswith("\\"): name = name[1:]
@@ -28,9 +30,12 @@ class VcdData:
             if self.currentDepth == 0 or self.currentDepth > name.count("."):
                 name = self.currentPrefix + name
                 self.references[key] = name
-                for idx in range(int(vcd.data[key].size)):
-                    self.bitnames[name, idx] = f"{name}[{idx}]"
-        print(f"  found {len(self.references)} signals with {len(self.bitnames)} bits")
+                if vcd.data[key].size == "1":
+                    self.bitnames[name, 0] = name
+                else:
+                    for idx in range(int(vcd.data[key].size)):
+                        self.bitnames[name, idx] = f"{name}<{idx}>"
+        print(f"  found {len(self.references)} signals with {len(self.bitnames)} bits", flush=True)
 
     def time(self, vcd, time, cur_sig_vals):
         """Called by VCDVCD whenever a new time is found."""
@@ -39,7 +44,7 @@ class VcdData:
 
         self.framecnt += 1
         if self.framecnt % 10000 == 0:
-            print(f"  frame #{self.framecnt} at {time}")
+            print(f"  frame #{self.framecnt} at {time}", flush=True)
 
         if time not in self.data:
             self.data[time] = dict()
@@ -90,7 +95,7 @@ class SignalDatabase:
         self.vcdData = VcdData()
 
     def parse(self, vcdfile, prefix, top, signals=None):
-        print(f"Reading {top} from {vcdfile} as {prefix}..")
+        print(f"Reading {top} from {vcdfile} as {prefix}..", flush=True)
         self.vcdData.parse(vcdfile, prefix+".", top+".", 1, signals)
 
     def mk(self):
@@ -132,9 +137,12 @@ class SignalDatabase:
             if name not in self.vcdData.zerobits: continue
             self.add(rootGroup, name)
 
+        somethingHappened = True
         for time, frame in self.vcdData.data.items():
-            maxsize = max([len(g.members) for g in self.groups])
-            print(f"At {time}: {len(self.groups)} groups, max size is {maxsize}")
+            if somethingHappened:
+                maxsizes = list(reversed(sorted([len(g.members) for g in self.groups])))
+                print(f"At {time}: {len(self.groups)} groups, max sizes are {maxsizes[:5]}", flush=True)
+                somethingHappened = False
 
             for name, bit in frame.items():
                 if name not in self.members: continue
@@ -150,6 +158,7 @@ class SignalDatabase:
 
             for group in list(self.groups):
                 if len(group.zeros) and len(group.ones):
+                    somethingHappened = True
                     newGroup = self.mk()
                     for name in group.ones:
                         self.add(newGroup, name)
@@ -164,10 +173,19 @@ class SignalDatabase:
             self.cleanup()
 
     def print(self):
+        G = set()
         for idx, group in enumerate(self.groups):
-            print(f"Group {idx}:")
             for name in sorted(group.members):
-                print(f"  {name}")
+                if name.startswith("gold."):
+                    n = "gate" + name[4:]
+                    if n in group.members: break
+            else:
+                G.add(tuple(sorted(group.members)))
+        print("Left with {len(G)} groups after sorting and filtering:")
+        for idx, group in enumerate(sorted(G)):
+            print(f"  Group {idx}:")
+            for name in group:
+                print(f"    {name}")
 
 db = SignalDatabase()
 db.parse("test_gold.vcd", "gold", "testbench.uut")

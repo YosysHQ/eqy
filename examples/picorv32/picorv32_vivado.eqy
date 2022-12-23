@@ -10,12 +10,6 @@ prep -top testbench
 sim -w -vcd init_gold.vcd -clock clk -resetn resetn -n 100
 hierarchy -top picorv32
 
-setundef -zero -undriven -init
-splitnets picorv32/cpu_state
-memory_map
-splitcells
-clean
-
 [gate]
 logger -nowarn limited.support.for.tri-state.*/cells_sim.v
 read_verilog -nowb -noblackbox +/xilinx/cells_sim.v
@@ -25,6 +19,7 @@ prep -top testbench
 
 rename -hide t:GND t:VCC t:OBUF t:IBUF t:BUFG t:FDRE t:FDSE
 flatten t:GND t:VCC t:OBUF t:IBUF t:BUFG t:FDRE t:FDSE
+rename -hide w:*BUF*
 
 setattr -mod -set unique 1 picorv32
 uniquify t:RAM32X1D t:RAM32M
@@ -34,22 +29,60 @@ hierarchy
 sim -w -vcd init_gate.vcd -clock clk -resetn resetn -n 100
 hierarchy -top picorv32
 
+
+##############################################################
+#
+# Delete unused outputs
+
+[gold]
+cd picorv32
+delete -output mem_la_* trace_* pcpi_* eoi
+rename -hide mem_la_* trace_* eoi
+
+[gate]
+cd picorv32
+delete -output mem_la_* trace_* pcpi_* eoi
+rename -hide mem_la_* trace_* eoi
+
+##############################################################
+#
+# Split some fiddly nets on either side
+
+[gold]
+splitnets cpu_state
+splitnets alu_out
+splitnets count_instr
+splitnets mem_rdata_latched
+splitnets reg_next_pc
+splitnets decoded_imm_j
+cd ..
+
+[gate]
+splitnets cpu_state0_out
+splitnets decoded_imm_j
+cd ..
+
+[collect picorv32]
+group decoded_imm_j[]
+
+##############################################################
+#
+# Purge X-bits and other cleanups
+
+[gold]
 setundef -zero -undriven -init
-splitnets picorv32/cpu_state0_out
+memory_map
+splitcells
+clean
+
+[gate]
+setundef -zero -undriven -init
 opt -noff -keepdc -fast
 clean
 
 ##############################################################
 #
 # PicoRV32 Register File Outputs
-
-[gold]
-rename -hide picorv32/reg_op*
-clean
-
-[gate]
-rename -hide picorv32/pcpi_rs?_OBUF*
-clean
 
 [match picorv32]
 gold-match pcpi_rs[12]
@@ -63,8 +96,8 @@ solo-group pcpi_rs[12]
 # Vivado weirdly renames the CPU state FSM register:
 #     cpu_state0_out[*]       the value before the FF, i.e. the next state
 #     cpu_state_reg_n_0_[*]   the value after the FF, i.e. cpu_state
-# except bits 4 and 6, as bit 4 encodes the unused "ld_rs2" state,
-# and bit 6 (encoding for "fetch") ended up as 1-bit reg_next_pc wire.
+# except bits 4 and 6, as bit 4 encodes the unused "ld_rs2" state, and
+# bit 6 (encoding for "fetch") ended up as 1-bit reg_next_pc wire.
 
 [match picorv32]
 gold-match cpu_state[0] cpu_state_reg_n_0_[0]
@@ -76,28 +109,49 @@ gold-match cpu_state[5] cpu_state_reg_n_0_[5]
 gold-match cpu_state[6] reg_next_pc
 gold-match cpu_state[7] cpu_state_reg_n_0_[7]
 
+[collect picorv32]
+solo-group cpu_state[]
+
 
 ##############################################################
 #
-# False Equivalent Points
-# .. identified via picorv32_vivado/modules/picorv32.sby with
-# with CHECK_MATCH_POINTS enabled.
+# More Manual Matches
+# .. identified via vcdmatch.py
 
 [match picorv32]
-gold-nomatch count_instr
-gold-nomatch decoded_imm_j
-gold-nomatch decoder_pseudo_trigger
-gold-nomatch latched_branch
-gold-nomatch latched_is_lu
-gold-nomatch latched_store
-gold-nomatch mem_do_prefetch
-gold-nomatch mem_do_rinst
-gold-nomatch mem_rdata_word
-gold-nomatch mem_state
-gold-nomatch mem_wordsize
-gold-nomatch reg_next_pc
-gold-nomatch reg_out
-gold-nomatch reg_sh
+gold-match alu_out[] alu_out_q[\2]_i_1_n_0
+gold-match count_instr[] count_instr_reg_n_0_[\2]
+gold-match reg_next_pc[] reg_next_pc_reg_n_0_[\2]
+
+gold-match decoder_trigger        \0_reg_n_0
+gold-match latched_is_lb          \0_reg_n_0
+gold-match latched_is_lh          \0_reg_n_0
+gold-match latched_stalu          \0_reg_n_0
+gold-match latched_store          \0_reg_n_0
+gold-match mem_do_prefetch        \0_reg_n_0
+
+gold-match decoder_pseudo_trigger \0_reg_n_0
+gold-match latched_branch         \0_reg_n_0
+gold-match latched_is_lu          \0_reg_n_0
+gold-match mem_do_rinst           \0_reg_n_0
+
+gate-nomatch decoder_pseudo_trigger
+gate-nomatch latched_branch
+gate-nomatch latched_is_lu
+gate-nomatch mem_do_rinst
+
+
+##############################################################
+#
+# Additional False Equivalent Points
+# .. identified via picorv32_vivado/modules/picorv32.sby
+
+[match picorv32]
+gate-nomatch mem_state
+gate-nomatch mem_wordsize
+gate-nomatch reg_out
+gate-nomatch reg_op1
+gate-nomatch reg_sh
 
 
 ##############################################################
@@ -105,58 +159,44 @@ gold-nomatch reg_sh
 # Partitioning and Strategies
 
 [collect picorv32]
-solo-join trace_valid
-solo-join pcpi_valid
-solo-join eoi
 solo-join cpuregs_wrdata
 solo-join decoded_*
 solo-join /(instr|is)_.*/
 solo-join latched_rd
 solo-join mem_*
-solo-join pcpi_insn
-solo-join trace_data
 solo-join alu_*
 
 [partition picorv32]
 
 # passing
-name trivial eoi
-name trivial trace_data
-name trivial trace_valid
-name trivial pcpi_valid
-name trivial pcpi_insn
-final eoi
-
-# passing
-name is_passing is_sltiu_bltu_sltu
-name is_passing is_slti_blt_slt
-name is_passing is_lui_auipc_jal
-name is_passing is_lbu_lhu_lw
-final is_lbu_lhu_lw
-
-# passing
-final trap
-final latched_rd
-final count_cycle
+merge is_*
 merge alu_*
+merge instr_*
+merge count_*
+final decoder_trigger
+final trap
 
-# failing
-#merge is_*
-#merge instr_*
-#merge mem_*
-#merge decoded_*
-#final cpuregs_wrdata
-#final pcpi_rs1
+# currently failing
+merge mem_*
+merge decoded_*
+merge latched_*
+final decoder_pseudo_trigger
+final cpu_state[]
+final reg_next_pc[]
+final cpuregs_wrdata
+final pcpi_rs1
 
-[partition picorv32]
-ramend * *
-
-[strategy sby]
-use sby
-depth 8
-engine smtbmc bitwuzla
+# amend some partitions
+ramend cpu_state[] count_*
+ramend cpu_state[] decoder_trigger
+ramend cpu_state[] trap
 
 [strategy pdr]
 use sby
 engine abc pdr
 timeout 900
+
+[strategy sby]
+use sby
+depth 8
+engine smtbmc bitwuzla

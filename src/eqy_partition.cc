@@ -1174,7 +1174,6 @@ struct Partition
 		sby_file << "prove cover :\n";
 		sby_file << "\n";
 		sby_file << "[options]\n";
-		sby_file << "vcd off\n";
 		sby_file << "depth 10\n";
 		sby_file << "check: mode bmc\n";
 		sby_file << "prove: mode prove\n";
@@ -1188,7 +1187,8 @@ struct Partition
 		sby_file << "verilog_defaults -add -D COVER_DEF_GATE_MATCH_POINTS\n";
 		sby_file << "verilog_defaults -add -D COVER_DEF_GOLD_OUTPUTS\n";
 		sby_file << "verilog_defaults -add -D COVER_DEF_GATE_OUTPUTS\n";
-		sby_file << "# verilog_defaults -add -D DIRECT_CROSS_POINTS\n";
+		if (xprop_partition) sby_file << "# ";
+		sby_file << "verilog_defaults -add -D DIRECT_CROSS_POINTS\n";
 		sby_file << "# verilog_defaults -add -D ASSUME_DEFINED_INPUTS\n";
 		sby_file << "read_verilog -sv ../../" << partname.substr(1) << ".sv\n";
 		sby_file << "read_ilang ../../" << partname.substr(1) << ".il\n";

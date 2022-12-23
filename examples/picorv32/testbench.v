@@ -10,6 +10,7 @@
 module testbench;
 	reg clk = 1;
 	reg resetn = 0;
+	reg okay = 0;
 	wire trap;
 
 	always #5 clk = ~clk;
@@ -22,9 +23,9 @@ module testbench;
 		$dumpfile("test_gate.vcd");
 		$dumpvars(0, testbench);
 `endif
-		repeat (100) @(posedge clk);
+		repeat (5) @(posedge clk);
 		resetn <= 1;
-		repeat (110000) @(posedge clk);
+		repeat (120000) @(posedge clk);
 		$stop;
 	end
 
@@ -49,8 +50,8 @@ module testbench;
 		.mem_rdata   (mem_rdata  )
 	);
 
-	reg [5:0] hickup_state = 0;
-	wire hickup = hickup_state < 7 || (hickup_state % 7 == 0) || (hickup_state % 5 == 0);
+	reg [10:0] hickup_state = 0;
+	wire hickup = !hickup_state[10:8] && (hickup_state[7] != (hickup_state[6:0] < 7 || (hickup_state[6:0] % 7 == 0) || (hickup_state[6:0] % 5 == 0)));
 	always @(posedge clk) hickup_state <= hickup_state + 1;
 
 	reg [31:0] memory [0:128*1024/4-1];
@@ -61,11 +62,11 @@ module testbench;
 		mem_rdata = 0;
 		if (resetn && mem_valid) begin
 			if (mem_addr < 128*1024) begin
-				mem_ready = 1;
+				mem_ready = !hickup;
 				mem_rdata = memory[mem_addr >> 2];
 			end
 			if (mem_addr == 32'h1000_0000 || mem_addr == 32'h2000_0000) begin
-				mem_ready = 1;
+				mem_ready = !hickup;
 			end
 		end
 	end
@@ -83,11 +84,11 @@ module testbench;
 				$fflush();
 			end
 			if (mem_addr == 32'h2000_0000) begin
-				$finish;
+				okay <= 1;
 			end
 		end
 		if (resetn && trap) begin
-			$stop;
+			if (okay) $finish; else $stop;
 		end
 	end
 endmodule

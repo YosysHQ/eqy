@@ -14,10 +14,10 @@ help:
 	@echo "  remove temporary output files"
 	@echo ""
 
-prove_vivado:
+prove_vivado: picorv32_vivado.eqy picorv32_vivado.v picorv32_modified.v
 	eqy -fj6 picorv32_vivado.eqy
 
-prove_modified:
+prove_modified: picorv32_modified.eqy picorv32_modified.v picorv32.v
 	eqy -fj6 picorv32_modified.eqy
 
 test_gold.vcd: test_gold
@@ -26,14 +26,14 @@ test_gold.vcd: test_gold
 test_gate.vcd: test_gate
 	vvp -N test_gate
 
-test_gold:
+test_gold: testbench.v picorv32_modified.v
 	iverilog -o test_gold -D GOLD testbench.v picorv32_modified.v
 
-test_gate:
+test_gate:testbench.v picorv32_vivado.v
 	iverilog -o test_gate testbench.v picorv32_vivado.v `yosys-config --datdir/xilinx/cells_sim.v`
 
 vcdmatch: test_gold.vcd test_gate.vcd
-	python3 vcdmatch.py > vcdmatch.out
+	python3 vcdmatch.py | tee vcdmatch.out
 
 vivado:
 	rm -f picorv32_vivado.log

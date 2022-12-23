@@ -1028,8 +1028,10 @@ def make_scripts(args, cfg, job, strategies):
         os.mkdir(args.workdir + "/strategies")
 
     with open(f"{args.workdir}/strategies.mk", "w") as make_f:
-        print(".DEFAULT_GOAL := all\n", file=make_f)
-        targets = []
+        def prmkf(*args, **kwargs): print(*args, file=make_f, **kwargs)
+        prmkf(".DEFAULT_GOAL := all\n")
+        final_targets = []
+        targets_by_partition = collections.defaultdict(list)
         for partition in cfg.partitions:
             if not os.path.isdir(f"{args.workdir}/strategies/{partition.name}"):
                 os.mkdir(f"{args.workdir}/strategies/{partition.name}")
@@ -1045,7 +1047,7 @@ def make_scripts(args, cfg, job, strategies):
                 strategy.write(job, partition)
 
                 if prev_strategy:
-                    print(f"""strategies/{partition.name}/{strategy.name}/status: {prev_strategy}
+                    prmkf(f"""strategies/{partition.name}/{strategy.name}/status: {prev_strategy}
 \t@if grep PASS $^ >/dev/null ; then \\
 \t\techo "PASS (cached)" > $@; \\
 \telif grep FAIL $^ >/dev/null ; then \\
@@ -1053,48 +1055,50 @@ def make_scripts(args, cfg, job, strategies):
 \telse \\
 \t\techo \"Running strategy '{strategy.name}' on '{partition.name}'..\"; \\
 \t\tbash -c \"cd strategies/{partition.name}/{strategy.name}; source run.sh\"; \\
-\tfi\n""" , file=make_f)
+\tfi\n""" )
                 else:
-                    print(f"strategies/{partition.name}/{strategy.name}/status:", file=make_f)
-                    print(f"\t@echo \"Running strategy '{strategy.name}' on '{partition.name}'..\"", file=make_f)
-                    print(f"\t@bash -c \"cd strategies/{partition.name}/{strategy.name}; source run.sh\"\n", file=make_f)
+                    prmkf(f"strategies/{partition.name}/{strategy.name}/status:")
+                    prmkf(f"\t@echo \"Running strategy '{strategy.name}' on '{partition.name}'..\"")
+                    prmkf(f"\t@bash -c \"cd strategies/{partition.name}/{strategy.name}; source run.sh\"\n")
                 prev_strategy = f"strategies/{partition.name}/{strategy.name}/status"
             if prev_strategy is None:
                 exit_with_error(f"No configured strategy supports partition {partition.name}")
-            targets.append(prev_strategy)
+            final_targets.append(prev_strategy)
 
-        print(f".PHONY: all", file=make_f)
-        print(f"all: {' '.join(targets)}", file=make_f)
-        print( f"""\t@rc=0 ; \\
-\tfor f in {' '.join(targets)} ; do \\
-\t\tif ! grep -q "PASS" $$f ; then \\
-\t\t\tp=$${{f#strategies/}} ; \\
-\t\t\tp=$${{p%/*/status}} ; \\
-\t\t\techo "* Failed to prove equivalence of partition $$p" ; \\
-\t\t\trc=1 ; \\
-\t\tfi ; \\
-\tdone ; \\
-\tif [ "$$rc" -eq 0 ] ; then \\
-\t\techo "* Successfully proved designs equivalent" ; \\
-\tfi""", file=make_f)
+        prmkf(f".PHONY: all")
+        prmkf(f"all: {' '.join(final_targets)}")
+        prmkf(f"\t$(MAKE) -f strategies.mk summary")
+        prmkf(f"""summary:""")
+        prmkf(f"""\t@rc=0 ; \\""")
+        prmkf(f"""\tfor f in {" ".join(final_targets)} ; do \\""")
+        prmkf(f"""\t\tp=$${{f#strategies/}} ; p=$${{p%/*/status}} ; \\""")
+        prmkf(f"""\t\tif grep -q "PASS" $$f ; then \\""")
+        prmkf(f"""\t\t\techo "* Successfully proved equivalence of partition $$p" ; rc=1 ; \\""")
+        prmkf(f"""\t\telse \\""")
+        prmkf(f"""\t\t\techo "* Failed to prove equivalence of partition $$p" ; rc=1 ; \\""")
+        prmkf(f"""\t\tfi ; \\""")
+        prmkf(f"""\tdone ; \\""")
+        prmkf(f"""\tif [ "$$rc" -eq 0 ] ; then \\""")
+        prmkf(f"""\t\techo "* Successfully proved designs equivalent" ; \\""")
+        prmkf(f"""\tfi""")
 
 def run_scripts(args, cfg, job):
     kopt = " -k" if args.keep_going else ""
     jopt = f" -j{args.num_jobs}" if args.num_jobs else ""
     run_task = EqyTask(job, "run", [], f"make{kopt}{jopt} -C {args.workdir} -f strategies.mk")
-    failing_partitions_count = 0
+    failing_partitions = list()
     summary_messages = list()
 
     def check_output(line):
-        nonlocal failing_partitions_count
         if line.startswith("* "):
             if match := re.match(r"^\* Failed to prove equivalence", line):
                 job.update_status("FAIL")
-                summary_messages.append(click.style(line[2:], fg="red", bold=True))
-                failing_partitions_count += 1
+                failing_partitions.append(click.style(line[2:], fg="red", bold=True))
             elif match := re.match(r"^\* Successfully proved designs equivalent", line):
                 job.update_status("PASS")
                 summary_messages.append(click.style(line[2:], fg="green", bold=True))
+            elif match := re.match(r"^\* Successfully proved equivalence", line):
+                summary_messages.append(click.style(line[2:], fg="green"))
             else:
                 summary_messages.append(click.style(line[2:], bold=True))
             return None
@@ -1108,10 +1112,13 @@ def run_scripts(args, cfg, job):
     run_task.exit_callback = check_retcode
     job.run()
 
-    if failing_partitions_count:
-        job.warning(f"Failed to prove equivalence for {failing_partitions_count}/{len(cfg.partitions)} partitions:")
     for line in summary_messages:
         job.log(line)
+
+    if failing_partitions:
+        job.warning(f"Failed to prove equivalence for {len(failing_partitions)}/{len(cfg.partitions)} partitions:")
+        for line in failing_partitions:
+            job.log(line)
 
 def validate_config(args, cfg):
     mandatory_cfg_sections = ["gold", "gate"]
