@@ -1065,8 +1065,8 @@ def make_scripts(args, cfg, job, strategies):
                 exit_with_error(f"No configured strategy supports partition {partition.name}")
             final_targets.append(prev_strategy)
 
-        prmkf(f".PHONY: all")
-        prmkf(f"all: {' '.join(final_targets)}")
+        prmkf(f".PHONY: all summary")
+        prmkf(f"all: {' '.join(sorted(final_targets))}")
         prmkf(f"\t$(MAKE) -f strategies.mk summary")
         prmkf(f"""summary:""")
         prmkf(f"""\t@rc=0 ; \\""")

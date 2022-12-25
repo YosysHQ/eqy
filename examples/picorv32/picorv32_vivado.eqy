@@ -168,7 +168,7 @@ solo-join alu_*
 
 [partition picorv32]
 
-# passing
+# currently passing pdr
 merge is_*
 merge alu_*
 merge instr_*
@@ -176,15 +176,15 @@ merge count_*
 final decoder_trigger
 final trap
 
-# currently failing
+# currently failing pdr, but passing bmc
+final cpuregs_wrdata
+final reg_next_pc[]
+final cpu_state[]
+final pcpi_rs1
 merge mem_*
 merge decoded_*
 merge latched_*
 final decoder_pseudo_trigger
-final cpu_state[]
-final reg_next_pc[]
-final cpuregs_wrdata
-final pcpi_rs1
 
 # amend some partitions
 ramend cpu_state[] count_*
