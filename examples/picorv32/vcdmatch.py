@@ -130,11 +130,16 @@ class SignalDatabase:
         self.groups = set()
         self.dirtyGroups = set()
         self.members = dict()
+        self.const_one = set()
+        self.const_zero = set()
 
         rootGroup = self.mk()
         for name in self.vcdData.refbits:
-            if name not in self.vcdData.onebits: continue
-            if name not in self.vcdData.zerobits: continue
+            found_one = name in self.vcdData.onebits
+            found_zero = name in self.vcdData.zerobits
+            if found_one and not found_zero: self.const_one.add(name)
+            if found_zero and not found_one: self.const_zero.add(name)
+            if not found_one or not found_zero: continue
             self.add(rootGroup, name)
 
         somethingHappened = True
@@ -173,6 +178,13 @@ class SignalDatabase:
             self.cleanup()
 
     def print(self):
+        print(f"Found {len(self.const_zero)} constant zero signals:")
+        for name in sorted(self.const_zero):
+            print(f"  {name}")
+        print(f"Found {len(self.const_one)} constant one signals:")
+        for name in sorted(self.const_one):
+            print(f"  {name}")
+
         G = set()
         for idx, group in enumerate(self.groups):
             for name in sorted(group.members):
@@ -181,7 +193,8 @@ class SignalDatabase:
                     if n in group.members: break
             else:
                 G.add(tuple(sorted(group.members)))
-        print("Left with {len(G)} groups after sorting and filtering:")
+
+        print(f"Left with {len(G)} groups after sorting and filtering:")
         for idx, group in enumerate(sorted(G)):
             print(f"  Group {idx}:")
             for name in group:
