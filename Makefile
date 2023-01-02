@@ -2,6 +2,7 @@
 DESTDIR =
 PREFIX = /usr/local
 PROGRAM_PREFIX =
+YOSYS_CFGFLAGS =
 
 # On Windows, manually setting absolute path to Python binary may be required
 # for launcher executable to work. From MSYS2, this can be done using the
@@ -14,15 +15,19 @@ build: src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so
 
 DEBUG_CXXFLAGS :=
 #DEBUG_CXXFLAGS += -Og
+COVERAGE := 0
+ifeq ($(COVERAGE),1)
+YOSYS_CFGFLAGS += --coverage
+endif
 
 src/eqy_combine.so: src/eqy_combine.cc
-	yosys-config --build $@ $(DEBUG_CXXFLAGS) $^
+	yosys-config --build $@ $(DEBUG_CXXFLAGS) $^ $(YOSYS_CFGFLAGS)
 
 src/eqy_partition.so: src/eqy_partition.cc
-	yosys-config --build $@ $(DEBUG_CXXFLAGS) $^
+	yosys-config --build $@ $(DEBUG_CXXFLAGS) $^ $(YOSYS_CFGFLAGS)
 
 src/eqy_recode.so: src/eqy_recode.cc
-	yosys-config --build $@ $(DEBUG_CXXFLAGS) $^
+	yosys-config --build $@ $(DEBUG_CXXFLAGS) $^ $(YOSYS_CFGFLAGS)
 
 install: src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
@@ -48,7 +53,18 @@ test:
 	$(MAKE) -C examples/simple clean
 	$(MAKE) -C examples/simple
 
+coverage:
+	rm -rf coverage.info coverage_html examples/simple/htmlcov
+	$(MAKE) -C examples/simple clean
+	cd examples/simple && coverage erase
+	-$(MAKE) EQY="coverage run -a $$PWD/src/eqy.py" -C examples/simple 
+	lcov --capture -d . --no-external -o coverage.info
+	genhtml coverage.info --output-directory coverage_html
+	cd examples/simple && coverage report && coverage html
+
 clean:
 	$(MAKE) -C docs clean
 	$(MAKE) -C examples/simple clean
-	rm -rf docs/build src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so src/__pycache__
+	find . -name "*.gcda" -type f -delete
+	find . -name "*.gcno" -type f -delete
+	rm -rf docs/build src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so src/__pycache__ coverage.info coverage_html examples/simple/htmlcov
