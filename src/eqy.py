@@ -1073,7 +1073,7 @@ def make_scripts(args, cfg, job, strategies):
         prmkf(f"""\tfor f in {" ".join(final_targets)} ; do \\""")
         prmkf(f"""\t\tp=$${{f#strategies/}} ; p=$${{p%/*/status}} ; \\""")
         prmkf(f"""\t\tif grep -q "PASS" $$f ; then \\""")
-        prmkf(f"""\t\t\techo "* Successfully proved equivalence of partition $$p" ; rc=1 ; \\""")
+        prmkf(f"""\t\t\techo "* Successfully proved equivalence of partition $$p" ; \\""")
         prmkf(f"""\t\telse \\""")
         prmkf(f"""\t\t\techo "* Failed to prove equivalence of partition $$p" ; rc=1 ; \\""")
         prmkf(f"""\t\tfi ; \\""")

@@ -968,6 +968,14 @@ struct Partition
 			for (int i = 0; i < GetSize(sig1); i++)
 				bitpairs.emplace_back(sig1[i], sig2[i]);
 			std::sort(bitpairs.begin(), bitpairs.end(), [&](const pair<SigBit,SigBit> &a, const pair<SigBit,SigBit> &b) {
+				if (a.first.wire == nullptr || b.first.wire == nullptr) {
+					if (a.first.wire != b.first.wire) return a.first.wire == nullptr;
+					return a.first.data < b.first.data;
+				}
+				if (a.second.wire == nullptr || b.second.wire == nullptr) {
+					if (a.second.wire != b.second.wire) return a.second.wire == nullptr;
+					return a.second.data < b.second.data;
+				}
 				log_assert(a.first.wire && a.second.wire && b.first.wire && b.second.wire);
 				if (a.first.wire != b.first.wire) return a.first.wire->name.str() < b.first.wire->name.str();
 				if (a.second.wire != b.second.wire) return a.second.wire->name.str() < b.second.wire->name.str();

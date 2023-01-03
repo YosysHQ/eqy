@@ -1,5 +1,3 @@
-[options]
-
 [gold]
 read_verilog -DGOLD aliases.sv
 prep -top aliases
@@ -7,11 +5,6 @@ prep -top aliases
 [gate]
 read_verilog -DGATE aliases.sv
 prep -top aliases
-
-# work-arounds for "insbuf on"
-[collect *]
-bind X
-join Y
 
 [strategy simple]
 use satseq
