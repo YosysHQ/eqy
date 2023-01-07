@@ -1159,6 +1159,8 @@ module picorv32 #(
 			instr_or    <= 0;
 			instr_and   <= 0;
 		end
+
+		compressed_instr <= 0;
 	end
 
 
@@ -1967,6 +1969,8 @@ module picorv32 #(
 			end
 		end
 		current_pc = 'b0;
+		cpu_state[4] <= 'b0;
+		reg_next_pc[1:0] <= 'b0;
 	end
 
 `ifdef RISCV_FORMAL

@@ -7,8 +7,6 @@
 read_verilog picorv32_modified.v
 read_verilog init.v
 prep -top testbench
-sim -w -vcd init_gold.vcd -clock clk -resetn resetn -n 100
-hierarchy -top picorv32
 
 [gate]
 logger -nowarn limited.support.for.tri-state.*/cells_sim.v
@@ -26,6 +24,7 @@ uniquify t:RAM32X1D t:RAM32M
 opt -noff -keepdc -fast
 hierarchy
 
+[script]
 sim -w -vcd init_gate.vcd -clock clk -resetn resetn -n 100
 hierarchy -top picorv32
 
@@ -71,13 +70,14 @@ group decoded_imm_j[]
 
 [gold]
 setundef -zero -undriven -init
+opt -fine -keepdc -fast
 memory_map
 splitcells
 clean
 
 [gate]
 setundef -zero -undriven -init
-opt -noff -keepdc -fast
+opt -keepdc -fast
 clean
 
 ##############################################################
@@ -165,6 +165,7 @@ solo-join /(instr|is)_.*/
 solo-join latched_rd
 solo-join mem_*
 solo-join alu_*
+solo-join pcpi_insn
 
 [partition picorv32]
 
@@ -189,6 +190,7 @@ final decoder_pseudo_trigger
 # amend some partitions
 ramend cpu_state[] count_*
 ramend cpu_state[] decoder_trigger
+#ramend cpu_state[] decoder_pseudo_trigger
 ramend cpu_state[] trap
 
 [strategy pdr]

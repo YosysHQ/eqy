@@ -47,6 +47,10 @@ Run ``yosys`` in a terminal window and enter ``help`` on the Yosys prompt
 for a command list. Run ``help <command>`` for a detailed description of the
 command, for example ``help prep``.
 
+The contents of ``[script]`` sections are added to the gold and gate scripts.
+This simplifies the configuration file in cases where both scripts share
+larger sequences of commands.
+
 Recode sections
 ---------------
 

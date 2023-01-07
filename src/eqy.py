@@ -177,7 +177,7 @@ def read_config(ctx):
         match = re.match(r"^\[(.*)\]\s*$", line)
         if match:
             entries = match.group(1).split()
-            if len(entries) == 1 and entries[0] in simple_sections:
+            if len(entries) == 1 and entries[0] in simple_sections + ["script"]:
                 section, sectionarg = entries[0], None
                 continue
             if len(entries) == (3 if entries[0] == "recode" else 2) and entries[0] in pattern_sections:
@@ -218,6 +218,11 @@ def read_config(ctx):
                         else:
                             continue
                 exit_with_error(f"syntax error in {section} section in {ctx.args.eqyfile.name} line {linenr}: {line}")
+
+            if section == "script":
+                ctx.gold.append(line)
+                ctx.gate.append(line)
+                continue
 
             if section in simple_sections:
                 getattr(ctx, section).append(line)
