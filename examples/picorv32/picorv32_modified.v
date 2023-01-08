@@ -1970,7 +1970,6 @@ module picorv32 #(
 		end
 		current_pc = 'b0;
 		cpu_state[4] <= 'b0;
-		reg_next_pc[1:0] <= 'b0;
 	end
 
 `ifdef RISCV_FORMAL

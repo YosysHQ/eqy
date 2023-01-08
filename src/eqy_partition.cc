@@ -52,6 +52,8 @@ struct EqyPartitionWorker
 	pool<SigBit> solo_database;
 	dict<SigBit, pool<SigBit>> group_database;
 	dict<std::string, int> name_database;
+
+	pool<SigBit> amend_database;
 	pool<SigBit> noamend_database;
 
 	dict<SigBit, int> po_primitive_index;
@@ -1426,57 +1428,47 @@ void EqyPartitionWorker::merge_partitions()
 			continue;
 		}
 
-		if (rule[0] == "amend" && (GetSize(rule) == 2 || GetSize(rule) == 3)) {
-			SigSpec match_sig = GetSize(rule) == 3 ? gold_sigmap(gold->wire("\\" + rule[2])) : SigSpec();
-			for (auto bit : gold_sigmap(gold->wire("\\" + rule[1]))) {
-				if (!po_primitive_index.count(bit))
-					continue;
-				auto generator = partition(po_primitive_index.at(bit));
-				log_assert(generator->primitive);
-				log("  PO bit %s belongs to primitive partition %d\n", log_signal(bit), generator->index);
-				for (int idx : pi_partitions_index.at(bit, {})) {
-					auto p = partition(idx);
-					if (p->marked_final) {
-						log("    Skipping PI partition %d as it is marked final.\n", idx);
-						continue;
-					}
-					if (GetSize(rule) == 3) {
-						for (auto match_bit : match_sig)
-							if (p->gold_bits.count(match_bit))
-								goto amend_found_condition_bit;
-						log("    Skipping PI partition %d as it doesn't match the condition signal.\n", idx);
-						continue;
-					amend_found_condition_bit:;
-					}
-					p = p->make_get_nonprimitive();
-					log("    Amending PI partition %d with PO partition %d.\n", p->index, generator->index);
-					p->amend_with.insert(generator->index);
-				}
-			}
-			continue;
-		}
-
-		if (rule[0] == "ramend" && GetSize(rule) == 3) {
+		if (rule[0] == "amend" && GetSize(rule) == 3) {
 			pool<int> generators, consumers;
 			for (auto bit : gold_sigmap(gold->wire("\\" + rule[1]))) {
-				if (!po_primitive_index.count(bit))
+				if (!po_primitive_index.count(bit) && !noamend_database.count(bit)) {
+					log("  PO bit %s matches no primitive partition\n", log_signal(bit));
 					continue;
+				}
 				auto generator = partition(po_primitive_index.at(bit));
 				log_assert(generator->primitive);
 				log("  PO bit %s belongs to primitive partition %d\n", log_signal(bit), generator->index);
 				generators.insert(generator->index);
 			}
 			for (auto bit : gold_sigmap(gold->wire("\\" + rule[2]))) {
-				if (!po_partition_index.count(bit))
+				if (!po_partition_index.count(bit)) {
+					log("  match bit %s matches no partition\n", log_signal(bit));
 					continue;
+				}
 				auto consumer = partition(po_partition_index.at(bit));
-				log("  Condition bit %s belongs to partition %d\n", log_signal(bit), consumer->index);
-				consumers.insert(consumer->make_get_nonprimitive()->index);
+				auto p = consumer->make_get_nonprimitive();
+				log("  match bit %s belongs to partition %d (%d)\n", log_signal(bit), p->index, consumer->index);
+				consumers.insert(p->index);
 			}
-			for (auto p : consumers)
-			for (auto q : generators) {
-				log("    Amending partition %d with partition %d.\n", p, q);
-				partition(p)->amend_with.insert(q);
+			for (auto i : consumers) {
+				auto p = partition(i);
+				for (auto j : generators) {
+					if (!p->amend_with.count(j)) {
+						log("    Queue amending partition %d with partition %d.\n", i, j);
+						p->amend_with.insert(j);
+					} else {
+						log("    Amending partition %d with partition %d is already queued.\n", i, j);
+					}
+				}
+			}
+			continue;
+		}
+
+		if (rule[0] == "amend" && GetSize(rule) == 2) {
+			for (auto bit : gold_sigmap(gold->wire("\\" + rule[1]))) {
+				if (!po_partition_index.count(bit) && !noamend_database.count(bit))
+					continue;
+				amend_database.insert(bit);
 			}
 			continue;
 		}
@@ -1507,72 +1499,140 @@ void EqyPartitionWorker::merge_partitions()
 		log_error("%s\n", message.c_str());
 	}
 
-	log("Find additional automatic amend rules.\n");
-	for (int idx = 0; idx < GetSize(partitions); idx++) {
-		auto p = partition(idx);
-		if (!p->finalized) continue;
-
-		log("Checking partition %d:\n", p->index);
-
-		pool<int> po_candidates, pi_candidates;
-		for (auto bit : p->inbits) {
-			if (noamend_database.count(bit))
+	auto exec_amend = [&]() -> bool {
+		log("Execute queued amend rules.\n");
+		bool did_something = false;
+		for (int idx = 0; idx < GetSize(partitions); idx++) {
+			auto p = partition(idx);
+			if (p->finalized || p->amend_with.empty())
 				continue;
 
-			if (po_primitive_index.count(bit)) {
-				int pidx = po_primitive_index.at(bit);
-				log_debug("  partition %d is a PO candidate: %s\n", pidx, log_signal(bit));
-				po_candidates.insert(pidx);
+			pool<int> this_amend_with, next_amend_with;
+			for  (auto q : p->amend_with) {
+				if (p->info_merged_flat.count(q)) {
+					log("  partition %d is already merged into partition %d\n", q, idx);
+					continue;
+				}
+				if (p->info_amended.count(q)) {
+					log("  partition %d is already amended to partition %d\n", q, idx);
+					continue;
+				}
+				auto generator = partition(q);
+				for (auto bit : generator->outbits)
+					if (p->inbits.count(bit)) {
+						log("  found PI/PO link from partition %d to partition %d: %s\n", q, idx, log_signal(bit));
+						this_amend_with.insert(q);
+						goto found_bit_match;
+					}
+				log("  no PI/PO link from partition %d to partition %d: re-queue\n", q, idx);
+				next_amend_with.insert(q);
+			found_bit_match:;
 			}
 
-			if (pi_primitives_index.count(bit))
-				for (auto pidx : pi_primitives_index.at(bit)) {
-					log_debug("  partition %d is a PI candidate: %s\n", pidx, log_signal(bit));
-					pi_candidates.insert(pidx);
+			if (this_amend_with.empty()) {
+				p->amend_with = next_amend_with;
+			} else {
+				auto pp = p->make_get_nonprimitive();
+				if (p->index != pp->index) {
+					log("  created non-primitive clone of partition %d as partition %d.\n", p->index, pp->index);
+				} else {
+					for (auto q : this_amend_with) {
+						log("  amending partition %d with partition %d.\n", p->index, q);
+						p->import(partition(q));
+						did_something = true;
+					}
+					p->amend_with = next_amend_with;
 				}
+			}
 		}
+		return did_something;
+	};
 
-		log("  Found %d po candidates and %d pi candidates.\n", GetSize(po_candidates), GetSize(pi_candidates));
+	auto find_amend = [&]() -> bool {
+		log("Find automatic amend rules.\n");
+		bool did_something = false;
+		for (int idx = 0; idx < GetSize(partitions); idx++) {
+			auto p = partition(idx);
+			if (p->finalized) continue;
 
-		for (auto pidx : po_candidates) {
-			if (!pi_candidates.count(pidx))
-				continue;
+			log("  Checking partition %d:\n", p->index);
 
-			pool<SigBit> matched_pis, matched_pos;
-			auto prim = partition(pidx);
+			pool<int> po_matches, pi_matches;
+			for (auto bit : p->inbits) {
+				if (!amend_database.count(bit) && noamend_database.count(bit))
+					continue;
 
-			for (auto bit : prim->inbits)
-				if (p->inbits.count(bit)) matched_pis.insert(bit);
+				if (po_primitive_index.count(bit)) {
+					int pidx = po_primitive_index.at(bit);
+					if (p->index != pidx && !p->info_amended.count(pidx) && !p->info_merged_flat.count(pidx)) {
+						if (amend_database.count(bit)) {
+							if (!pi_matches.count(pidx))
+								log("    partition %d is an automatic PO match: %s\n", pidx, log_signal(bit));
+							po_matches.insert(pidx);
+							pi_matches.insert(pidx);
+						} else {
+							if (!po_matches.count(pidx))
+								log_debug("    partition %d is a PO match: %s\n", pidx, log_signal(bit));
+							po_matches.insert(pidx);
+						}
+					}
+				}
+			}
 
-			for (auto bit : prim->outbits)
-				if (p->inbits.count(bit)) matched_pos.insert(bit);
-			log_assert(prim->crossbits.empty());
+#if 0
+			for (auto bit : p->inbits) {
+				if (noamend_database.count(bit) || !pi_primitives_index.count(bit))
+					continue;
 
-			log("    Amending with partition %d (%d pi matches and %d po matches).\n", pidx, GetSize(matched_pis), GetSize(matched_pos));
-			p->amend_with.insert(prim->index);
-			log_assert(!matched_pis.empty());
-			log_assert(!matched_pos.empty());
+				for (auto pidx : pi_primitives_index.at(bit)) {
+					if (!po_matches.count(pidx) || pi_matches.count(pidx)) continue;
+					log("    partition %d is also a PI match: %s\n", pidx, log_signal(bit));
+					pi_matches.insert(pidx);
+				}
+			}
+#endif
 
-			for (auto bit : matched_pis)
-				log_debug("      PI: %s\n", log_signal(bit));
-			for (auto bit : matched_pos)
-				log_debug("      PO: %s\n", log_signal(bit));
+			log("    Found %d po matches and %d auto/pi matches.\n", GetSize(po_matches), GetSize(pi_matches));
+
+			for (auto pidx : pi_matches) {
+				log_assert(po_matches.count(pidx));
+
+				pool<SigBit> matched_pis, matched_pos;
+				auto prim = partition(pidx);
+
+				for (auto bit : prim->inbits)
+					if (p->inbits.count(bit)) matched_pis.insert(bit);
+
+				for (auto bit : prim->outbits)
+					if (p->inbits.count(bit)) matched_pos.insert(bit);
+				log_assert(prim->crossbits.empty());
+
+				log("    Queue amending partition %d with partition %d (%d pi matches and %d po matches).\n",
+						p->index, prim->index, GetSize(matched_pis), GetSize(matched_pos));
+				did_something = true;
+				p->amend_with.insert(prim->index);
+
+				for (auto bit : matched_pis)
+					log("      PI: %s\n", log_signal(bit));
+				for (auto bit : matched_pos)
+					log("      PO: %s\n", log_signal(bit));
+
+				// log_assert(!matched_pis.empty());
+				log_assert(!matched_pos.empty());
+			}
 		}
+		return did_something;
+	};
+
+	log_spacer();
+	log("Amending partitions:\n");
+	while (exec_amend()) {}
+	while (find_amend() && exec_amend()) {
+		while (exec_amend()) {}
 	}
 
-	// actually amend now, after the regular merge operations are all done
-	log("Execute queued amend rules.\n");
-	for (int idx = 0; idx < GetSize(partitions); idx++) {
-		auto p = partition(idx);
-		if (!p->finalized && !p->amend_with.empty()) {
-			auto p = partition(idx)->make_get_nonprimitive();
-			if (p->index == idx)
-				for (auto q : p->amend_with)
-					p->import(partition(q));
-		}
-	}
-
-	// automatically name remaining partitions
+	log_spacer();
+	log("Assigning partition names:\n");
 	dict<Wire*,int> wire_score;
 	dict<SigBit,int> bit_score;
 	for (auto &it : pi_partitions_index) {
@@ -1589,7 +1649,12 @@ void EqyPartitionWorker::merge_partitions()
 	for (auto &it : partitions)
 	{
 		Partition *partition = it.get();
-		if (partition->finalized || partition->name_priority) continue;
+		if (partition->finalized) continue;
+
+		if (partition->name_priority) {
+			log("Partition %d already has a name: %s\n", partition->index, partition->names.front().c_str());
+			continue;
+		}
 
 		log_debug("Automatically naming partition %d:\n", partition->index);
 

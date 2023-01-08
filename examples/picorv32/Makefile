@@ -39,6 +39,12 @@ vivado:
 	rm -f picorv32_vivado.log
 	bash -c ". /opt/Xilinx/Vivado/2021.2/settings64.sh; vivado -mode batch -nojournal -log picorv32_vivado.log -source picorv32_vivado.tcl"
 
+show_partition_list:
+	sed 's/ : / :\n/' picorv32_vivado/partition.list | fold -s | sed '/ :/ ! s/^/  /'
+
+show_partition_sizes:
+	jq -c '{(input_filename): {gold_cells: .gold_module.cellcount, gate_cells: .gate_module.cellcount}}' picorv32_vivado/partitions/*.json | jq -Ss 'add'
+
 clean:
 	rm -f test_gold.vcd test_gate.vcd test_gold test_gate
 	rm -f init_gold.vcd init_gate.vcd vcdmatch.out
