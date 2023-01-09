@@ -6,3 +6,6 @@
 /test_gold.vcd
 /test_gate
 /test_gold
+/tryamend_*/
+/tryamend_*.eqy
+/tryamend.mk

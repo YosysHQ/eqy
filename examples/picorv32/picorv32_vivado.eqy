@@ -175,16 +175,16 @@ merge is_*
 merge alu_*
 merge instr_*
 merge count_*
+final cpu_state[]
+final reg_next_pc[]
 final decoder_trigger
 final decoder_pseudo_trigger
+final cpuregs_wrdata
 final pcpi_valid
 final pcpi_insn
 final trap
 
 # currently failing pdr, but passing bmc
-final cpuregs_wrdata
-final reg_next_pc[]
-final cpu_state[]
 final pcpi_rs1
 merge mem_*
 merge decoded_*
@@ -208,102 +208,124 @@ amend latched_is_lb    decoder_pseudo_trigger
 amend latched_is_lh    decoder_pseudo_trigger
 amend latched_is_lu    decoder_pseudo_trigger
 
+amend mem_do_prefetch  cpu_state[]
+amend mem_do_rdata     cpu_state[]
+amend mem_do_wdata     cpu_state[]
+amend decoded_imm_j[]  cpu_state[]
 
-# amend templates
+amend cpu_state[]      reg_next_pc[]
+amend mem_do_prefetch  reg_next_pc[]
+amend mem_do_rdata     reg_next_pc[]
+amend decoded_rs1      reg_next_pc[]
+amend decoded_imm_j[]  reg_next_pc[]
+
+amend cpu_state[]      cpuregs_wrdata
+amend decoded_imm_j[]  cpuregs_wrdata
+amend mem_do_prefetch  cpuregs_wrdata
+amend mem_do_rdata     cpuregs_wrdata
+
+
+# PDR seems to be faster with these
+amend instr_*          reg_next_pc[]
+amend is_*             reg_next_pc[]
+
+
+##########################################
+# Amend Templates   (use with tryamend.sh)
 #
-#amend cpu_state[]      XYZ
-#amend mem_*            XYZ
-#amend decode*          XYZ
-#amend instr_*          XYZ
-#amend is_*             XYZ
-#amend alu*             XYZ
-#amend count*           XYZ
-#amend latch*           XYZ
-#amend pcpi*            XYZ
-#amend *reg*            XYZ
-#amend trap             XYZ
+#{C} amend cpu_state[]      XYZ
+#{M} amend mem_*            XYZ
+#{D} amend decode*          XYZ
+#{I} amend instr_*          XYZ
+#{S} amend is_*             XYZ
+#{A} amend alu*             XYZ
+#{N} amend count*           XYZ
+#{L} amend latch*           XYZ
+#{P} amend pcpi*            XYZ
+#{R} amend *reg*            XYZ
+#{T} amend trap             XYZ
 #
-#amend mem_addr         XYZ
-#amend mem_instr        XYZ
-#amend mem_valid        XYZ
-#amend mem_wdata        XYZ
-#amend mem_wstrb        XYZ
-#amend mem_do_prefetch  XYZ
-#amend mem_do_rdata     XYZ
-#amend mem_do_rinst     XYZ
-#amend mem_do_wdata     XYZ
+#{M1} amend mem_addr         XYZ
+#{M2} amend mem_instr        XYZ
+#{M3} amend mem_valid        XYZ
+#{M4} amend mem_wdata        XYZ
+#{M5} amend mem_wstrb        XYZ
+#{M6} amend mem_do_prefetch  XYZ
+#{M7} amend mem_do_rdata     XYZ
+#{M8} amend mem_do_rinst     XYZ
+#{M9} amend mem_do_wdata     XYZ
 #
-#amend decoded_rd       XYZ
-#amend decoded_rs1      XYZ
-#amend decoded_imm_j[]  XYZ
-#amend decoded_imm      XYZ
-#amend decoder_pseudo*  XYZ
-#amend decoder_trigger  XYZ
+#{D1} amend decoded_rd       XYZ
+#{D2} amend decoded_rs1      XYZ
+#{D3} amend decoded_imm_j[]  XYZ
+#{D4} amend decoded_imm      XYZ
+#{D5} amend decoder_pseudo*  XYZ
+#{D6} amend decoder_trigger  XYZ
 #
-#amend instr_add        XYZ
-#amend instr_addi       XYZ
-#amend instr_and        XYZ
-#amend instr_andi       XYZ
-#amend instr_auipc      XYZ
-#amend instr_beq        XYZ
-#amend instr_bge        XYZ
-#amend instr_bgeu       XYZ
-#amend instr_blt        XYZ
-#amend instr_bltu       XYZ
-#amend instr_bne        XYZ
-#amend instr_jal        XYZ
-#amend instr_jalr       XYZ
-#amend instr_lb         XYZ
-#amend instr_lbu        XYZ
-#amend instr_lh         XYZ
-#amend instr_lhu        XYZ
-#amend instr_lui        XYZ
-#amend instr_lw         XYZ
-#amend instr_or         XYZ
-#amend instr_ori        XYZ
-#amend instr_rdcycle    XYZ
-#amend instr_rdcycleh   XYZ
-#amend instr_rdinstr    XYZ
-#amend instr_rdinstrh   XYZ
-#amend instr_sb         XYZ
-#amend instr_sh         XYZ
-#amend instr_sll        XYZ
-#amend instr_slli       XYZ
-#amend instr_slt        XYZ
-#amend instr_slti       XYZ
-#amend instr_sltiu      XYZ
-#amend instr_sltu       XYZ
-#amend instr_sra        XYZ
-#amend instr_srai       XYZ
-#amend instr_srl        XYZ
-#amend instr_srli       XYZ
-#amend instr_sub        XYZ
-#amend instr_sw         XYZ
-#amend instr_xor        XYZ
-#amend instr_xori       XYZ
+#{I01} amend instr_add        XYZ
+#{I02} amend instr_addi       XYZ
+#{I03} amend instr_and        XYZ
+#{I04} amend instr_andi       XYZ
+#{I05} amend instr_auipc      XYZ
+#{I06} amend instr_beq        XYZ
+#{I07} amend instr_bge        XYZ
+#{I08} amend instr_bgeu       XYZ
+#{I09} amend instr_blt        XYZ
+#{I10} amend instr_bltu       XYZ
+#{I11} amend instr_bne        XYZ
+#{I12} amend instr_jal        XYZ
+#{I13} amend instr_jalr       XYZ
+#{I14} amend instr_lb         XYZ
+#{I15} amend instr_lbu        XYZ
+#{I16} amend instr_lh         XYZ
+#{I17} amend instr_lhu        XYZ
+#{I18} amend instr_lui        XYZ
+#{I19} amend instr_lw         XYZ
+#{I20} amend instr_or         XYZ
+#{I21} amend instr_ori        XYZ
+#{I22} amend instr_rdcycle    XYZ
+#{I23} amend instr_rdcycleh   XYZ
+#{I24} amend instr_rdinstr    XYZ
+#{I25} amend instr_rdinstrh   XYZ
+#{I26} amend instr_sb         XYZ
+#{I27} amend instr_sh         XYZ
+#{I28} amend instr_sll        XYZ
+#{I29} amend instr_slli       XYZ
+#{I30} amend instr_slt        XYZ
+#{I31} amend instr_slti       XYZ
+#{I32} amend instr_sltiu      XYZ
+#{I33} amend instr_sltu       XYZ
+#{I34} amend instr_sra        XYZ
+#{I35} amend instr_srai       XYZ
+#{I36} amend instr_srl        XYZ
+#{I37} amend instr_srli       XYZ
+#{I38} amend instr_sub        XYZ
+#{I39} amend instr_sw         XYZ
+#{I40} amend instr_xor        XYZ
+#{I41} amend instr_xori       XYZ
 #
-#amend is_alu_reg_imm   XYZ
-#amend is_alu_reg_reg   XYZ
-#amend is_beq_bne_*     XYZ
-#amend is_compare       XYZ
-#amend is_jalr_addi_*   XYZ
-#amend is_lb_lh_lw_*    XYZ
-#amend is_lbu_lhu_lw    XYZ
-#amend is_lui_auipc_jal XYZ
-#amend is_lui_*_add_sub XYZ
-#amend is_sb_sh_sw      XYZ
-#amend is_sll_srl_sra   XYZ
-#amend is_slli_srli_*   XYZ
-#amend is_slti_blt_slt  XYZ
-#amend is_sltiu_bltu_*  XYZ
+#{S01} amend is_alu_reg_imm   XYZ
+#{S02} amend is_alu_reg_reg   XYZ
+#{S03} amend is_beq_bne_*     XYZ
+#{S04} amend is_compare       XYZ
+#{S05} amend is_jalr_addi_*   XYZ
+#{S06} amend is_lb_lh_lw_*    XYZ
+#{S07} amend is_lbu_lhu_lw    XYZ
+#{S08} amend is_lui_auipc_jal XYZ
+#{S09} amend is_lui_*_add_sub XYZ
+#{S10} amend is_sb_sh_sw      XYZ
+#{S11} amend is_sll_srl_sra   XYZ
+#{S12} amend is_slli_srli_*   XYZ
+#{S13} amend is_slti_blt_slt  XYZ
+#{S14} amend is_sltiu_bltu_*  XYZ
 #
-#amend latched_rd       XYZ
-#amend latched_branch   XYZ
-#amend latched_stalu    XYZ
-#amend latched_store    XYZ
-#amend latched_is_lb    XYZ
-#amend latched_is_lh    XYZ
-#amend latched_is_lu    XYZ
+#{L1} amend latched_rd       XYZ
+#{L2} amend latched_branch   XYZ
+#{L3} amend latched_stalu    XYZ
+#{L4} amend latched_store    XYZ
+#{L5} amend latched_is_lb    XYZ
+#{L6} amend latched_is_lh    XYZ
+#{L7} amend latched_is_lu    XYZ
 
 [strategy pdr]
 use sby
