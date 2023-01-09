@@ -176,6 +176,9 @@ merge alu_*
 merge instr_*
 merge count_*
 final decoder_trigger
+final decoder_pseudo_trigger
+final pcpi_valid
+final pcpi_insn
 final trap
 
 # currently failing pdr, but passing bmc
@@ -186,15 +189,121 @@ final pcpi_rs1
 merge mem_*
 merge decoded_*
 merge latched_*
-final decoder_pseudo_trigger
 
 # amend some partitions
 amend cpu_state[] count_*
 amend cpu_state[] decoder_trigger
 amend cpu_state[] trap
 
-amend cpu_state[] decoder_pseudo_trigger
-amend mem_* decoder_pseudo_trigger
+amend cpu_state[]      decoder_pseudo_trigger
+amend mem_valid        decoder_pseudo_trigger
+amend mem_do_*         decoder_pseudo_trigger
+amend instr_*          decoder_pseudo_trigger
+amend is_lbu_lhu_lw    decoder_pseudo_trigger
+amend is_slti_blt_slt  decoder_pseudo_trigger
+amend is_sltiu_bltu_*  decoder_pseudo_trigger
+amend is_sll_srl_sra   decoder_pseudo_trigger
+amend decoder_trigger  decoder_pseudo_trigger
+amend latched_is_lb    decoder_pseudo_trigger
+amend latched_is_lh    decoder_pseudo_trigger
+amend latched_is_lu    decoder_pseudo_trigger
+
+
+# amend templates
+#
+#amend cpu_state[]      XYZ
+#amend mem_*            XYZ
+#amend decode*          XYZ
+#amend instr_*          XYZ
+#amend is_*             XYZ
+#amend alu*             XYZ
+#amend count*           XYZ
+#amend latch*           XYZ
+#amend pcpi*            XYZ
+#amend *reg*            XYZ
+#amend trap             XYZ
+#
+#amend mem_addr         XYZ
+#amend mem_instr        XYZ
+#amend mem_valid        XYZ
+#amend mem_wdata        XYZ
+#amend mem_wstrb        XYZ
+#amend mem_do_prefetch  XYZ
+#amend mem_do_rdata     XYZ
+#amend mem_do_rinst     XYZ
+#amend mem_do_wdata     XYZ
+#
+#amend decoded_rd       XYZ
+#amend decoded_rs1      XYZ
+#amend decoded_imm_j[]  XYZ
+#amend decoded_imm      XYZ
+#amend decoder_pseudo*  XYZ
+#amend decoder_trigger  XYZ
+#
+#amend instr_add        XYZ
+#amend instr_addi       XYZ
+#amend instr_and        XYZ
+#amend instr_andi       XYZ
+#amend instr_auipc      XYZ
+#amend instr_beq        XYZ
+#amend instr_bge        XYZ
+#amend instr_bgeu       XYZ
+#amend instr_blt        XYZ
+#amend instr_bltu       XYZ
+#amend instr_bne        XYZ
+#amend instr_jal        XYZ
+#amend instr_jalr       XYZ
+#amend instr_lb         XYZ
+#amend instr_lbu        XYZ
+#amend instr_lh         XYZ
+#amend instr_lhu        XYZ
+#amend instr_lui        XYZ
+#amend instr_lw         XYZ
+#amend instr_or         XYZ
+#amend instr_ori        XYZ
+#amend instr_rdcycle    XYZ
+#amend instr_rdcycleh   XYZ
+#amend instr_rdinstr    XYZ
+#amend instr_rdinstrh   XYZ
+#amend instr_sb         XYZ
+#amend instr_sh         XYZ
+#amend instr_sll        XYZ
+#amend instr_slli       XYZ
+#amend instr_slt        XYZ
+#amend instr_slti       XYZ
+#amend instr_sltiu      XYZ
+#amend instr_sltu       XYZ
+#amend instr_sra        XYZ
+#amend instr_srai       XYZ
+#amend instr_srl        XYZ
+#amend instr_srli       XYZ
+#amend instr_sub        XYZ
+#amend instr_sw         XYZ
+#amend instr_xor        XYZ
+#amend instr_xori       XYZ
+#
+#amend is_alu_reg_imm   XYZ
+#amend is_alu_reg_reg   XYZ
+#amend is_beq_bne_*     XYZ
+#amend is_compare       XYZ
+#amend is_jalr_addi_*   XYZ
+#amend is_lb_lh_lw_*    XYZ
+#amend is_lbu_lhu_lw    XYZ
+#amend is_lui_auipc_jal XYZ
+#amend is_lui_*_add_sub XYZ
+#amend is_sb_sh_sw      XYZ
+#amend is_sll_srl_sra   XYZ
+#amend is_slli_srli_*   XYZ
+#amend is_slti_blt_slt  XYZ
+#amend is_sltiu_bltu_*  XYZ
+#
+#amend latched_rd       XYZ
+#amend latched_branch   XYZ
+#amend latched_stalu    XYZ
+#amend latched_store    XYZ
+#amend latched_is_lb    XYZ
+#amend latched_is_lh    XYZ
+#amend latched_is_lu    XYZ
 
 [strategy pdr]
 use sby

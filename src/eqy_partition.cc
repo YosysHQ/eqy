@@ -1184,7 +1184,7 @@ struct Partition
 		sby_file << "prove cover :\n";
 		sby_file << "\n";
 		sby_file << "[options]\n";
-		sby_file << "depth 10\n";
+		sby_file << "depth 20\n";
 		sby_file << "check: mode bmc\n";
 		sby_file << "prove: mode prove\n";
 		sby_file << "cover: mode cover\n";
@@ -1734,20 +1734,36 @@ void EqyPartitionWorker::merge_partitions()
 		log("     %3d: %s\n", p->index, p->names.front().c_str());
 	}
 	log("  Partition Matrix:\n");
-	log("           ");
+	log("          ");
 	for (auto &q_ptr : partitions) {
 		auto q = q_ptr.get();
 		if (!q->primitive) continue;
+		if (q->index % 5 == 0)
+			log(" ");
+		if (q->index % 10 == 0)
+			log("%d", q->index / 10);
+		else
+			log(" ");
+	}
+	log("\n");
+	log("          ");
+	for (auto &q_ptr : partitions) {
+		auto q = q_ptr.get();
+		if (!q->primitive) continue;
+		if (q->index % 5 == 0)
+			log(" ");
 		log("%d", q->index % 10);
 	}
 	log("\n");
 	for (auto &p_ptr : partitions) {
 		auto p = p_ptr.get();
 		if (p->finalized) continue;
-		log("     %3d   ", p->index);
+		log("     %3d  ", p->index);
 		for (auto &q_ptr : partitions) {
 			auto q = q_ptr.get();
 			if (!q->primitive) continue;
+			if (q->index % 5 == 0)
+				log(" ");
 			log("%c", p == q ? '#' :
 					p->info_merged_hier.count(q->index) ? 'X' :
 					p->info_merged_flat.count(q->index) ? '*' :
