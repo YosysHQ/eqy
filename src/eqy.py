@@ -715,7 +715,7 @@ def partition_ids(ctx):
 
             if line[0] == "merge" and len(line) == 3:
                 for module_match in search_modules(ctx, ctx.matched_ids, pattern):
-                    for entity_match in search_entities(ctx, ctx.matched_ids[module_match], ctx.matched_ids[module_match],
+                    for lhs, rhs in search_entities(ctx, ctx.matched_ids[module_match], ctx.matched_ids[module_match],
                                                         line[1], line[2], no_database[line[0]], no_database[line[0]]):
                         if (module_match, lhs) not in no_database["join"]:
                             print("join", module_match, lhs, file=partids_f)
@@ -728,13 +728,6 @@ def partition_ids(ctx):
                 for module_match in search_modules(ctx, ctx.matched_ids, pattern):
                     for lhs, rhs in search_entities(ctx, ctx.matched_ids[module_match], ctx.matched_ids[module_match],
                                                         line[1], line[2], no_database[line[0]], no_database[line[0]]):
-                        print(line[0], module_match, lhs, rhs, file=partids_f)
-                continue
-
-            if line[0] in "ramend" and len(line) == 3:
-                for module_match in search_modules(ctx, ctx.matched_ids, pattern):
-                    for lhs, rhs in search_entities(ctx, ctx.matched_ids[module_match], ctx.matched_ids[module_match],
-                                                        line[1], line[2], no_database["amend"], no_database["amend"]):
                         print(line[0], module_match, lhs, rhs, file=partids_f)
                 continue
 

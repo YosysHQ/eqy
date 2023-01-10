@@ -39,11 +39,23 @@ vivado:
 	rm -f picorv32_vivado.log
 	bash -c ". /opt/Xilinx/Vivado/2021.2/settings64.sh; vivado -mode batch -nojournal -log picorv32_vivado.log -source picorv32_vivado.tcl"
 
+check_%:
+	-eqy -d $@.d -fmj6 picorv32_vivado.eqy
+	sed '/Partition.Matrix:/,/^$$/!d;' $@.d/partition.log
+	cd $@.d/partitions && sby -f picorv32.$(subst check_,,$@).sby
+
+prove_%:
+	# -eqy -d check_$(subst prove_,,$@).d -fmj6 picorv32_vivado.eqy
+	cd check_$(subst prove_,,$@).d/strategies/picorv32.$(subst prove_,,$@)/pdr && sby -f picorv32.$(subst prove_,,$@).sby
+
 show_partition_list:
 	sed 's/ : / :\n/' picorv32_vivado/partition.list | fold -s | sed '/ :/ ! s/^/  /'
 
+show_partition_matrix:
+	sed '/^Partition.Summary:/,/^$$/!d;' picorv32_vivado/partition.log
+
 show_partition_sizes:
-	jq -c '{(input_filename): {gold_cells: .gold_module.cellcount, gate_cells: .gate_module.cellcount}}' picorv32_vivado/partitions/*.json | jq -Ss 'add'
+	jq -c '{(input_filename): {gold_cells: .gold_module.cellcount, gate_cells: .gate_module.cellcount}}' picorv32_vivado/partitions/*.json
 
 clean:
 	rm -f test_gold.vcd test_gate.vcd test_gold test_gate

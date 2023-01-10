@@ -170,7 +170,6 @@ solo-join pcpi_insn
 
 [partition picorv32]
 
-# currently passing pdr
 merge is_*
 merge alu_*
 merge instr_*
@@ -180,17 +179,19 @@ final reg_next_pc[]
 final decoder_trigger
 final decoder_pseudo_trigger
 final cpuregs_wrdata
-final pcpi_valid
-final pcpi_insn
-final pcpi_rs1
+merge pcpi_*
 final trap
 
-# currently failing pdr, but passing bmc
-merge mem_*
-merge decoded_*
+final mem_addr
+final mem_do_rinst
+merge mem_valid mem_do_*,mem_instr
+merge mem_wdata mem_wstrb
+
+final decoded_imm_j[]
+merge decoded_imm decoded_*
+
 merge latched_*
 
-# amend some partitions
 amend cpu_state[] count_*
 amend cpu_state[] decoder_trigger
 amend cpu_state[] trap
@@ -236,15 +237,47 @@ amend latched_branch   pcpi_rs1
 
 # -- <WorkInProgress> --
 
-amend * decoded_imm
-amend * latched_rd
+amend cpu_state[]      decoded_imm
+amend decode*          decoded_imm
+
+amend cpu_state[]      latched_rd
+amend decode*          latched_rd
+amend mem_*            latched_rd
+amend instr_*          latched_rd
+amend is_*             latched_rd
 
 amend cpu_state[]      mem_addr
 amend decoded_imm_j[]  mem_addr
 amend decoder_pseudo*  mem_addr
 amend decoder_trigger  mem_addr
+amend mem_do_rdata     mem_addr
+amend mem_do_prefetch  mem_addr
 amend instr_*          mem_addr
 amend is_*             mem_addr
+
+amend cpu_state[]      mem_do_rinst
+amend decoded_imm_j[]  mem_do_rinst
+amend decoder_pseudo*  mem_do_rinst
+amend decoder_trigger  mem_do_rinst
+amend mem_*            mem_do_rinst
+amend instr_*          mem_do_rinst
+amend is_*             mem_do_rinst
+
+amend cpu_state[]      mem_valid
+amend decoded_imm_j[]  mem_valid
+amend decoder_pseudo*  mem_valid
+amend decoder_trigger  mem_valid
+amend mem_*            mem_valid
+amend instr_*          mem_valid
+amend is_*             mem_valid
+
+amend cpu_state[]      mem_wdata
+amend decoded_imm_j[]  mem_wdata
+amend decoder_pseudo*  mem_wdata
+amend decoder_trigger  mem_wdata
+amend mem_*            mem_wdata
+amend instr_*          mem_wdata
+amend is_*             mem_wdata
 
 # -- </WorkInProgress> --
 

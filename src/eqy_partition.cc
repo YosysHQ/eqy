@@ -1769,7 +1769,7 @@ void EqyPartitionWorker::merge_partitions()
 					p->info_merged_flat.count(q->index) ? '*' :
 					p->info_amended.count(q->index) ? '+' : '.');
 		}
-		log("\n");
+		log("  %s\n", p->names.front().c_str());
 	}
 }
 
