@@ -54,11 +54,28 @@ splitnets count_instr
 splitnets mem_rdata_latched
 splitnets reg_next_pc
 splitnets decoded_imm_j
-cd ..
 
 [gate]
 splitnets cpu_state0_out
 splitnets decoded_imm_j
+
+[script]
+rename -hide decoded_imm_j[15]
+rename -hide decoded_imm_j[16]
+rename -hide decoded_imm_j[17]
+rename -hide decoded_imm_j[18]
+rename -hide decoded_imm_j[19]
+rename -hide decoded_imm_j[20]
+rename -hide decoded_imm_j[21]
+rename -hide decoded_imm_j[22]
+rename -hide decoded_imm_j[23]
+rename -hide decoded_imm_j[24]
+rename -hide decoded_imm_j[25]
+rename -hide decoded_imm_j[26]
+rename -hide decoded_imm_j[27]
+rename -hide decoded_imm_j[28]
+rename -hide decoded_imm_j[29]
+rename -hide decoded_imm_j[30]
 cd ..
 
 [collect picorv32]
@@ -389,7 +406,7 @@ use sby
 engine abc pdr
 timeout 5400
 
-[strategy sby]
-use sby
-depth 8
-engine smtbmc bitwuzla
+# [strategy sby]
+# use sby
+# depth 14
+# engine smtbmc bitwuzla
