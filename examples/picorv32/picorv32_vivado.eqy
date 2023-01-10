@@ -182,10 +182,10 @@ final decoder_pseudo_trigger
 final cpuregs_wrdata
 final pcpi_valid
 final pcpi_insn
+final pcpi_rs1
 final trap
 
 # currently failing pdr, but passing bmc
-final pcpi_rs1
 merge mem_*
 merge decoded_*
 merge latched_*
@@ -223,6 +223,30 @@ amend cpu_state[]      cpuregs_wrdata
 amend decoded_imm_j[]  cpuregs_wrdata
 amend mem_do_prefetch  cpuregs_wrdata
 amend mem_do_rdata     cpuregs_wrdata
+
+amend cpu_state[]      pcpi_rs1
+amend instr_*          pcpi_rs1
+amend is_*             pcpi_rs1
+amend mem_do_rinst     pcpi_rs1
+amend decoded_imm_j[]  pcpi_rs1
+amend decoder_trigger  pcpi_rs1
+amend decoder_pseudo*  pcpi_rs1
+amend latched_branch   pcpi_rs1
+
+
+# -- <WorkInProgress> --
+
+amend * decoded_imm
+amend * latched_rd
+
+amend cpu_state[]      mem_addr
+amend decoded_imm_j[]  mem_addr
+amend decoder_pseudo*  mem_addr
+amend decoder_trigger  mem_addr
+amend instr_*          mem_addr
+amend is_*             mem_addr
+
+# -- </WorkInProgress> --
 
 
 # PDR seems to be faster with these
@@ -330,7 +354,7 @@ amend is_*             reg_next_pc[]
 [strategy pdr]
 use sby
 engine abc pdr
-timeout 900
+timeout 5400
 
 [strategy sby]
 use sby
