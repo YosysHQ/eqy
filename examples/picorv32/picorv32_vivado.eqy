@@ -33,12 +33,7 @@ hierarchy -top picorv32
 #
 # Delete unused outputs
 
-[gold]
-cd picorv32
-delete -output mem_la_* trace_* pcpi_* eoi
-rename -hide mem_la_* trace_* eoi
-
-[gate]
+[script]
 cd picorv32
 delete -output mem_la_* trace_* pcpi_* eoi
 rename -hide mem_la_* trace_* eoi
@@ -53,13 +48,13 @@ splitnets alu_out
 splitnets count_instr
 splitnets mem_rdata_latched
 splitnets reg_next_pc
-splitnets decoded_imm_j
 
 [gate]
 splitnets cpu_state0_out
-splitnets decoded_imm_j
 
 [script]
+splitnets -ports pcpi_rs[12]
+splitnets decoded_imm_j
 rename -hide decoded_imm_j[15]
 rename -hide decoded_imm_j[16]
 rename -hide decoded_imm_j[17]
@@ -98,15 +93,27 @@ setundef -zero -undriven -init
 opt -keepdc -fast
 clean
 
+
 ##############################################################
 #
 # PicoRV32 Register File Outputs
 
 [match picorv32]
-gold-match pcpi_rs[12]
+gold-match pcpi_rs[12][]
 
 [collect picorv32]
-solo-group pcpi_rs[12]
+# group the 32-bit register file outputs into 4 single-byte lanes
+group pcpi_rs1[0]  /pcpi_rs[12]\[[0-7]\]/
+group pcpi_rs1[8]  /pcpi_rs[12]\[([89]|1[0-5])\]/
+group pcpi_rs1[16] /pcpi_rs[12]\[(1[6-9]|2[0-3])\]/
+group pcpi_rs1[24] /pcpi_rs[12]\[(2[4-9]|3[01])\]/
+solo pcpi_rs[12][]
+
+[partition picorv32]
+name regfile_byte0 pcpi_rs1[0]
+name regfile_byte1 pcpi_rs1[8]
+name regfile_byte2 pcpi_rs1[16]
+name regfile_byte3 pcpi_rs1[24]
 
 
 ##############################################################
@@ -130,6 +137,8 @@ gold-match cpu_state[7] cpu_state_reg_n_0_[7]
 [collect picorv32]
 solo-group cpu_state[]
 
+[partition picorv32]
+name cpu_state cpu_state[]
 
 ##############################################################
 #
@@ -192,26 +201,24 @@ merge alu_*
 merge instr_*
 merge count_*
 final cpu_state[]
-final reg_next_pc[]
+name reg_next_pc reg_next_pc[]
 final decoder_trigger
 final decoder_pseudo_trigger
 final cpuregs_wrdata
-merge pcpi_*
+merge pcpi_valid pcpi_insn
 final trap
 
 final mem_addr
 final mem_do_rinst
 merge mem_valid mem_do_*,mem_instr
 merge mem_wdata mem_wstrb
-
-final decoded_imm_j[]
 merge decoded_imm decoded_*
 
 merge latched_*
 
-amend cpu_state[] count_*
-amend cpu_state[] decoder_trigger
-amend cpu_state[] trap
+amend cpu_state[]      trap
+amend cpu_state[]      count_*
+amend cpu_state[]      decoder_trigger
 
 amend cpu_state[]      decoder_pseudo_trigger
 amend mem_valid        decoder_pseudo_trigger
@@ -237,71 +244,50 @@ amend mem_do_rdata     reg_next_pc[]
 amend decoded_rs1      reg_next_pc[]
 amend decoded_imm_j[]  reg_next_pc[]
 
+# PDR seems to be faster with these
+amend instr_*          reg_next_pc[]
+amend is_*             reg_next_pc[]
+
 amend cpu_state[]      cpuregs_wrdata
 amend decoded_imm_j[]  cpuregs_wrdata
 amend mem_do_prefetch  cpuregs_wrdata
 amend mem_do_rdata     cpuregs_wrdata
 
-amend cpu_state[]      pcpi_rs1
-amend instr_*          pcpi_rs1
-amend is_*             pcpi_rs1
-amend mem_do_rinst     pcpi_rs1
-amend decoded_imm_j[]  pcpi_rs1
-amend decoder_trigger  pcpi_rs1
-amend decoder_pseudo*  pcpi_rs1
-amend latched_branch   pcpi_rs1
-
-
-# -- <WorkInProgress> --
+amend cpu_state[]      pcpi_rs1[]
+amend instr_*          pcpi_rs1[]
+amend is_*             pcpi_rs1[]
+amend mem_do_rinst     pcpi_rs1[]
+amend decoded_imm_j[]  pcpi_rs1[]
+amend decoder_trigger  pcpi_rs1[]
+amend decoder_pseudo*  pcpi_rs1[]
+amend latched_branch   pcpi_rs1[]
 
 amend cpu_state[]      decoded_imm
 amend decode*          decoded_imm
 
 amend cpu_state[]      latched_rd
-amend decode*          latched_rd
-amend mem_*            latched_rd
+amend decoder_trigger  latched_rd
 amend instr_*          latched_rd
 amend is_*             latched_rd
 
+amend cpu_state[]      mem_valid
+
 amend cpu_state[]      mem_addr
 amend decoded_imm_j[]  mem_addr
-amend decoder_pseudo*  mem_addr
-amend decoder_trigger  mem_addr
 amend mem_do_rdata     mem_addr
 amend mem_do_prefetch  mem_addr
-amend instr_*          mem_addr
-amend is_*             mem_addr
 
 amend cpu_state[]      mem_do_rinst
 amend decoded_imm_j[]  mem_do_rinst
 amend decoder_pseudo*  mem_do_rinst
 amend decoder_trigger  mem_do_rinst
-amend mem_*            mem_do_rinst
 amend instr_*          mem_do_rinst
 amend is_*             mem_do_rinst
 
-amend cpu_state[]      mem_valid
-amend decoded_imm_j[]  mem_valid
-amend decoder_pseudo*  mem_valid
-amend decoder_trigger  mem_valid
-amend mem_*            mem_valid
-amend instr_*          mem_valid
-amend is_*             mem_valid
-
 amend cpu_state[]      mem_wdata
-amend decoded_imm_j[]  mem_wdata
-amend decoder_pseudo*  mem_wdata
-amend decoder_trigger  mem_wdata
-amend mem_*            mem_wdata
-amend instr_*          mem_wdata
-amend is_*             mem_wdata
-
-# -- </WorkInProgress> --
-
-
-# PDR seems to be faster with these
-amend instr_*          reg_next_pc[]
-amend is_*             reg_next_pc[]
+amend mem_do_prefetch  mem_wdata
+amend mem_do_wdata     mem_wdata
+amend mem_do_rdata     mem_wdata
 
 
 ##########################################

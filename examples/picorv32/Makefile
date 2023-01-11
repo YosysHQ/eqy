@@ -55,7 +55,7 @@ show_partition_matrix:
 	sed '/^Partition.Summary:/,/^$$/!d;' picorv32_vivado/partition.log
 
 show_partition_sizes:
-	jq -c '{(input_filename): {gold_cells: .gold_module.cellcount, gate_cells: .gate_module.cellcount}}' picorv32_vivado/partitions/*.json
+	jq -c '{(input_filename): {gold_cells: .gold_module.cellcount, gate_cells: .gate_module.cellcount}}' picorv32_vivado/modules/picorv32.json picorv32_vivado/partitions/*.json
 
 clean:
 	rm -f test_gold.vcd test_gate.vcd test_gold test_gate
