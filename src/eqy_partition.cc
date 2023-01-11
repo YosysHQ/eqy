@@ -278,7 +278,7 @@ struct EqyPartitionWorker
 
 	void create_partitions();
 	void merge_partitions();
-	void finalize_partitions(std::ofstream &partition_list_file);
+	void write(bool fragments);
 };
 
 struct Partition
@@ -295,10 +295,9 @@ struct Partition
 	pool<int> info_merged_flat;
 	pool<int> info_amended;
 
-	// A 'finalized' partition has either been written to an output file, or was replaced
-	// as partition to-be-written by merging it into another partition, making that other
-	// partition responsible for proving the POs that used to belong to this partition.
-	bool finalized = false;
+	// A 'superseded' partition was replaced by merging it into another partition, making that
+	// other partition responsible for proving the POs that used to belong to this partition.
+	bool superseded = false;
 
 	// A 'fragment' partition is the original partition for a PO (or a set of merged-early POs),
 	// before merging partitions and/or importing gold data from one partition into another.
@@ -316,7 +315,7 @@ struct Partition
 
 	Partition(EqyPartitionWorker *worker) : worker(worker), index(GetSize(worker->partitions)) { }
 
-	// Create a unique non-fragment clone of this partition and mark this partition as finalized.
+	// Create a unique non-fragment clone of this partition and mark this partition as superseded.
 	Partition *make_get_nonfragment()
 	{
 		if (merged_into >= 0) {
@@ -325,14 +324,14 @@ struct Partition
 			return other;
 		}
 
-		log_assert(!finalized);
+		log_assert(!superseded);
 		log_assert(!full_part);
 
 		if (!fragment) return this;
 
 		Partition *other = worker->create_partition();
 		merged_into = other->index;
-		finalized = true;
+		superseded = true;
 
 		other->info_merged_hier.insert(index);
 		other->info_merged_flat.insert(index);
@@ -366,18 +365,18 @@ struct Partition
 	}
 
 	// Merge the other partition into this partition, and mark the other partiton as
-	// finalized. POs of the other partiton become POs of this partition, potentially replacing
+	// superseded. POs of the other partiton become POs of this partition, potentially replacing
 	// existing PIs of this partiton. PIs of the other partition becme PIs of this partition,
 	// unless those nets already exist (as PIs, POs, or internal nets).
 	void merge(Partition *other)
 	{
-		log_assert(!finalized);
-		log_assert(!other->finalized);
+		log_assert(!superseded);
+		log_assert(!other->superseded);
 
 		log_assert(!full_part);
 		log_assert(!other->full_part);
 
-		other->finalized = true;
+		other->superseded = true;
 		other->merged_into = index;
 
 		info_merged_hier.insert(other->index);
@@ -458,7 +457,7 @@ struct Partition
 	// unless those nets already exist (as PIs, POs, or internal nets).
 	void import(const Partition *other)
 	{
-		log_assert(!finalized);
+		log_assert(!superseded);
 		log_assert(other->fragment);
 
 		log_assert(!full_part);
@@ -502,7 +501,7 @@ struct Partition
 		pool<SigBit> found_matched_bits;
 		gold_bit = worker->gold_sigmap(gold_bit);
 
-		log_assert(!finalized);
+		log_assert(!superseded);
 		log_assert(full_part || fragment);
 		log_assert(worker->queue.count(gold_bit));
 		worker->queue.erase(gold_bit);
@@ -658,17 +657,15 @@ struct Partition
 		}
 	}
 
-	Design *finalize(IdString partname, const std::string &filename_prefix, bool &xprop_partition)
+	Design *write(IdString partname, const std::string &filename_prefix, bool &xbits_partition, bool fragment = false)
 	{
-		log_assert(!finalized);
-		finalized = true;
-		xprop_partition = false;
+		xbits_partition = false;
 
-		log("Finalizing partition %d as %s.\n", index, log_id(partname));
+		log("Writing %s %d as %s.\n", fragment ? "fragment" : "partition", index, log_id(partname));
 
 		std::ofstream json_file((filename_prefix + ".json").c_str(), std::ofstream::trunc);
 		json_file << stringf("{\n");
-		json_file << stringf("  \"partition\": {\n");
+		json_file << stringf("  \"%s\": {\n", fragment ? "fragment" : "partition");
 		json_file << stringf("    \"index\": %d,\n", index);
 		json_file << stringf("    \"name\": \"%s\",\n", log_id(partname));
 
@@ -699,11 +696,15 @@ struct Partition
 
 		for (auto &bit : outbits)
 			json_bits[unescape_id(bit.wire->name)].insert(bit.offset);
-		write_json_bits("outbits");
+		write_json_bits("outbits", fragment);
 
-		for (auto &bit : crossbits)
-			json_bits[unescape_id(bit.wire->name)].insert(bit.offset);
-		write_json_bits("crossbits", true);
+		if (fragment) {
+			log_assert(crossbits.empty());
+		} else {
+			for (auto &bit : crossbits)
+				json_bits[unescape_id(bit.wire->name)].insert(bit.offset);
+			write_json_bits("crossbits", true);
+		}
 
 		json_file << stringf("  },\n");
 
@@ -794,7 +795,7 @@ struct Partition
 						SigBit out_bit;
 						if (bit.wire == nullptr) {
 							if (in_gold && bit == State::Sx)
-								xprop_partition = true;
+								xbits_partition = true;
 							out_bit = bit;
 						} else if (c->output(conn.first) && (inbits.count(in_gold ? bit : worker->gate_matches.at(bit, bit)) ||
 								(!in_gold && crossbits.count(worker->gate_matches.at(bit, bit)))))
@@ -807,7 +808,7 @@ struct Partition
 						if (is_reg && conn.first == ID::Q && out_bit.is_wire()) {
 							auto initval = initvals(bit);
 							if (in_gold && initval == State::Sx)
-								xprop_partition = true;
+								xbits_partition = true;
 							out_initvals.set_init(out_bit, initval);
 						}
 						bit_index++;
@@ -1019,199 +1020,201 @@ struct Partition
 
 		json_file << stringf("}\n");
 
-		std::ofstream vlog_file((filename_prefix + ".sv").c_str(), std::ofstream::trunc);
+		if (!fragment) {
+			std::ofstream vlog_file((filename_prefix + ".sv").c_str(), std::ofstream::trunc);
 
-		vlog_file << "module miter (\n";
+			vlog_file << "module miter (\n";
 
-		std::vector<std::string> port_decls;
-		for (auto it : pi_layout)
-			port_decls.push_back(stringf("input  [%3d:0] %s", it.first-1, it.second.c_str()));
-		port_decls.push_back("`ifdef DIRECT_CROSS_POINTS");
-		for (auto it : cp_layout)
-			port_decls.push_back(stringf("output [%3d:0] %s", it.first-1, it.second.c_str()));
-		port_decls.push_back("`else");
-		for (auto it : cp_layout)
-			port_decls.push_back(stringf("output [%3d:0] %s__gold", it.first-1, it.second.c_str()));
-		for (auto it : cp_layout)
-			port_decls.push_back(stringf("input  [%3d:0] %s__gate", it.first-1, it.second.c_str()));
-		port_decls.push_back("`endif");
-		for (auto it : mp_layout)
-			port_decls.push_back(stringf("output [%3d:0] %s__gold", it.first-1, it.second.c_str()));
-		for (auto it : mp_layout)
-			port_decls.push_back(stringf("output [%3d:0] %s__gate", it.first-1, it.second.c_str()));
-		for (auto it : po_layout)
-			port_decls.push_back(stringf("output [%3d:0] %s__gold", it.first-1, it.second.c_str()));
-		for (auto it : po_layout)
-			port_decls.push_back(stringf("output [%3d:0] %s__gate", it.first-1, it.second.c_str()));
-
-		for (int i = 0; i < GetSize(port_decls); i++) {
-			if (port_decls[i][0] == '`')
-				vlog_file << port_decls[i] << "\n";
-			else
-				vlog_file << "  " << port_decls[i] << (i+1 < GetSize(port_decls) ? " ,\n" : "\n");
-		}
-
-		vlog_file << ");\n";
-
-		for (auto gold : {true, false}) {
-			vlog_file << "  " << (gold ? mod_gold : mod_gate)->name.str() << " " << (gold ? "gold" : "gate") << " (\n";
-			port_decls.clear();
+			std::vector<std::string> port_decls;
 			for (auto it : pi_layout)
-				port_decls.push_back(stringf(".%s (%s )", it.second.c_str(), it.second.c_str()));
+				port_decls.push_back(stringf("input  [%3d:0] %s", it.first-1, it.second.c_str()));
 			port_decls.push_back("`ifdef DIRECT_CROSS_POINTS");
 			for (auto it : cp_layout)
-				port_decls.push_back(stringf(".%s (%s )", it.second.c_str(), it.second.c_str()));
+				port_decls.push_back(stringf("output [%3d:0] %s", it.first-1, it.second.c_str()));
 			port_decls.push_back("`else");
 			for (auto it : cp_layout)
-				port_decls.push_back(stringf(".%s (%s__%s )", it.second.c_str(), it.second.c_str(), (gold ? "gold" : "gate")));
+				port_decls.push_back(stringf("output [%3d:0] %s__gold", it.first-1, it.second.c_str()));
+			for (auto it : cp_layout)
+				port_decls.push_back(stringf("input  [%3d:0] %s__gate", it.first-1, it.second.c_str()));
 			port_decls.push_back("`endif");
 			for (auto it : mp_layout)
-				port_decls.push_back(stringf(".%s (%s__%s )", it.second.c_str(), it.second.c_str(), (gold ? "gold" : "gate")));
+				port_decls.push_back(stringf("output [%3d:0] %s__gold", it.first-1, it.second.c_str()));
+			for (auto it : mp_layout)
+				port_decls.push_back(stringf("output [%3d:0] %s__gate", it.first-1, it.second.c_str()));
 			for (auto it : po_layout)
-				port_decls.push_back(stringf(".%s (%s__%s )", it.second.c_str(), it.second.c_str(), (gold ? "gold" : "gate")));
-			for (int i = 0; i < GetSize(port_decls); i++)
+				port_decls.push_back(stringf("output [%3d:0] %s__gold", it.first-1, it.second.c_str()));
+			for (auto it : po_layout)
+				port_decls.push_back(stringf("output [%3d:0] %s__gate", it.first-1, it.second.c_str()));
+
+			for (int i = 0; i < GetSize(port_decls); i++) {
 				if (port_decls[i][0] == '`')
 					vlog_file << port_decls[i] << "\n";
 				else
-					vlog_file << "    " << port_decls[i] << (i+1 < GetSize(port_decls) ? ",\n" : "\n");
-			vlog_file << "  );\n";
-		}
+					vlog_file << "  " << port_decls[i] << (i+1 < GetSize(port_decls) ? " ,\n" : "\n");
+			}
 
-		vlog_file << "`ifdef ASSUME_DEFINED_INPUTS\n";
-		for (auto it : pi_layout)
-			vlog_file << stringf("  miter_def_prop #(%d, \"assume\") %s__assume (%s );\n",
-					it.first, it.second.c_str(), it.second.c_str());
-		vlog_file << "`endif\n";
-
-		vlog_file << "`ifndef DIRECT_CROSS_POINTS\n";
-		for (auto it : cp_layout)
-			vlog_file << stringf("  miter_cmp_prop #(%d, \"assume\") %s__assume (%s__gold , %s__gate );\n",
-					it.first, it.second.c_str(), it.second.c_str(), it.second.c_str());
-		vlog_file << "`endif\n";
-
-		vlog_file << "`ifdef CHECK_MATCH_POINTS\n";
-		for (auto it : mp_layout)
-			vlog_file << stringf("  miter_cmp_prop #(%d, \"assert\") %s__assert (%s__gold , %s__gate );\n",
-					it.first, it.second.c_str(), it.second.c_str(), it.second.c_str());
-		vlog_file << "`endif\n";
-
-		vlog_file << "`ifdef CHECK_OUTPUTS\n";
-		for (auto it : po_layout)
-			vlog_file << stringf("  miter_cmp_prop #(%d, \"assert\") %s__assert (%s__gold , %s__gate );\n",
-					it.first, it.second.c_str(), it.second.c_str(), it.second.c_str());
-		vlog_file << "`endif\n";
-
-		vlog_file << "`ifdef COVER_DEF_CROSS_POINTS\n";
-		vlog_file << "  `ifdef DIRECT_CROSS_POINTS\n";
-		for (auto it : cp_layout)
-			vlog_file << stringf("    miter_def_prop #(%d, \"cover\") %s__cover (%s );\n",
-					it.first, it.second.c_str(), it.second.c_str());
-		vlog_file << "  `else\n";
-		for (auto it : cp_layout)
-			vlog_file << stringf("    miter_def_prop #(%d, \"cover\") %s__cover (%s__gold );\n",
-					it.first, it.second.c_str(), it.second.c_str());
-		vlog_file << "  `endif\n";
-		vlog_file << "`endif\n";
-
-		vlog_file << "`ifdef COVER_DEF_GOLD_MATCH_POINTS\n";
-		for (auto it : mp_layout)
-			vlog_file << stringf("  miter_def_prop #(%d, \"cover\") %s__gold_cover (%s__gold );\n",
-					it.first, it.second.c_str(), it.second.c_str());
-		vlog_file << "`endif\n";
-
-		vlog_file << "`ifdef COVER_DEF_GATE_MATCH_POINTS\n";
-		for (auto it : mp_layout)
-			vlog_file << stringf("  miter_def_prop #(%d, \"cover\") %s__gate_cover (%s__gate );\n",
-					it.first, it.second.c_str(), it.second.c_str());
-		vlog_file << "`endif\n";
-
-		vlog_file << "`ifdef COVER_DEF_GOLD_OUTPUTS\n";
-		for (auto it : po_layout)
-			vlog_file << stringf("  miter_def_prop #(%d, \"cover\") %s__gold_cover (%s__gold );\n",
-					it.first, it.second.c_str(), it.second.c_str());
-		vlog_file << "`endif\n";
-
-		vlog_file << "`ifdef COVER_DEF_GATE_OUTPUTS\n";
-		for (auto it : po_layout)
-			vlog_file << stringf("  miter_def_prop #(%d, \"cover\") %s__gate_cover (%s__gate );\n",
-					it.first, it.second.c_str(), it.second.c_str());
-		vlog_file << "`endif\n";
-
-		vlog_file << "endmodule\n";
-		vlog_file << "module miter_cmp_prop #(parameter WIDTH=1, parameter TYPE=\"assert\") (input [WIDTH-1:0] in_gold, in_gate);\n";
-		vlog_file << "  reg okay;\n";
-		vlog_file << "  integer i;\n";
-		vlog_file << "  always @* begin\n";
-		vlog_file << "    okay = 1;\n";
-		vlog_file << "    for (i = 0; i < WIDTH; i = i+1)\n";
-		vlog_file << "      okay = okay && (in_gold[i] === 1'bx || in_gold[i] === in_gate[i]);\n";
-		vlog_file << "  end\n";
-		vlog_file << "  generate\n";
-		vlog_file << "    if (TYPE == \"assert\") always @* assert(okay);\n";
-		vlog_file << "    if (TYPE == \"assume\") always @* assume(okay);\n";
-		vlog_file << "    if (TYPE == \"cover\")  always @* cover(okay);\n";
-		vlog_file << "  endgenerate\n";
-		vlog_file << "endmodule\n";
-		vlog_file << "module miter_def_prop #(parameter WIDTH=1, parameter TYPE=\"assert\") (input [WIDTH-1:0] in);\n";
-		vlog_file << "  wire okay = ^in !== 1'bx;\n";
-		vlog_file << "  generate\n";
-		vlog_file << "    if (TYPE == \"assert\") always @* assert(okay);\n";
-		vlog_file << "    if (TYPE == \"assume\") always @* assume(okay);\n";
-		vlog_file << "    if (TYPE == \"cover\")  always @* cover(okay);\n";
-		vlog_file << "  endgenerate\n";
-		vlog_file << "endmodule\n";
-
-		for (auto gold : {true, false}) {
-			vlog_file << stringf("module %s (\n", (gold ? mod_gold : mod_gate)->name.c_str());
-			port_decls.clear();
-			for (auto it : pi_layout)
-				port_decls.push_back(stringf("input  [%3d:0] %s", it.first-1, it.second.c_str()));
-			for (auto it : cp_layout)
-				port_decls.push_back(stringf("%s [%3d:0] %s", gold ? "output" : "input ", it.first-1, it.second.c_str()));
-			for (auto it : mp_layout)
-				port_decls.push_back(stringf("output [%3d:0] %s", it.first-1, it.second.c_str()));
-			for (auto it : po_layout)
-				port_decls.push_back(stringf("output [%3d:0] %s", it.first-1, it.second.c_str()));
-			for (int i = 0; i < GetSize(port_decls); i++)
-				vlog_file << "  " << port_decls[i] << (i+1 < GetSize(port_decls) ? " ,\n" : "\n");
 			vlog_file << ");\n";
-			vlog_file << "endmodule\n";
-		}
 
-		std::ofstream sby_file((filename_prefix + ".sby").c_str(), std::ofstream::trunc);
-		sby_file << "[tasks]\n";
-		sby_file << "check default\n";
-		sby_file << "prove cover :\n";
-		sby_file << "\n";
-		sby_file << "[options]\n";
-		sby_file << "depth 20\n";
-		sby_file << "check: mode bmc\n";
-		sby_file << "prove: mode prove\n";
-		sby_file << "cover: mode cover\n";
-		sby_file << "\n";
-		sby_file << "[script]\n";
-		sby_file << "verilog_defaults -add -D CHECK_OUTPUTS\n";
-		sby_file << "verilog_defaults -add -D CHECK_MATCH_POINTS\n";
-		sby_file << "verilog_defaults -add -D COVER_DEF_CROSS_POINTS\n";
-		sby_file << "verilog_defaults -add -D COVER_DEF_GOLD_MATCH_POINTS\n";
-		sby_file << "verilog_defaults -add -D COVER_DEF_GATE_MATCH_POINTS\n";
-		sby_file << "verilog_defaults -add -D COVER_DEF_GOLD_OUTPUTS\n";
-		sby_file << "verilog_defaults -add -D COVER_DEF_GATE_OUTPUTS\n";
-		if (xprop_partition) sby_file << "# ";
-		sby_file << "verilog_defaults -add -D DIRECT_CROSS_POINTS\n";
-		sby_file << "# verilog_defaults -add -D ASSUME_DEFINED_INPUTS\n";
-		sby_file << "read_verilog -sv ../../" << partname.substr(1) << ".sv\n";
-		sby_file << "read_ilang ../../" << partname.substr(1) << ".il\n";
-		sby_file << "hierarchy -top miter; proc\n";
-		sby_file << "formalff -clk2ff -ff2anyinit gate." << partname.substr(1) << "\n";
-		sby_file << "setundef -anyseq gate." << partname.substr(1) << "\n";
-		sby_file << "flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean\n";
-		if (!xprop_partition) sby_file << "# ";
-		sby_file << "xprop -formal -split-ports -assume-def-inputs miter\n";
-		sby_file << "\n";
-		sby_file << "[engines]\n";
-		sby_file << "prove: abc pdr\n";
-		sby_file << "smtbmc --keep-going bitwuzla\n";
+			for (auto gold : {true, false}) {
+				vlog_file << "  " << (gold ? mod_gold : mod_gate)->name.str() << " " << (gold ? "gold" : "gate") << " (\n";
+				port_decls.clear();
+				for (auto it : pi_layout)
+					port_decls.push_back(stringf(".%s (%s )", it.second.c_str(), it.second.c_str()));
+				port_decls.push_back("`ifdef DIRECT_CROSS_POINTS");
+				for (auto it : cp_layout)
+					port_decls.push_back(stringf(".%s (%s )", it.second.c_str(), it.second.c_str()));
+				port_decls.push_back("`else");
+				for (auto it : cp_layout)
+					port_decls.push_back(stringf(".%s (%s__%s )", it.second.c_str(), it.second.c_str(), (gold ? "gold" : "gate")));
+				port_decls.push_back("`endif");
+				for (auto it : mp_layout)
+					port_decls.push_back(stringf(".%s (%s__%s )", it.second.c_str(), it.second.c_str(), (gold ? "gold" : "gate")));
+				for (auto it : po_layout)
+					port_decls.push_back(stringf(".%s (%s__%s )", it.second.c_str(), it.second.c_str(), (gold ? "gold" : "gate")));
+				for (int i = 0; i < GetSize(port_decls); i++)
+					if (port_decls[i][0] == '`')
+						vlog_file << port_decls[i] << "\n";
+					else
+						vlog_file << "    " << port_decls[i] << (i+1 < GetSize(port_decls) ? ",\n" : "\n");
+				vlog_file << "  );\n";
+			}
+
+			vlog_file << "`ifdef ASSUME_DEFINED_INPUTS\n";
+			for (auto it : pi_layout)
+				vlog_file << stringf("  miter_def_prop #(%d, \"assume\") %s__assume (%s );\n",
+						it.first, it.second.c_str(), it.second.c_str());
+			vlog_file << "`endif\n";
+
+			vlog_file << "`ifndef DIRECT_CROSS_POINTS\n";
+			for (auto it : cp_layout)
+				vlog_file << stringf("  miter_cmp_prop #(%d, \"assume\") %s__assume (%s__gold , %s__gate );\n",
+						it.first, it.second.c_str(), it.second.c_str(), it.second.c_str());
+			vlog_file << "`endif\n";
+
+			vlog_file << "`ifdef CHECK_MATCH_POINTS\n";
+			for (auto it : mp_layout)
+				vlog_file << stringf("  miter_cmp_prop #(%d, \"assert\") %s__assert (%s__gold , %s__gate );\n",
+						it.first, it.second.c_str(), it.second.c_str(), it.second.c_str());
+			vlog_file << "`endif\n";
+
+			vlog_file << "`ifdef CHECK_OUTPUTS\n";
+			for (auto it : po_layout)
+				vlog_file << stringf("  miter_cmp_prop #(%d, \"assert\") %s__assert (%s__gold , %s__gate );\n",
+						it.first, it.second.c_str(), it.second.c_str(), it.second.c_str());
+			vlog_file << "`endif\n";
+
+			vlog_file << "`ifdef COVER_DEF_CROSS_POINTS\n";
+			vlog_file << "  `ifdef DIRECT_CROSS_POINTS\n";
+			for (auto it : cp_layout)
+				vlog_file << stringf("    miter_def_prop #(%d, \"cover\") %s__cover (%s );\n",
+						it.first, it.second.c_str(), it.second.c_str());
+			vlog_file << "  `else\n";
+			for (auto it : cp_layout)
+				vlog_file << stringf("    miter_def_prop #(%d, \"cover\") %s__cover (%s__gold );\n",
+						it.first, it.second.c_str(), it.second.c_str());
+			vlog_file << "  `endif\n";
+			vlog_file << "`endif\n";
+
+			vlog_file << "`ifdef COVER_DEF_GOLD_MATCH_POINTS\n";
+			for (auto it : mp_layout)
+				vlog_file << stringf("  miter_def_prop #(%d, \"cover\") %s__gold_cover (%s__gold );\n",
+						it.first, it.second.c_str(), it.second.c_str());
+			vlog_file << "`endif\n";
+
+			vlog_file << "`ifdef COVER_DEF_GATE_MATCH_POINTS\n";
+			for (auto it : mp_layout)
+				vlog_file << stringf("  miter_def_prop #(%d, \"cover\") %s__gate_cover (%s__gate );\n",
+						it.first, it.second.c_str(), it.second.c_str());
+			vlog_file << "`endif\n";
+
+			vlog_file << "`ifdef COVER_DEF_GOLD_OUTPUTS\n";
+			for (auto it : po_layout)
+				vlog_file << stringf("  miter_def_prop #(%d, \"cover\") %s__gold_cover (%s__gold );\n",
+						it.first, it.second.c_str(), it.second.c_str());
+			vlog_file << "`endif\n";
+
+			vlog_file << "`ifdef COVER_DEF_GATE_OUTPUTS\n";
+			for (auto it : po_layout)
+				vlog_file << stringf("  miter_def_prop #(%d, \"cover\") %s__gate_cover (%s__gate );\n",
+						it.first, it.second.c_str(), it.second.c_str());
+			vlog_file << "`endif\n";
+
+			vlog_file << "endmodule\n";
+			vlog_file << "module miter_cmp_prop #(parameter WIDTH=1, parameter TYPE=\"assert\") (input [WIDTH-1:0] in_gold, in_gate);\n";
+			vlog_file << "  reg okay;\n";
+			vlog_file << "  integer i;\n";
+			vlog_file << "  always @* begin\n";
+			vlog_file << "    okay = 1;\n";
+			vlog_file << "    for (i = 0; i < WIDTH; i = i+1)\n";
+			vlog_file << "      okay = okay && (in_gold[i] === 1'bx || in_gold[i] === in_gate[i]);\n";
+			vlog_file << "  end\n";
+			vlog_file << "  generate\n";
+			vlog_file << "    if (TYPE == \"assert\") always @* assert(okay);\n";
+			vlog_file << "    if (TYPE == \"assume\") always @* assume(okay);\n";
+			vlog_file << "    if (TYPE == \"cover\")  always @* cover(okay);\n";
+			vlog_file << "  endgenerate\n";
+			vlog_file << "endmodule\n";
+			vlog_file << "module miter_def_prop #(parameter WIDTH=1, parameter TYPE=\"assert\") (input [WIDTH-1:0] in);\n";
+			vlog_file << "  wire okay = ^in !== 1'bx;\n";
+			vlog_file << "  generate\n";
+			vlog_file << "    if (TYPE == \"assert\") always @* assert(okay);\n";
+			vlog_file << "    if (TYPE == \"assume\") always @* assume(okay);\n";
+			vlog_file << "    if (TYPE == \"cover\")  always @* cover(okay);\n";
+			vlog_file << "  endgenerate\n";
+			vlog_file << "endmodule\n";
+
+			for (auto gold : {true, false}) {
+				vlog_file << stringf("module %s (\n", (gold ? mod_gold : mod_gate)->name.c_str());
+				port_decls.clear();
+				for (auto it : pi_layout)
+					port_decls.push_back(stringf("input  [%3d:0] %s", it.first-1, it.second.c_str()));
+				for (auto it : cp_layout)
+					port_decls.push_back(stringf("%s [%3d:0] %s", gold ? "output" : "input ", it.first-1, it.second.c_str()));
+				for (auto it : mp_layout)
+					port_decls.push_back(stringf("output [%3d:0] %s", it.first-1, it.second.c_str()));
+				for (auto it : po_layout)
+					port_decls.push_back(stringf("output [%3d:0] %s", it.first-1, it.second.c_str()));
+				for (int i = 0; i < GetSize(port_decls); i++)
+					vlog_file << "  " << port_decls[i] << (i+1 < GetSize(port_decls) ? " ,\n" : "\n");
+				vlog_file << ");\n";
+				vlog_file << "endmodule\n";
+			}
+
+			std::ofstream sby_file((filename_prefix + ".sby").c_str(), std::ofstream::trunc);
+			sby_file << "[tasks]\n";
+			sby_file << "check default\n";
+			sby_file << "prove cover :\n";
+			sby_file << "\n";
+			sby_file << "[options]\n";
+			sby_file << "depth 20\n";
+			sby_file << "check: mode bmc\n";
+			sby_file << "prove: mode prove\n";
+			sby_file << "cover: mode cover\n";
+			sby_file << "\n";
+			sby_file << "[script]\n";
+			sby_file << "verilog_defaults -add -D CHECK_OUTPUTS\n";
+			sby_file << "verilog_defaults -add -D CHECK_MATCH_POINTS\n";
+			sby_file << "verilog_defaults -add -D COVER_DEF_CROSS_POINTS\n";
+			sby_file << "verilog_defaults -add -D COVER_DEF_GOLD_MATCH_POINTS\n";
+			sby_file << "verilog_defaults -add -D COVER_DEF_GATE_MATCH_POINTS\n";
+			sby_file << "verilog_defaults -add -D COVER_DEF_GOLD_OUTPUTS\n";
+			sby_file << "verilog_defaults -add -D COVER_DEF_GATE_OUTPUTS\n";
+			if (xbits_partition) sby_file << "# ";
+			sby_file << "verilog_defaults -add -D DIRECT_CROSS_POINTS\n";
+			sby_file << "# verilog_defaults -add -D ASSUME_DEFINED_INPUTS\n";
+			sby_file << "read_verilog -sv ../../" << partname.substr(1) << ".sv\n";
+			sby_file << "read_ilang ../../" << partname.substr(1) << ".il\n";
+			sby_file << "hierarchy -top miter; proc\n";
+			sby_file << "formalff -clk2ff -ff2anyinit gate." << partname.substr(1) << "\n";
+			sby_file << "setundef -anyseq gate." << partname.substr(1) << "\n";
+			sby_file << "flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean\n";
+			if (!xbits_partition) sby_file << "# ";
+			sby_file << "xprop -formal -split-ports -assume-def-inputs miter\n";
+			sby_file << "\n";
+			sby_file << "[engines]\n";
+			sby_file << "prove: abc pdr\n";
+			sby_file << "smtbmc --keep-going bitwuzla\n";
+		}
 
 		return partdesign;
 	}
@@ -1238,7 +1241,7 @@ void EqyPartitionWorker::check_integrity()
 				new_pi_fragments_index[bit].insert(p->index);
 		}
 
-		if (!p->finalized) {
+		if (!p->superseded) {
 			for (auto bit : p->outbits) {
 				log_assert(!new_po_partition_index.count(bit));
 				new_po_partition_index[bit] = p->index;
@@ -1322,7 +1325,7 @@ void EqyPartitionWorker::create_partitions()
 	log("Final list of fragment partitions:\n");
 	for (int i = 0; i < GetSize(partitions); i++) {
 		auto p = partition(i);
-		if (p->finalized) continue;
+		if (p->superseded) continue;
 		log("  %d", i);
 		for (auto bit : p->outbits)
 			log(" %s", log_signal(bit));
@@ -1348,7 +1351,7 @@ void EqyPartitionWorker::merge_partitions()
 				if (!po_partition_index.count(bit))
 					continue;
 				auto p = partition(po_partition_index.at(bit));
-				log_assert(!p->finalized);
+				log_assert(!p->superseded);
 				log("  PO bit %s belongs to partition %d\n", log_signal(bit), p->index);
 				if (p->marked_final) {
 					log("    Skipping partition marked final.\n");
@@ -1384,7 +1387,7 @@ void EqyPartitionWorker::merge_partitions()
 				if (!po_partition_index.count(bit))
 					continue;
 				auto p = partition(po_partition_index.at(bit));
-				log_assert(!p->finalized);
+				log_assert(!p->superseded);
 				log("  PO bit %s belongs to partition %d\n", log_signal(bit), p->index);
 				if (p->marked_final) {
 					log("    Skipping partition marked final.\n");
@@ -1410,7 +1413,7 @@ void EqyPartitionWorker::merge_partitions()
 				if (!po_partition_index.count(bit))
 					continue;
 				auto generator = partition(po_partition_index.at(bit))->make_get_nonfragment();
-				log_assert(!generator->finalized);
+				log_assert(!generator->superseded);
 				log("  PO bit %s belongs to partition %d\n", log_signal(bit), generator->index);
 				if (generator->marked_final) {
 					log("    Skipping partition marked final.\n");
@@ -1487,7 +1490,7 @@ void EqyPartitionWorker::merge_partitions()
 				if (!po_partition_index.count(bit))
 					continue;
 				auto p = partition(po_partition_index.at(bit));
-				log_assert(!p->finalized);
+				log_assert(!p->superseded);
 				p->marked_final = true;
 			}
 			continue;
@@ -1504,7 +1507,7 @@ void EqyPartitionWorker::merge_partitions()
 		bool did_something = false;
 		for (int idx = 0; idx < GetSize(partitions); idx++) {
 			auto p = partition(idx);
-			if (p->finalized || p->amend_with.empty())
+			if (p->superseded || p->amend_with.empty())
 				continue;
 
 			pool<int> this_amend_with, next_amend_with;
@@ -1553,7 +1556,7 @@ void EqyPartitionWorker::merge_partitions()
 		bool did_something = false;
 		for (int idx = 0; idx < GetSize(partitions); idx++) {
 			auto p = partition(idx);
-			if (p->finalized) continue;
+			if (p->superseded) continue;
 
 			log("  Checking partition %d:\n", p->index);
 
@@ -1649,7 +1652,7 @@ void EqyPartitionWorker::merge_partitions()
 	for (auto &it : partitions)
 	{
 		Partition *partition = it.get();
-		if (partition->finalized) continue;
+		if (partition->superseded) continue;
 
 		if (partition->name_priority) {
 			log("Partition %d already has a name: %s\n", partition->index, partition->names.front().c_str());
@@ -1730,7 +1733,7 @@ void EqyPartitionWorker::merge_partitions()
 	log("  Partitions:\n");
 	for (auto &p_ptr : partitions) {
 		auto p = p_ptr.get();
-		if (p->finalized) continue;
+		if (p->superseded) continue;
 		log("     %3d: %s\n", p->index, p->names.front().c_str());
 	}
 	log("  Fragment-Partition-Matrix:\n");
@@ -1757,7 +1760,7 @@ void EqyPartitionWorker::merge_partitions()
 	log("\n");
 	for (auto &p_ptr : partitions) {
 		auto p = p_ptr.get();
-		if (p->finalized) continue;
+		if (p->superseded) continue;
 		log("     %3d  ", p->index);
 		for (auto &q_ptr : partitions) {
 			auto q = q_ptr.get();
@@ -1776,21 +1779,28 @@ void EqyPartitionWorker::merge_partitions()
 	log("      +  .... fragments amended to the partition\n");
 }
 
-void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
+void EqyPartitionWorker::write(bool fragments)
 {
+	std::ofstream list_file = std::ofstream(fragments ? "fragment.list" : "partition.list", std::ofstream::out);
+
 	for (auto &it : partitions)
 	{
 		Partition *partition = it.get();
-		if (partition->finalized) continue;
+		if (fragments) {
+			if (!partition->fragment) continue;
+		} else {
+			if (partition->superseded) continue;
+		}
 
 		std::string partname = partition->full_part ? gold->name.substr(6) : partition->name_priority ?
 				stringf("%s.%s", gold->name.substr(6).c_str(), partition->names.front().c_str()) :
 				stringf("%s.%d", gold->name.substr(6).c_str(), partition->index);
-		std::string filename_prefix = stringf("%s/%s", partition->full_part ? "modules" : "partitions", partname.c_str());
+		std::string filename_prefix = stringf("%s/%s",
+				partition->full_part ? "modules" : fragments ? "fragments" : "partitions", partname.c_str());
 
-		bool xprop_partition;
+		bool xbits_partition;
 		IdString partid = "\\" + partname;
-		Design *partdesign = partition->finalize(partid, filename_prefix, xprop_partition);
+		Design *partdesign = partition->write(partid, filename_prefix, xbits_partition, fragments);
 
 		pool<SigBit> unused_gold_inputs = partition->inbits;
 		for (auto cell : partition->gold_cells)
@@ -1801,8 +1811,8 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 
 		if (!partition->full_part)
 		{
-			partition_list_file << unescape_id(gold->name).substr(5) << " ";
-			partition_list_file << partname;
+			list_file << unescape_id(gold->name).substr(5) << " ";
+			list_file << partname;
 
 			bool has_memory = false;
 			for (auto module : partdesign->modules()) {
@@ -1811,24 +1821,24 @@ void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
 			}
 
 			if (has_memory)
-				partition_list_file << " memory";
+				list_file << " memory";
 
-			if (xprop_partition)
-				partition_list_file << " xprop";
+			if (xbits_partition)
+				list_file << " xbits";
 
-			partition_list_file << " :";
+			list_file << " :";
 			SigSpec outsig(partition->outbits);
 			outsig.sort();
 
 			for (auto chunk : outsig.chunks())
 				if (chunk.offset == 0 && chunk.width == chunk.wire->width != 1)
-					partition_list_file << stringf(" %s", unescape_id(chunk.wire->name).c_str());
+					list_file << stringf(" %s", unescape_id(chunk.wire->name).c_str());
 				else if (chunk.width == 1)
-					partition_list_file << stringf(" %s[%d]", unescape_id(chunk.wire->name).c_str(), chunk.offset);
+					list_file << stringf(" %s[%d]", unescape_id(chunk.wire->name).c_str(), chunk.offset);
 				else
-					partition_list_file << stringf(" %s[%d:%d]", unescape_id(chunk.wire->name).c_str(), chunk.offset+chunk.width-1, chunk.offset);
+					list_file << stringf(" %s[%d:%d]", unescape_id(chunk.wire->name).c_str(), chunk.offset+chunk.width-1, chunk.offset);
 
-			partition_list_file << "\n";
+			list_file << "\n";
 		}
 
 		Backend::backend_call(partdesign, nullptr, filename_prefix + ".il", "rtlil");
@@ -1852,10 +1862,9 @@ struct EqyPartitionPass : public Pass
 		log("\n");
 	}
 
-	void partition_worker(Design *design,
+	void partition_worker(Design *design, bool write_fragments,
 			const dict<std::string, std::vector<std::pair<std::string, std::string>>> &matched_ids,
-			const dict<std::string, std::vector<std::vector<std::string>>> &partiton_ids,
-			std::ofstream &partition_list_file)
+			const dict<std::string, std::vector<std::vector<std::string>>> &partiton_ids)
 	{
 		int num_gold_modules = 0;
 		for (auto gold : design->modules())
@@ -1910,9 +1919,14 @@ struct EqyPartitionPass : public Pass
 				worker.merge_partitions();
 				//worker.check_integrity();
 
-				log_header(design, "Finalize partitions for module %s.\n", gold->name.substr(6).c_str());
+				if (write_fragments) {
+					log_header(design, "Write fragments for module %s.\n", gold->name.substr(6).c_str());
+					worker.write(true);
+				}
+
+				log_header(design, "Write partitions for module %s.\n", gold->name.substr(6).c_str());
 				worker.create_full_partition();
-				worker.finalize_partitions(partition_list_file);
+				worker.write(false);
 				log_pop();
 			}
 			else if (!gold->name.begins_with("\\gate.") && gold->name != "\\miter")
@@ -1967,7 +1981,8 @@ struct EqyPartitionPass : public Pass
 
 	void execute(std::vector<std::string> args, Design *design) override
 	{
-		std::string matched_ids_filename, partition_ids_filename, partition_list_filename;
+		std::string matched_ids_filename, partition_ids_filename;
+		bool write_fragments = false;
 
 		size_t argidx;
 		for (argidx = 1; argidx < args.size(); argidx++)
@@ -1980,8 +1995,8 @@ struct EqyPartitionPass : public Pass
 				partition_ids_filename = args[++argidx];
 				continue;
 			}
-			if ((args[argidx] == "-create_partition_list") && argidx+1 < args.size()) {
-				partition_list_filename = args[++argidx];
+			if (args[argidx] == "-write_fragments") {
+				write_fragments = true;
 				continue;
 			}
 			break;
@@ -1993,10 +2008,9 @@ struct EqyPartitionPass : public Pass
 		// TBD: handle absent arguments
 		auto matched_ids = read_matched_ids(matched_ids_filename);
 		dict<std::string, std::vector<std::vector<std::string>>> partition_ids = read_partition_ids(partition_ids_filename);
-		std::ofstream partition_list_file = std::ofstream(partition_list_filename, std::ofstream::out);
 
 		log_push();
-		partition_worker(design, matched_ids, partition_ids, partition_list_file);
+		partition_worker(design, write_fragments, matched_ids, partition_ids);
 		log_pop();
 	}
 } EqyPartitionPass;

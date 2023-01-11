@@ -743,9 +743,11 @@ def make_partitions(args, cfg, job):
         print("read_ilang combined.il".format(args.workdir), file=f)
         if cfg.options.insbuf:
             print("insbuf -chain", file=f)
-        print("{dbg}eqy_partition -matched_ids matched.ids -partition_ids partition.ids -create_partition_list partition.list".format(dbg="debug " if args.debugmode else ""), file=f)
+        print("{dbg}eqy_partition -matched_ids matched.ids -partition_ids partition.ids".format(dbg="debug " if args.debugmode else ""), file=f)
     if not os.path.isdir(args.workdir + "/modules"):
         os.mkdir(args.workdir + "/modules")
+    if not os.path.isdir(args.workdir + "/fragments"):
+        os.mkdir(args.workdir + "/fragments")
     if not os.path.isdir(args.workdir + "/partitions"):
         os.mkdir(args.workdir + "/partitions")
 
