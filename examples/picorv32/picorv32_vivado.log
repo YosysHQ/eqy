@@ -2,8 +2,8 @@
 # Vivado v2021.2 (64-bit)
 # SW Build 3367213 on Tue Oct 19 02:47:39 MDT 2021
 # IP Build 3369179 on Thu Oct 21 08:25:16 MDT 2021
-# Start of session at: Tue Dec 20 20:20:47 2022
-# Process ID: 167631
+# Start of session at: Wed Jan 11 02:54:32 2023
+# Process ID: 242243
 # Current directory: /home/claire/Work/eqy/examples/picorv32
 # Command line: vivado -mode batch -nojournal -log picorv32_vivado.log -source picorv32_vivado.tcl
 # Log file: /home/claire/Work/eqy/examples/picorv32/picorv32_vivado.log
@@ -30,19 +30,19 @@ Starting synth_design
 Using part: xc7k70tfbv676-1
 INFO: [Device 21-403] Loading part xc7k70tfbv676-1
 ---------------------------------------------------------------------------------
-Starting RTL Elaboration : Time (s): cpu = 00:00:04 ; elapsed = 00:00:05 . Memory (MB): peak = 2592.273 ; gain = 0.000 ; free physical = 4484 ; free virtual = 27036
+Starting RTL Elaboration : Time (s): cpu = 00:00:03 ; elapsed = 00:00:03 . Memory (MB): peak = 2593.277 ; gain = 0.000 ; free physical = 8018 ; free virtual = 27562
 ---------------------------------------------------------------------------------
 INFO: [Synth 8-6157] synthesizing module 'picorv32' [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:62]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1264]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1310]
-INFO: [Synth 8-155] case statement is not full and has no default [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1310]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1493]
-INFO: [Synth 8-155] case statement is not full and has no default [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1493]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1579]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1579]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1579]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1579]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1579]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1266]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1312]
+INFO: [Synth 8-155] case statement is not full and has no default [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1312]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1495]
+INFO: [Synth 8-155] case statement is not full and has no default [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1495]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1581]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1581]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1581]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1581]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1581]
 WARNING: [Synth 8-6014] Unused sequential element mem_la_firstword_reg_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:392]
 WARNING: [Synth 8-6014] Unused sequential element last_mem_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:393]
 WARNING: [Synth 8-6014] Unused sequential element next_insn_opcode_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:433]
@@ -63,31 +63,32 @@ WARNING: [Synth 8-6014] Unused sequential element cached_insn_rs1_reg was remove
 WARNING: [Synth 8-6014] Unused sequential element cached_insn_rs2_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:798]
 WARNING: [Synth 8-6014] Unused sequential element cached_insn_rd_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:799]
 WARNING: [Synth 8-6014] Unused sequential element dbg_insn_addr_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:803]
-WARNING: [Synth 8-6014] Unused sequential element clear_prefetched_high_word_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1288]
-WARNING: [Synth 8-6014] Unused sequential element set_mem_do_rinst_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1401]
-WARNING: [Synth 8-6014] Unused sequential element set_mem_do_rdata_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1402]
-WARNING: [Synth 8-6014] Unused sequential element set_mem_do_wdata_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1403]
-WARNING: [Synth 8-6014] Unused sequential element alu_out_0_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1405]
-WARNING: [Synth 8-6014] Unused sequential element alu_wait_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1408]
-WARNING: [Synth 8-6014] Unused sequential element alu_wait_2_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1409]
-WARNING: [Synth 8-6014] Unused sequential element dbg_rs1val_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1412]
-WARNING: [Synth 8-6014] Unused sequential element dbg_rs2val_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1413]
-WARNING: [Synth 8-6014] Unused sequential element dbg_rs1val_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1414]
-WARNING: [Synth 8-6014] Unused sequential element dbg_rs2val_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1415]
-WARNING: [Synth 8-6014] Unused sequential element next_irq_pending_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1435]
-WARNING: [Synth 8-6014] Unused sequential element decoder_trigger_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1442]
-WARNING: [Synth 8-6014] Unused sequential element decoder_pseudo_trigger_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1444]
-WARNING: [Synth 8-6014] Unused sequential element latched_trace_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1460]
-WARNING: [Synth 8-6014] Unused sequential element irq_active_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1466]
-WARNING: [Synth 8-6014] Unused sequential element irq_delay_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1467]
-WARNING: [Synth 8-6014] Unused sequential element irq_mask_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1468]
-WARNING: [Synth 8-6014] Unused sequential element irq_state_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1470]
-WARNING: [Synth 8-6014] Unused sequential element timer_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1472]
-WARNING: [Synth 8-6014] Unused sequential element current_pc_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1490]
-WARNING: [Synth 8-6014] Unused sequential element irq_pending_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1958]
-WARNING: [Synth 8-6014] Unused sequential element trace_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1447]
+WARNING: [Synth 8-6014] Unused sequential element clear_prefetched_high_word_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1290]
+WARNING: [Synth 8-6014] Unused sequential element set_mem_do_rinst_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1403]
+WARNING: [Synth 8-6014] Unused sequential element set_mem_do_rdata_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1404]
+WARNING: [Synth 8-6014] Unused sequential element set_mem_do_wdata_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1405]
+WARNING: [Synth 8-6014] Unused sequential element alu_out_0_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1407]
+WARNING: [Synth 8-6014] Unused sequential element alu_wait_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1410]
+WARNING: [Synth 8-6014] Unused sequential element alu_wait_2_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1411]
+WARNING: [Synth 8-6014] Unused sequential element dbg_rs1val_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1414]
+WARNING: [Synth 8-6014] Unused sequential element dbg_rs2val_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1415]
+WARNING: [Synth 8-6014] Unused sequential element dbg_rs1val_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1416]
+WARNING: [Synth 8-6014] Unused sequential element dbg_rs2val_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1417]
+WARNING: [Synth 8-6014] Unused sequential element next_irq_pending_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1437]
+WARNING: [Synth 8-6014] Unused sequential element decoder_trigger_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1444]
+WARNING: [Synth 8-6014] Unused sequential element decoder_pseudo_trigger_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1446]
+WARNING: [Synth 8-6014] Unused sequential element latched_trace_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1462]
+WARNING: [Synth 8-6014] Unused sequential element irq_active_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1468]
+WARNING: [Synth 8-6014] Unused sequential element irq_delay_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1469]
+WARNING: [Synth 8-6014] Unused sequential element irq_mask_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1470]
+WARNING: [Synth 8-6014] Unused sequential element irq_state_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1472]
+WARNING: [Synth 8-6014] Unused sequential element timer_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1474]
+WARNING: [Synth 8-6014] Unused sequential element current_pc_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1492]
+WARNING: [Synth 8-6014] Unused sequential element irq_pending_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1960]
+WARNING: [Synth 8-6014] Unused sequential element do_waitirq_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1447]
+WARNING: [Synth 8-6014] Unused sequential element trace_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1449]
 WARNING: [Synth 8-6014] Unused sequential element instr_ecall_ebreak_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1084]
-WARNING: [Synth 8-6014] Unused sequential element pcpi_timeout_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1465]
+WARNING: [Synth 8-6014] Unused sequential element pcpi_timeout_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1467]
 INFO: [Synth 8-6155] done synthesizing module 'picorv32' (1#1) [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:62]
 WARNING: [Synth 8-7129] Port pcpi_wr in module picorv32 is either unconnected or has no load
 WARNING: [Synth 8-7129] Port pcpi_rd[31] in module picorv32 is either unconnected or has no load
@@ -157,18 +158,18 @@ WARNING: [Synth 8-7129] Port irq[2] in module picorv32 is either unconnected or 
 WARNING: [Synth 8-7129] Port irq[1] in module picorv32 is either unconnected or has no load
 WARNING: [Synth 8-7129] Port irq[0] in module picorv32 is either unconnected or has no load
 ---------------------------------------------------------------------------------
-Finished RTL Elaboration : Time (s): cpu = 00:00:06 ; elapsed = 00:00:07 . Memory (MB): peak = 2592.273 ; gain = 0.000 ; free physical = 4518 ; free virtual = 27071
+Finished RTL Elaboration : Time (s): cpu = 00:00:04 ; elapsed = 00:00:04 . Memory (MB): peak = 2593.277 ; gain = 0.000 ; free physical = 8038 ; free virtual = 27591
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start Handling Custom Attributes
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished Handling Custom Attributes : Time (s): cpu = 00:00:07 ; elapsed = 00:00:08 . Memory (MB): peak = 2592.273 ; gain = 0.000 ; free physical = 4519 ; free virtual = 27071
+Finished Handling Custom Attributes : Time (s): cpu = 00:00:04 ; elapsed = 00:00:05 . Memory (MB): peak = 2593.277 ; gain = 0.000 ; free physical = 8038 ; free virtual = 27592
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished RTL Optimization Phase 1 : Time (s): cpu = 00:00:07 ; elapsed = 00:00:08 . Memory (MB): peak = 2592.273 ; gain = 0.000 ; free physical = 4519 ; free virtual = 27071
+Finished RTL Optimization Phase 1 : Time (s): cpu = 00:00:04 ; elapsed = 00:00:05 . Memory (MB): peak = 2593.277 ; gain = 0.000 ; free physical = 8038 ; free virtual = 27592
 ---------------------------------------------------------------------------------
-Netlist sorting complete. Time (s): cpu = 00:00:00.02 ; elapsed = 00:00:00.02 . Memory (MB): peak = 2592.273 ; gain = 0.000 ; free physical = 4510 ; free virtual = 27063
+Netlist sorting complete. Time (s): cpu = 00:00:00.01 ; elapsed = 00:00:00.01 . Memory (MB): peak = 2593.277 ; gain = 0.000 ; free physical = 8032 ; free virtual = 27586
 INFO: [Project 1-570] Preparing netlist for logic optimization
 
 Processing XDC Constraints
@@ -176,14 +177,14 @@ Initializing timing engine
 Completed Processing XDC Constraints
 
 INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
-Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2656.148 ; gain = 0.000 ; free physical = 4425 ; free virtual = 26977
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2657.152 ; gain = 0.000 ; free physical = 7932 ; free virtual = 27499
 INFO: [Project 1-111] Unisim Transformation Summary:
 No Unisim elements were transformed.
 
-RTL Elaboration Complete:  : Time (s): cpu = 00:00:10 ; elapsed = 00:00:10 . Memory (MB): peak = 2656.148 ; gain = 63.875 ; free physical = 4425 ; free virtual = 26977
-8 Infos, 120 Warnings, 0 Critical Warnings and 0 Errors encountered.
+RTL Elaboration Complete:  : Time (s): cpu = 00:00:06 ; elapsed = 00:00:06 . Memory (MB): peak = 2657.152 ; gain = 63.875 ; free physical = 7932 ; free virtual = 27499
+8 Infos, 121 Warnings, 0 Critical Warnings and 0 Errors encountered.
 synth_design completed successfully
-synth_design: Time (s): cpu = 00:00:15 ; elapsed = 00:00:16 . Memory (MB): peak = 2656.148 ; gain = 64.031 ; free physical = 4425 ; free virtual = 26977
+synth_design: Time (s): cpu = 00:00:09 ; elapsed = 00:00:10 . Memory (MB): peak = 2657.152 ; gain = 64.031 ; free physical = 7932 ; free virtual = 27499
 # synth_design {*}$synth_opts
 Command: synth_design -verbose -part xc7k70t-fbg676 -max_bram 0 -max_uram 0 -max_dsp 0 -no_srlextract -fsm_extraction off -resource_sharing off
 Starting synth_design
@@ -196,19 +197,19 @@ INFO: [Vivado_Tcl 4-287] User specified maximum number of block DSP allowed in d
 INFO: [Device 21-403] Loading part xc7k70tfbg676-3
 INFO: [Synth 8-7079] Multithreading enabled for synth_design using a maximum of 4 processes.
 ---------------------------------------------------------------------------------
-Starting RTL Elaboration : Time (s): cpu = 00:00:06 ; elapsed = 00:00:07 . Memory (MB): peak = 2656.148 ; gain = 0.000 ; free physical = 3378 ; free virtual = 25931
+Starting RTL Elaboration : Time (s): cpu = 00:00:03 ; elapsed = 00:00:03 . Memory (MB): peak = 2657.152 ; gain = 0.000 ; free physical = 6969 ; free virtual = 26536
 ---------------------------------------------------------------------------------
 INFO: [Synth 8-6157] synthesizing module 'picorv32' [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:62]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1264]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1310]
-INFO: [Synth 8-155] case statement is not full and has no default [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1310]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1493]
-INFO: [Synth 8-155] case statement is not full and has no default [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1493]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1579]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1579]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1579]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1579]
-WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1579]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1266]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1312]
+INFO: [Synth 8-155] case statement is not full and has no default [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1312]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1495]
+INFO: [Synth 8-155] case statement is not full and has no default [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1495]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1581]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1581]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1581]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1581]
+WARNING: [Synth 8-151] case item 1'b0 is unreachable [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1581]
 WARNING: [Synth 8-6014] Unused sequential element mem_la_firstword_reg_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:392]
 WARNING: [Synth 8-6014] Unused sequential element last_mem_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:393]
 WARNING: [Synth 8-6014] Unused sequential element next_insn_opcode_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:433]
@@ -229,31 +230,32 @@ WARNING: [Synth 8-6014] Unused sequential element cached_insn_rs1_reg was remove
 WARNING: [Synth 8-6014] Unused sequential element cached_insn_rs2_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:798]
 WARNING: [Synth 8-6014] Unused sequential element cached_insn_rd_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:799]
 WARNING: [Synth 8-6014] Unused sequential element dbg_insn_addr_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:803]
-WARNING: [Synth 8-6014] Unused sequential element clear_prefetched_high_word_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1288]
-WARNING: [Synth 8-6014] Unused sequential element set_mem_do_rinst_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1401]
-WARNING: [Synth 8-6014] Unused sequential element set_mem_do_rdata_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1402]
-WARNING: [Synth 8-6014] Unused sequential element set_mem_do_wdata_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1403]
-WARNING: [Synth 8-6014] Unused sequential element alu_out_0_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1405]
-WARNING: [Synth 8-6014] Unused sequential element alu_wait_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1408]
-WARNING: [Synth 8-6014] Unused sequential element alu_wait_2_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1409]
-WARNING: [Synth 8-6014] Unused sequential element dbg_rs1val_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1412]
-WARNING: [Synth 8-6014] Unused sequential element dbg_rs2val_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1413]
-WARNING: [Synth 8-6014] Unused sequential element dbg_rs1val_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1414]
-WARNING: [Synth 8-6014] Unused sequential element dbg_rs2val_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1415]
-WARNING: [Synth 8-6014] Unused sequential element next_irq_pending_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1435]
-WARNING: [Synth 8-6014] Unused sequential element decoder_trigger_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1442]
-WARNING: [Synth 8-6014] Unused sequential element decoder_pseudo_trigger_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1444]
-WARNING: [Synth 8-6014] Unused sequential element latched_trace_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1460]
-WARNING: [Synth 8-6014] Unused sequential element irq_active_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1466]
-WARNING: [Synth 8-6014] Unused sequential element irq_delay_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1467]
-WARNING: [Synth 8-6014] Unused sequential element irq_mask_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1468]
-WARNING: [Synth 8-6014] Unused sequential element irq_state_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1470]
-WARNING: [Synth 8-6014] Unused sequential element timer_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1472]
-WARNING: [Synth 8-6014] Unused sequential element current_pc_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1490]
-WARNING: [Synth 8-6014] Unused sequential element irq_pending_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1958]
-WARNING: [Synth 8-6014] Unused sequential element trace_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1447]
+WARNING: [Synth 8-6014] Unused sequential element clear_prefetched_high_word_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1290]
+WARNING: [Synth 8-6014] Unused sequential element set_mem_do_rinst_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1403]
+WARNING: [Synth 8-6014] Unused sequential element set_mem_do_rdata_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1404]
+WARNING: [Synth 8-6014] Unused sequential element set_mem_do_wdata_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1405]
+WARNING: [Synth 8-6014] Unused sequential element alu_out_0_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1407]
+WARNING: [Synth 8-6014] Unused sequential element alu_wait_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1410]
+WARNING: [Synth 8-6014] Unused sequential element alu_wait_2_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1411]
+WARNING: [Synth 8-6014] Unused sequential element dbg_rs1val_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1414]
+WARNING: [Synth 8-6014] Unused sequential element dbg_rs2val_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1415]
+WARNING: [Synth 8-6014] Unused sequential element dbg_rs1val_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1416]
+WARNING: [Synth 8-6014] Unused sequential element dbg_rs2val_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1417]
+WARNING: [Synth 8-6014] Unused sequential element next_irq_pending_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1437]
+WARNING: [Synth 8-6014] Unused sequential element decoder_trigger_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1444]
+WARNING: [Synth 8-6014] Unused sequential element decoder_pseudo_trigger_q_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1446]
+WARNING: [Synth 8-6014] Unused sequential element latched_trace_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1462]
+WARNING: [Synth 8-6014] Unused sequential element irq_active_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1468]
+WARNING: [Synth 8-6014] Unused sequential element irq_delay_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1469]
+WARNING: [Synth 8-6014] Unused sequential element irq_mask_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1470]
+WARNING: [Synth 8-6014] Unused sequential element irq_state_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1472]
+WARNING: [Synth 8-6014] Unused sequential element timer_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1474]
+WARNING: [Synth 8-6014] Unused sequential element current_pc_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1492]
+WARNING: [Synth 8-6014] Unused sequential element irq_pending_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1960]
+WARNING: [Synth 8-6014] Unused sequential element do_waitirq_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1447]
+WARNING: [Synth 8-6014] Unused sequential element trace_valid_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1449]
 WARNING: [Synth 8-6014] Unused sequential element instr_ecall_ebreak_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1084]
-WARNING: [Synth 8-6014] Unused sequential element pcpi_timeout_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1465]
+WARNING: [Synth 8-6014] Unused sequential element pcpi_timeout_reg was removed.  [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:1467]
 INFO: [Synth 8-6155] done synthesizing module 'picorv32' (1#1) [/home/claire/Work/eqy/examples/picorv32/picorv32_modified.v:62]
 WARNING: [Synth 8-7129] Port pcpi_wr in module picorv32 is either unconnected or has no load
 WARNING: [Synth 8-7129] Port pcpi_rd[31] in module picorv32 is either unconnected or has no load
@@ -323,47 +325,47 @@ WARNING: [Synth 8-7129] Port irq[2] in module picorv32 is either unconnected or 
 WARNING: [Synth 8-7129] Port irq[1] in module picorv32 is either unconnected or has no load
 WARNING: [Synth 8-7129] Port irq[0] in module picorv32 is either unconnected or has no load
 ---------------------------------------------------------------------------------
-Finished RTL Elaboration : Time (s): cpu = 00:00:08 ; elapsed = 00:00:09 . Memory (MB): peak = 2656.148 ; gain = 0.000 ; free physical = 3354 ; free virtual = 25907
+Finished RTL Elaboration : Time (s): cpu = 00:00:04 ; elapsed = 00:00:04 . Memory (MB): peak = 2657.152 ; gain = 0.000 ; free physical = 6880 ; free virtual = 26447
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start Handling Custom Attributes
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished Handling Custom Attributes : Time (s): cpu = 00:00:09 ; elapsed = 00:00:10 . Memory (MB): peak = 2656.148 ; gain = 0.000 ; free physical = 4285 ; free virtual = 26838
+Finished Handling Custom Attributes : Time (s): cpu = 00:00:04 ; elapsed = 00:00:04 . Memory (MB): peak = 2657.152 ; gain = 0.000 ; free physical = 7250 ; free virtual = 26818
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished RTL Optimization Phase 1 : Time (s): cpu = 00:00:09 ; elapsed = 00:00:10 . Memory (MB): peak = 2656.148 ; gain = 0.000 ; free physical = 4285 ; free virtual = 26838
+Finished RTL Optimization Phase 1 : Time (s): cpu = 00:00:04 ; elapsed = 00:00:04 . Memory (MB): peak = 2657.152 ; gain = 0.000 ; free physical = 7272 ; free virtual = 26840
 ---------------------------------------------------------------------------------
-Netlist sorting complete. Time (s): cpu = 00:00:00.03 ; elapsed = 00:00:00.03 . Memory (MB): peak = 2656.148 ; gain = 0.000 ; free physical = 4230 ; free virtual = 26783
+Netlist sorting complete. Time (s): cpu = 00:00:00.01 ; elapsed = 00:00:00.02 . Memory (MB): peak = 2657.152 ; gain = 0.000 ; free physical = 7755 ; free virtual = 27323
 INFO: [Project 1-570] Preparing netlist for logic optimization
 
 Processing XDC Constraints
 Initializing timing engine
 Completed Processing XDC Constraints
 
-Netlist sorting complete. Time (s): cpu = 00:00:00.01 ; elapsed = 00:00:00 . Memory (MB): peak = 2747.992 ; gain = 0.000 ; free physical = 4195 ; free virtual = 26748
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2747.996 ; gain = 0.000 ; free physical = 7733 ; free virtual = 27300
 INFO: [Project 1-111] Unisim Transformation Summary:
 No Unisim elements were transformed.
 
-Constraint Validation Runtime : Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2747.992 ; gain = 0.000 ; free physical = 4195 ; free virtual = 26748
+Constraint Validation Runtime : Time (s): cpu = 00:00:00.01 ; elapsed = 00:00:00.01 . Memory (MB): peak = 2747.996 ; gain = 0.000 ; free physical = 7733 ; free virtual = 27300
 ---------------------------------------------------------------------------------
-Finished Constraint Validation : Time (s): cpu = 00:00:17 ; elapsed = 00:00:18 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4247 ; free virtual = 26800
+Finished Constraint Validation : Time (s): cpu = 00:00:08 ; elapsed = 00:00:09 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7800 ; free virtual = 27368
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start Loading Part and Timing Information
 ---------------------------------------------------------------------------------
 Loading part: xc7k70tfbg676-3
 ---------------------------------------------------------------------------------
-Finished Loading Part and Timing Information : Time (s): cpu = 00:00:17 ; elapsed = 00:00:18 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4247 ; free virtual = 26800
+Finished Loading Part and Timing Information : Time (s): cpu = 00:00:08 ; elapsed = 00:00:09 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7800 ; free virtual = 27368
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start Applying 'set_property' XDC Constraints
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished applying 'set_property' XDC Constraints : Time (s): cpu = 00:00:17 ; elapsed = 00:00:18 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4247 ; free virtual = 26800
+Finished applying 'set_property' XDC Constraints : Time (s): cpu = 00:00:08 ; elapsed = 00:00:09 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7800 ; free virtual = 27368
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished RTL Optimization Phase 2 : Time (s): cpu = 00:00:17 ; elapsed = 00:00:18 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4242 ; free virtual = 26796
+Finished RTL Optimization Phase 2 : Time (s): cpu = 00:00:09 ; elapsed = 00:00:09 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7801 ; free virtual = 27373
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start RTL Component Statistics 
@@ -393,13 +395,15 @@ Detailed RTL Component Info :
 	   5 Input   32 Bit        Muxes := 1     
 	   7 Input   32 Bit        Muxes := 1     
 	   4 Input   32 Bit        Muxes := 5     
-	   9 Input   32 Bit        Muxes := 2     
 	   3 Input   32 Bit        Muxes := 2     
+	   9 Input   32 Bit        Muxes := 2     
 	   2 Input   16 Bit        Muxes := 1     
 	   4 Input    8 Bit        Muxes := 1     
-	   7 Input    8 Bit        Muxes := 1     
+	   5 Input    8 Bit        Muxes := 1     
+	   3 Input    8 Bit        Muxes := 3     
+	   2 Input    8 Bit        Muxes := 7     
 	   9 Input    8 Bit        Muxes := 1     
-	   2 Input    8 Bit        Muxes := 1     
+	   7 Input    8 Bit        Muxes := 1     
 	   2 Input    5 Bit        Muxes := 2     
 	   9 Input    5 Bit        Muxes := 2     
 	   3 Input    4 Bit        Muxes := 2     
@@ -407,13 +411,13 @@ Detailed RTL Component Info :
 	   4 Input    4 Bit        Muxes := 1     
 	   2 Input    4 Bit        Muxes := 1     
 	   2 Input    3 Bit        Muxes := 2     
-	   6 Input    2 Bit        Muxes := 1     
 	   9 Input    2 Bit        Muxes := 1     
+	   6 Input    2 Bit        Muxes := 1     
 	   9 Input    1 Bit        Muxes := 25    
-	   2 Input    1 Bit        Muxes := 20    
-	   4 Input    1 Bit        Muxes := 5     
-	   3 Input    1 Bit        Muxes := 5     
+	   2 Input    1 Bit        Muxes := 16    
 	   7 Input    1 Bit        Muxes := 3     
+	   3 Input    1 Bit        Muxes := 5     
+	   4 Input    1 Bit        Muxes := 5     
 ---------------------------------------------------------------------------------
 Finished RTL Component Statistics 
 ---------------------------------------------------------------------------------
@@ -500,7 +504,7 @@ WARNING: [Synth 8-7129] Port irq[2] in module picorv32 is either unconnected or 
 WARNING: [Synth 8-7129] Port irq[1] in module picorv32 is either unconnected or has no load
 WARNING: [Synth 8-7129] Port irq[0] in module picorv32 is either unconnected or has no load
 ---------------------------------------------------------------------------------
-Finished Cross Boundary and Area Optimization : Time (s): cpu = 00:00:24 ; elapsed = 00:00:25 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4208 ; free virtual = 26767
+Finished Cross Boundary and Area Optimization : Time (s): cpu = 00:00:13 ; elapsed = 00:00:14 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7755 ; free virtual = 27338
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start ROM, RAM, DSP, Shift Register and Retiming Reporting
@@ -521,13 +525,13 @@ Finished ROM, RAM, DSP, Shift Register and Retiming Reporting
 Start Applying XDC Timing Constraints
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished Applying XDC Timing Constraints : Time (s): cpu = 00:00:30 ; elapsed = 00:00:31 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4102 ; free virtual = 26659
+Finished Applying XDC Timing Constraints : Time (s): cpu = 00:00:16 ; elapsed = 00:00:17 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7643 ; free virtual = 27233
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start Timing Optimization
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished Timing Optimization : Time (s): cpu = 00:00:30 ; elapsed = 00:00:31 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4100 ; free virtual = 26659
+Finished Timing Optimization : Time (s): cpu = 00:00:17 ; elapsed = 00:00:17 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7643 ; free virtual = 27233
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start ROM, RAM, DSP, Shift Register and Retiming Reporting
@@ -547,7 +551,7 @@ Finished ROM, RAM, DSP, Shift Register and Retiming Reporting
 Start Technology Mapping
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished Technology Mapping : Time (s): cpu = 00:00:31 ; elapsed = 00:00:32 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4092 ; free virtual = 26651
+Finished Technology Mapping : Time (s): cpu = 00:00:17 ; elapsed = 00:00:18 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7633 ; free virtual = 27223
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start IO Insertion
@@ -565,37 +569,37 @@ Start Final Netlist Cleanup
 Finished Final Netlist Cleanup
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished IO Insertion : Time (s): cpu = 00:00:37 ; elapsed = 00:00:38 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4090 ; free virtual = 26649
+Finished IO Insertion : Time (s): cpu = 00:00:20 ; elapsed = 00:00:21 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7632 ; free virtual = 27222
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start Renaming Generated Instances
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished Renaming Generated Instances : Time (s): cpu = 00:00:37 ; elapsed = 00:00:38 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4090 ; free virtual = 26649
+Finished Renaming Generated Instances : Time (s): cpu = 00:00:20 ; elapsed = 00:00:21 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7632 ; free virtual = 27222
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start Rebuilding User Hierarchy
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished Rebuilding User Hierarchy : Time (s): cpu = 00:00:37 ; elapsed = 00:00:38 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4090 ; free virtual = 26649
+Finished Rebuilding User Hierarchy : Time (s): cpu = 00:00:20 ; elapsed = 00:00:21 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7632 ; free virtual = 27222
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start Renaming Generated Ports
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished Renaming Generated Ports : Time (s): cpu = 00:00:37 ; elapsed = 00:00:38 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4090 ; free virtual = 26649
+Finished Renaming Generated Ports : Time (s): cpu = 00:00:20 ; elapsed = 00:00:21 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7632 ; free virtual = 27222
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start Handling Custom Attributes
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished Handling Custom Attributes : Time (s): cpu = 00:00:37 ; elapsed = 00:00:38 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4090 ; free virtual = 26649
+Finished Handling Custom Attributes : Time (s): cpu = 00:00:20 ; elapsed = 00:00:21 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7632 ; free virtual = 27222
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start Renaming Generated Nets
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
-Finished Renaming Generated Nets : Time (s): cpu = 00:00:37 ; elapsed = 00:00:38 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4090 ; free virtual = 26649
+Finished Renaming Generated Nets : Time (s): cpu = 00:00:20 ; elapsed = 00:00:21 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7632 ; free virtual = 27222
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 Start Writing Synthesis Report
@@ -616,9 +620,9 @@ Report Cell Usage:
 |3     |LUT1     |     4|
 |4     |LUT2     |   162|
 |5     |LUT3     |    45|
-|6     |LUT4     |   263|
-|7     |LUT5     |   156|
-|8     |LUT6     |   399|
+|6     |LUT4     |   232|
+|7     |LUT5     |   181|
+|8     |LUT6     |   431|
 |9     |RAM32M   |    10|
 |10    |RAM32X1D |     4|
 |11    |FDRE     |   553|
@@ -627,29 +631,29 @@ Report Cell Usage:
 |14    |OBUF     |   307|
 +------+---------+------+
 ---------------------------------------------------------------------------------
-Finished Writing Synthesis Report : Time (s): cpu = 00:00:37 ; elapsed = 00:00:38 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4090 ; free virtual = 26649
+Finished Writing Synthesis Report : Time (s): cpu = 00:00:20 ; elapsed = 00:00:21 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7632 ; free virtual = 27222
 ---------------------------------------------------------------------------------
 Synthesis finished with 0 errors, 0 critical warnings and 70 warnings.
-Synthesis Optimization Runtime : Time (s): cpu = 00:00:34 ; elapsed = 00:00:35 . Memory (MB): peak = 2747.992 ; gain = 0.000 ; free physical = 4140 ; free virtual = 26699
-Synthesis Optimization Complete : Time (s): cpu = 00:00:37 ; elapsed = 00:00:38 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4140 ; free virtual = 26699
+Synthesis Optimization Runtime : Time (s): cpu = 00:00:19 ; elapsed = 00:00:20 . Memory (MB): peak = 2747.996 ; gain = 0.000 ; free physical = 7677 ; free virtual = 27267
+Synthesis Optimization Complete : Time (s): cpu = 00:00:20 ; elapsed = 00:00:21 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7677 ; free virtual = 27267
 INFO: [Project 1-571] Translating synthesized netlist
-Netlist sorting complete. Time (s): cpu = 00:00:00.01 ; elapsed = 00:00:00.01 . Memory (MB): peak = 2747.992 ; gain = 0.000 ; free physical = 4238 ; free virtual = 26798
+Netlist sorting complete. Time (s): cpu = 00:00:00.01 ; elapsed = 00:00:00.01 . Memory (MB): peak = 2747.996 ; gain = 0.000 ; free physical = 7774 ; free virtual = 27368
 INFO: [Netlist 29-17] Analyzing 105 Unisim elements for replacement
 INFO: [Netlist 29-28] Unisim Transformation completed in 0 CPU seconds
 WARNING: [Netlist 29-101] Netlist 'picorv32' is not ideal for floorplanning, since the cellview 'picorv32' contains a large number of primitives.  Please consider enabling hierarchy in synthesis if you want to do floorplanning.
 INFO: [Project 1-570] Preparing netlist for logic optimization
 INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
-Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2747.992 ; gain = 0.000 ; free physical = 4184 ; free virtual = 26743
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2747.996 ; gain = 0.000 ; free physical = 7720 ; free virtual = 27313
 INFO: [Project 1-111] Unisim Transformation Summary:
   A total of 14 instances were transformed.
   RAM32M => RAM32M (RAMD32(x6), RAMS32(x2)): 10 instances
   RAM32X1D => RAM32X1D (RAMD32(x2)): 4 instances
 
-Synth Design complete, checksum: f9bd3f34
+Synth Design complete, checksum: cfa1d8a2
 INFO: [Common 17-83] Releasing license: Synthesis
-19 Infos, 191 Warnings, 0 Critical Warnings and 0 Errors encountered.
+19 Infos, 192 Warnings, 0 Critical Warnings and 0 Errors encountered.
 synth_design completed successfully
-synth_design: Time (s): cpu = 00:00:49 ; elapsed = 00:00:40 . Memory (MB): peak = 2747.992 ; gain = 91.844 ; free physical = 4378 ; free virtual = 26937
+synth_design: Time (s): cpu = 00:00:26 ; elapsed = 00:00:22 . Memory (MB): peak = 2747.996 ; gain = 90.844 ; free physical = 7913 ; free virtual = 27506
 # opt_design {*}$opt_opts
 Command: opt_design -verbose -propconst -merge_equivalent_drivers
 Attempting to get a license for feature 'Implementation' and/or device 'xc7k70t'
@@ -661,7 +665,7 @@ INFO: [DRC 23-27] Running DRC with 8 threads
 INFO: [Project 1-461] DRC finished with 0 Errors
 INFO: [Project 1-462] Please refer to the DRC report (report_drc) for more information.
 
-Time (s): cpu = 00:00:02 ; elapsed = 00:00:01 . Memory (MB): peak = 2812.023 ; gain = 64.031 ; free physical = 4379 ; free virtual = 26938
+Time (s): cpu = 00:00:01 ; elapsed = 00:00:00.70 . Memory (MB): peak = 2812.027 ; gain = 64.031 ; free physical = 7914 ; free virtual = 27509
 
 Starting Logic Optimization Task
 INFO: [Timing 38-35] Done setting XDC timing constraints.
@@ -669,42 +673,42 @@ INFO: [Timing 38-35] Done setting XDC timing constraints.
 Phase 1 Constant propagation
 INFO: [Opt 31-442] LUT Reduction optimized 0 LUTs
 INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
-Phase 1 Constant propagation | Checksum: 16edb3aaa
+Phase 1 Constant propagation | Checksum: bc4d22de
 
-Time (s): cpu = 00:00:03 ; elapsed = 00:00:03 . Memory (MB): peak = 3169.070 ; gain = 357.047 ; free physical = 3886 ; free virtual = 26445
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:02 . Memory (MB): peak = 3169.074 ; gain = 357.047 ; free physical = 7399 ; free virtual = 27008
 INFO: [Opt 31-389] Phase Constant propagation created 0 cells and removed 0 cells
 
 Phase 2 Merging equivalent drivers
-INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep[0] onto instance decoded_imm_j_reg[11]
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep_rep[0] onto instance decoded_imm_j_reg[11]
 INFO: [Opt 31-385] Pin count on merged instance decoded_imm_j_reg[11] output net/pin decoded_imm_j[11] before merging 5 after merging 37.
-INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep[1] onto instance decoded_imm_j_reg[1]
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep_rep[1] onto instance decoded_imm_j_reg[1]
 INFO: [Opt 31-385] Pin count on merged instance decoded_imm_j_reg[1] output net/pin decoded_imm_j[1] before merging 5 after merging 37.
-INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep[2] onto instance decoded_imm_j_reg[2]
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep_rep[2] onto instance decoded_imm_j_reg[2]
 INFO: [Opt 31-385] Pin count on merged instance decoded_imm_j_reg[2] output net/pin decoded_imm_j[2] before merging 5 after merging 37.
-INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep[3] onto instance decoded_imm_j_reg[3]
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep_rep[3] onto instance decoded_imm_j_reg[3]
 INFO: [Opt 31-385] Pin count on merged instance decoded_imm_j_reg[3] output net/pin decoded_imm_j[3] before merging 5 after merging 37.
-INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep[4] onto instance decoded_imm_j_reg[4]
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs2_reg_rep_rep[4] onto instance decoded_imm_j_reg[4]
 INFO: [Opt 31-385] Pin count on merged instance decoded_imm_j_reg[4] output net/pin decoded_imm_j[4] before merging 5 after merging 37.
-INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep[0] onto instance decoded_rs1_reg[0]
-INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg[0] output net/pin decoded_rs1[0] before merging 6 after merging 38.
-INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep[1] onto instance decoded_rs1_reg[1]
-INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg[1] output net/pin decoded_rs1[1] before merging 6 after merging 38.
-INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep[2] onto instance decoded_rs1_reg[2]
-INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg[2] output net/pin decoded_rs1[2] before merging 6 after merging 38.
-INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep[3] onto instance decoded_rs1_reg[3]
-INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg[3] output net/pin decoded_rs1[3] before merging 6 after merging 38.
-INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep[4] onto instance decoded_rs1_reg[4]
-INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg[4] output net/pin decoded_rs1[4] before merging 6 after merging 38.
-INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_34 onto instance decoder_trigger_i_10
-INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_10 output net/pin decoder_trigger_i_10_n_0 before merging 2 after merging 3.
-INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_27, decoder_trigger_i_35 onto instance decoder_trigger_i_11
-INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_11 output net/pin decoder_trigger_i_11_n_0 before merging 2 after merging 4.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep_rep[0] onto instance decoded_rs1_reg_rep[0]
+INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg_rep[0] output net/pin decoded_rs1[0] before merging 31 after merging 63.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep_rep[1] onto instance decoded_rs1_reg_rep[1]
+INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg_rep[1] output net/pin decoded_rs1[1] before merging 31 after merging 63.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep_rep[2] onto instance decoded_rs1_reg_rep[2]
+INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg_rep[2] output net/pin decoded_rs1[2] before merging 31 after merging 63.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep_rep[3] onto instance decoded_rs1_reg_rep[3]
+INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg_rep[3] output net/pin decoded_rs1[3] before merging 31 after merging 63.
+INFO: [Opt 31-383] Merged replicated instance(s) decoded_rs1_reg_rep_rep[4] onto instance decoded_rs1_reg_rep[4]
+INFO: [Opt 31-385] Pin count on merged instance decoded_rs1_reg_rep[4] output net/pin decoded_rs1[4] before merging 31 after merging 63.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_26, decoder_trigger_i_34 onto instance decoder_trigger_i_10
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_10 output net/pin decoder_trigger_i_10_n_0 before merging 2 after merging 4.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_35 onto instance decoder_trigger_i_11
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_11 output net/pin decoder_trigger_i_11_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_36 onto instance decoder_trigger_i_12
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_12 output net/pin decoder_trigger_i_12_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_37 onto instance decoder_trigger_i_13
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_13 output net/pin decoder_trigger_i_13_n_0 before merging 2 after merging 3.
-INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_38 onto instance decoder_trigger_i_14
-INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_14 output net/pin decoder_trigger_i_14_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_53 onto instance decoder_trigger_i_17
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_17 output net/pin decoder_trigger_i_17_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_54 onto instance decoder_trigger_i_18
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_18 output net/pin decoder_trigger_i_18_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_55 onto instance decoder_trigger_i_19
@@ -719,12 +723,14 @@ INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_59 onto insta
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_23 output net/pin decoder_trigger_i_23_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_60 onto instance decoder_trigger_i_24
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_24 output net/pin decoder_trigger_i_24_n_0 before merging 2 after merging 3.
-INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_61 onto instance decoder_trigger_i_25
-INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_25 output net/pin decoder_trigger_i_25_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_7 onto instance decoder_trigger_i_31
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_31 output net/pin decoder_trigger_i_31_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_8 onto instance decoder_trigger_i_32
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_32 output net/pin decoder_trigger_i_32_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_9 onto instance decoder_trigger_i_33
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_33 output net/pin decoder_trigger_i_33_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_74 onto instance decoder_trigger_i_39
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_39 output net/pin decoder_trigger_i_39_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_75 onto instance decoder_trigger_i_40
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_40 output net/pin decoder_trigger_i_40_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_76 onto instance decoder_trigger_i_41
@@ -739,8 +745,8 @@ INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_80 onto insta
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_45 output net/pin decoder_trigger_i_45_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_81 onto instance decoder_trigger_i_46
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_46 output net/pin decoder_trigger_i_46_n_0 before merging 2 after merging 3.
-INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_82 onto instance decoder_trigger_i_47
-INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_47 output net/pin decoder_trigger_i_47_n_0 before merging 2 after merging 3.
+INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_82 onto instance decoder_trigger_i_61
+INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_61 output net/pin decoder_trigger_i_61_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_83 onto instance decoder_trigger_i_62
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_62 output net/pin decoder_trigger_i_62_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_84 onto instance decoder_trigger_i_63
@@ -755,17 +761,15 @@ INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_88 onto insta
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_67 output net/pin decoder_trigger_i_67_n_0 before merging 2 after merging 3.
 INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_89 onto instance decoder_trigger_i_68
 INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_68 output net/pin decoder_trigger_i_68_n_0 before merging 2 after merging 3.
-INFO: [Opt 31-383] Merged replicated instance(s) decoder_trigger_i_90 onto instance decoder_trigger_i_69
-INFO: [Opt 31-385] Pin count on merged instance decoder_trigger_i_69 output net/pin decoder_trigger_i_69_n_0 before merging 2 after merging 3.
-Phase 2 Merging equivalent drivers | Checksum: 1f4fc17f8
+Phase 2 Merging equivalent drivers | Checksum: 60749d1c
 
-Time (s): cpu = 00:00:03 ; elapsed = 00:00:03 . Memory (MB): peak = 3169.070 ; gain = 357.047 ; free physical = 3886 ; free virtual = 26445
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:02 . Memory (MB): peak = 3169.074 ; gain = 357.047 ; free physical = 7399 ; free virtual = 27008
 INFO: [Opt 31-389] Phase Merging equivalent drivers created 0 cells and removed 42 cells
 
 Phase 3 Post Processing Netlist
-Phase 3 Post Processing Netlist | Checksum: 148e140ed
+Phase 3 Post Processing Netlist | Checksum: 7408fa44
 
-Time (s): cpu = 00:00:03 ; elapsed = 00:00:03 . Memory (MB): peak = 3169.070 ; gain = 357.047 ; free physical = 3886 ; free virtual = 26445
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:02 . Memory (MB): peak = 3169.074 ; gain = 357.047 ; free physical = 7399 ; free virtual = 27008
 INFO: [Opt 31-389] Phase Post Processing Netlist created 0 cells and removed 0 cells
 Opt_design Change Summary
 =========================
@@ -780,24 +784,23 @@ Opt_design Change Summary
 ------------------------------------------------------------------------------------------------------------------------
 
 
-Ending Logic Optimization Task | Checksum: 6a6e9378
+Ending Logic Optimization Task | Checksum: 155d7b7a1
 
-Time (s): cpu = 00:00:03 ; elapsed = 00:00:03 . Memory (MB): peak = 3169.070 ; gain = 357.047 ; free physical = 3886 ; free virtual = 26445
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:02 . Memory (MB): peak = 3169.074 ; gain = 357.047 ; free physical = 7399 ; free virtual = 27008
 
 Starting Netlist Obfuscation Task
-Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 3169.070 ; gain = 0.000 ; free physical = 4073 ; free virtual = 26632
-Ending Netlist Obfuscation Task | Checksum: 6a6e9378
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 3169.074 ; gain = 0.000 ; free physical = 7576 ; free virtual = 27185
+Ending Netlist Obfuscation Task | Checksum: 155d7b7a1
 
-Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 3169.070 ; gain = 0.000 ; free physical = 4073 ; free virtual = 26632
+Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 3169.074 ; gain = 0.000 ; free physical = 7576 ; free virtual = 27185
 INFO: [Common 17-83] Releasing license: Implementation
 93 Infos, 0 Warnings, 0 Critical Warnings and 0 Errors encountered.
 opt_design completed successfully
-opt_design: Time (s): cpu = 00:00:08 ; elapsed = 00:00:07 . Memory (MB): peak = 3169.070 ; gain = 421.078 ; free physical = 4073 ; free virtual = 26632
 # report_utilization
 Copyright 1986-2021 Xilinx, Inc. All Rights Reserved.
 ------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2021.2 (lin64) Build 3367213 Tue Oct 19 02:47:39 MDT 2021
-| Date         : Tue Dec 20 20:22:03 2022
+| Date         : Wed Jan 11 02:55:20 2023
 | Host         : lamarr running 64-bit Ubuntu 20.04.5 LTS
 | Command      : report_utilization
 | Design       : picorv32
@@ -827,8 +830,8 @@ Table of Contents
 +----------------------------+------+-------+------------+-----------+-------+
 |          Site Type         | Used | Fixed | Prohibited | Available | Util% |
 +----------------------------+------+-------+------------+-----------+-------+
-| Slice LUTs*                |  970 |     0 |          0 |     41000 |  2.37 |
-|   LUT as Logic             |  922 |     0 |          0 |     41000 |  2.25 |
+| Slice LUTs*                |  991 |     0 |          0 |     41000 |  2.42 |
+|   LUT as Logic             |  943 |     0 |          0 |     41000 |  2.30 |
 |   LUT as Memory            |   48 |     0 |          0 |     13400 |  0.36 |
 |     LUT as Distributed RAM |   48 |     0 |            |           |       |
 |     LUT as Shift Register  |    0 |     0 |            |           |       |
@@ -951,11 +954,11 @@ Table of Contents
 | Ref Name | Used | Functional Category |
 +----------+------+---------------------+
 | FDRE     |  543 |        Flop & Latch |
-| LUT6     |  399 |                 LUT |
+| LUT6     |  431 |                 LUT |
 | OBUF     |  307 |                  IO |
-| LUT4     |  231 |                 LUT |
+| LUT4     |  200 |                 LUT |
+| LUT5     |  181 |                 LUT |
 | LUT2     |  162 |                 LUT |
-| LUT5     |  156 |                 LUT |
 | CARRY4   |   91 |          CarryLogic |
 | RAMD32   |   68 |  Distributed Memory |
 | LUT3     |   45 |                 LUT |
@@ -991,7 +994,7 @@ INFO: [Timing 38-78] ReportTimingParams: -max_paths 1 -nworst 1 -delay_type max 
 Copyright 1986-2021 Xilinx, Inc. All Rights Reserved.
 ------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2021.2 (lin64) Build 3367213 Tue Oct 19 02:47:39 MDT 2021
-| Date         : Tue Dec 20 20:22:03 2022
+| Date         : Wed Jan 11 02:55:20 2023
 | Host         : lamarr running 64-bit Ubuntu 20.04.5 LTS
 | Command      : report_timing
 | Design       : picorv32
@@ -1016,7 +1019,7 @@ Slack:                    inf
                                                       0.000     0.000 r  resetn (IN)
                          net (fo=0)                   0.000     0.000    resetn
                          IBUF (Prop_ibuf_I_O)         0.731     0.731 r  resetn_IBUF_inst/O
-                         net (fo=36, unplaced)        0.434     1.164    resetn_IBUF
+                         net (fo=31, unplaced)        0.434     1.164    resetn_IBUF
                          LUT4 (Prop_lut4_I3_O)        0.049     1.213 r  mem_la_write_OBUF_inst_i_1/O
                          net (fo=1, unplaced)         0.434     1.647    mem_la_write_OBUF
                          OBUF (Prop_obuf_I_O)         2.234     3.881 r  mem_la_write_OBUF_inst/O
@@ -1028,4 +1031,4 @@ Slack:                    inf
 
 
 # write_verilog {*}$write_opts picorv32_vivado.v
-INFO: [Common 17-206] Exiting Vivado at Tue Dec 20 20:22:03 2022...
+INFO: [Common 17-206] Exiting Vivado at Wed Jan 11 02:55:21 2023...

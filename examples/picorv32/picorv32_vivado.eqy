@@ -36,7 +36,7 @@ hierarchy -top picorv32
 [script]
 cd picorv32
 delete -output mem_la_* trace_* pcpi_* eoi
-rename -hide mem_la_* trace_* eoi
+rename -hide mem_la_* trace_* pcpi_valid pcpi_insn eoi
 
 ##############################################################
 #
@@ -50,7 +50,7 @@ splitnets mem_rdata_latched
 splitnets reg_next_pc
 
 [gate]
-splitnets cpu_state0_out
+splitnets p_4_out0_in
 
 [script]
 splitnets -ports pcpi_rs[12]
@@ -119,7 +119,7 @@ name regfile_byte3 pcpi_rs1[24]
 ##############################################################
 #
 # Vivado weirdly renames the CPU state FSM register:
-#     cpu_state0_out[*]       the value before the FF, i.e. the next state
+#     p_4_out0_in[*]          the value before the FF, i.e. the next state
 #     cpu_state_reg_n_0_[*]   the value after the FF, i.e. cpu_state
 # except bits 4 and 6, as bit 4 encodes the unused "ld_rs2" state, and
 # bit 6 (encoding for "fetch") ended up as 1-bit reg_next_pc wire.
@@ -129,7 +129,7 @@ gold-match cpu_state[0] cpu_state_reg_n_0_[0]
 gold-match cpu_state[1] cpu_state_reg_n_0_[1]
 gold-match cpu_state[2] cpu_state_reg_n_0_[2]
 gold-match cpu_state[3] cpu_state_reg_n_0_[3]
-gold-match cpu_state[4] cpu_state0_out[4]
+gold-match cpu_state[4] p_4_out0_in[4]
 gold-match cpu_state[5] cpu_state_reg_n_0_[5]
 gold-match cpu_state[6] reg_next_pc
 gold-match cpu_state[7] cpu_state_reg_n_0_[7]
@@ -163,7 +163,6 @@ gold-match latched_is_lu          \0_reg_n_0
 gold-match mem_do_rinst           \0_reg_n_0
 
 gate-nomatch decoder_pseudo_trigger
-gate-nomatch latched_branch
 gate-nomatch latched_is_lu
 gate-nomatch mem_do_rinst
 
@@ -192,7 +191,6 @@ solo-join /(instr|is)_.*/
 solo-join latched_rd
 solo-join mem_*
 solo-join alu_*
-solo-join pcpi_insn
 
 [partition picorv32]
 
@@ -205,7 +203,6 @@ name reg_next_pc reg_next_pc[]
 final decoder_trigger
 final decoder_pseudo_trigger
 final cpuregs_wrdata
-merge pcpi_valid pcpi_insn
 final trap
 
 final mem_addr
