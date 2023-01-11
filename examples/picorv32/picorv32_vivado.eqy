@@ -110,10 +110,10 @@ group pcpi_rs1[24] /pcpi_rs[12]\[(2[4-9]|3[01])\]/
 solo pcpi_rs[12][]
 
 [partition picorv32]
-name regfile_byte0 pcpi_rs1[0]
-name regfile_byte1 pcpi_rs1[8]
-name regfile_byte2 pcpi_rs1[16]
-name regfile_byte3 pcpi_rs1[24]
+name 0_regfile_byte0 pcpi_rs1[0]
+name 0_regfile_byte1 pcpi_rs1[8]
+name 0_regfile_byte2 pcpi_rs1[16]
+name 0_regfile_byte3 pcpi_rs1[24]
 
 
 ##############################################################
@@ -138,7 +138,8 @@ gold-match cpu_state[7] cpu_state_reg_n_0_[7]
 solo-group cpu_state[]
 
 [partition picorv32]
-name cpu_state cpu_state[]
+name 2_cpu_state cpu_state[]
+final cpu_state[]
 
 ##############################################################
 #
@@ -194,24 +195,26 @@ solo-join alu_*
 
 [partition picorv32]
 
-merge is_*
-merge alu_*
-merge instr_*
-merge count_*
-final cpu_state[]
-name reg_next_pc reg_next_pc[]
-final decoder_trigger
-final decoder_pseudo_trigger
-final cpuregs_wrdata
-final trap
+name 1_pseudo_trigger decoder_pseudo_trigger
+name 2_next_pc reg_next_pc[]
+name 2_wrdata cpuregs_wrdata
+name 2_cluster_count count_*
+name 2_cluster_lached latched_*
+name 3_cluster_decoded decoded_*
+name 3_decoder_trigger decoder_trigger
+name 3_trap trap
+name 4_cluster_alu alu_*
+name 4_cluster_instr instr_*
+name 4_cluster_is is_*
 
-final mem_addr
+name 1_mem_rinst mem_do_rinst
 final mem_do_rinst
-merge mem_valid mem_do_*,mem_instr
-merge mem_wdata mem_wstrb
-merge decoded_imm decoded_*
 
-merge latched_*
+name 2_mem_addr mem_addr
+final mem_addr
+
+name 3_mem_wdata mem_wdata,mem_wstrb
+name 3_mem_ctrl mem_valid,mem_do_*,mem_instr
 
 amend cpu_state[]      trap
 amend cpu_state[]      count_*
@@ -241,23 +244,25 @@ amend mem_do_rdata     reg_next_pc[]
 amend decoded_rs1      reg_next_pc[]
 amend decoded_imm_j[]  reg_next_pc[]
 
-# PDR seems to be faster with these
-amend instr_*          reg_next_pc[]
-amend is_*             reg_next_pc[]
-
 amend cpu_state[]      cpuregs_wrdata
 amend decoded_imm_j[]  cpuregs_wrdata
 amend mem_do_prefetch  cpuregs_wrdata
 amend mem_do_rdata     cpuregs_wrdata
 
 amend cpu_state[]      pcpi_rs1[]
-amend instr_*          pcpi_rs1[]
-amend is_*             pcpi_rs1[]
 amend mem_do_rinst     pcpi_rs1[]
 amend decoded_imm_j[]  pcpi_rs1[]
 amend decoder_trigger  pcpi_rs1[]
 amend decoder_pseudo*  pcpi_rs1[]
 amend latched_branch   pcpi_rs1[]
+amend instr_sll        pcpi_rs1[]
+amend instr_slli       pcpi_rs1[]
+amend instr_sra        pcpi_rs1[]
+amend instr_srai       pcpi_rs1[]
+amend instr_srl        pcpi_rs1[]
+amend instr_srli       pcpi_rs1[]
+amend is_sll_srl_sra   pcpi_rs1[]
+amend is_slli_srli_*   pcpi_rs1[]
 
 amend cpu_state[]      decoded_imm
 amend decode*          decoded_imm

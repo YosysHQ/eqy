@@ -48,6 +48,16 @@ prove_%:
 	# -eqy -d check_$(subst prove_,,$@).d -fmj6 picorv32_vivado.eqy
 	cd check_$(subst prove_,,$@).d/strategies/picorv32.$(subst prove_,,$@)/pdr && sby -f picorv32.$(subst prove_,,$@).sby
 
+watch:
+	@while \
+		files=`sh -c 'fuser */strategies/*/pdr/*/logfile.txt' 2>&1 | cut -f1 -d: | sed "s,^$$PWD/,,"`; \
+		test -n "$$files"; \
+	do \
+		clear; \
+		! timeout 30 tail -fn4 `ls -rt $$files`; \
+	done
+
+
 show_partition_list:
 	sed 's/ : / :\n/' picorv32_vivado/partition.list | fold -s | sed '/ :/ ! s/^/  /'
 
@@ -56,6 +66,9 @@ show_partition_matrix:
 
 show_partition_sizes:
 	jq -c '{(input_filename): {gold_cells: .gold_module.cellcount, gate_cells: .gate_module.cellcount}}' picorv32_vivado/modules/picorv32.json picorv32_vivado/partitions/*.json
+
+show_partition_runtime:
+	grep -h Elapsed.proc picorv32_vivado/strategies/*/pdr/*/logfile.txt | gawk '{print$$10,$$3;}' | sort
 
 clean:
 	rm -f test_gold.vcd test_gate.vcd test_gold test_gate
