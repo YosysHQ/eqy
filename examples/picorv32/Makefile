@@ -41,7 +41,7 @@ vivado:
 
 check_%:
 	-eqy -d $@.d -fmj6 picorv32_vivado.eqy
-	sed '/Partition.Matrix:/,/^$$/!d;' $@.d/partition.log
+	sed '/Fragment-Partition-Matrix:/,/^$$/!d;' $@.d/partition.log
 	cd $@.d/partitions && sby -f picorv32.$(subst check_,,$@).sby
 
 prove_%:

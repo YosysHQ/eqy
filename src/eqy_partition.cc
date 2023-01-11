@@ -56,9 +56,9 @@ struct EqyPartitionWorker
 	pool<SigBit> amend_database;
 	pool<SigBit> noamend_database;
 
-	dict<SigBit, int> po_primitive_index;
+	dict<SigBit, int> po_fragment_index;
 	dict<SigBit, int> po_partition_index;
-	dict<SigBit, pool<int>> pi_primitives_index;
+	dict<SigBit, pool<int>> pi_fragments_index;
 	dict<SigBit, pool<int>> pi_partitions_index;
 
 	Module *gold, *gate;
@@ -300,9 +300,9 @@ struct Partition
 	// partition responsible for proving the POs that used to belong to this partition.
 	bool finalized = false;
 
-	// A 'primitive' partition is the original partition for a PO (or a set of merged-early POs),
+	// A 'fragment' partition is the original partition for a PO (or a set of merged-early POs),
 	// before merging partitions and/or importing gold data from one partition into another.
-	bool primitive = false;
+	bool fragment = false;
 
 	// A 'marked final' partition should not be modified by any further [partition] commands.
 	bool marked_final = false;
@@ -316,11 +316,11 @@ struct Partition
 
 	Partition(EqyPartitionWorker *worker) : worker(worker), index(GetSize(worker->partitions)) { }
 
-	// Create a unique non-primitive clone of this partition and mark this partition as finalized.
-	Partition *make_get_nonprimitive()
+	// Create a unique non-fragment clone of this partition and mark this partition as finalized.
+	Partition *make_get_nonfragment()
 	{
 		if (merged_into >= 0) {
-			Partition *other = worker->partition(merged_into)->make_get_nonprimitive();
+			Partition *other = worker->partition(merged_into)->make_get_nonfragment();
 			merged_into = other->index;
 			return other;
 		}
@@ -328,7 +328,7 @@ struct Partition
 		log_assert(!finalized);
 		log_assert(!full_part);
 
-		if (!primitive) return this;
+		if (!fragment) return this;
 
 		Partition *other = worker->create_partition();
 		merged_into = other->index;
@@ -338,7 +338,7 @@ struct Partition
 		other->info_merged_flat.insert(index);
 		other->info_merged_flat.insert(info_merged_flat.begin(), info_merged_flat.end());
 
-		log("  Cloning partition %d into non-primitive partition %d.\n", index, merged_into);
+		log("  Cloning partition %d into non-fragment partition %d.\n", index, merged_into);
 
 		other->names = names;
 		other->name_priority = name_priority;
@@ -405,10 +405,10 @@ struct Partition
 
 		for (auto bit : other->outbits) {
 			if (inbits.count(bit)) {
-				if (primitive) {
-					worker->pi_primitives_index[bit].erase(index);
-					if (worker->pi_primitives_index[bit].empty())
-						worker->pi_primitives_index.erase(bit);
+				if (fragment) {
+					worker->pi_fragments_index[bit].erase(index);
+					if (worker->pi_fragments_index[bit].empty())
+						worker->pi_fragments_index.erase(bit);
 				}
 				worker->pi_partitions_index[bit].erase(index);
 				if (worker->pi_partitions_index[bit].empty())
@@ -427,11 +427,11 @@ struct Partition
 		gold_cells.insert(other->gold_cells.begin(), other->gold_cells.end());
 		gate_cells.insert(other->gate_cells.begin(), other->gate_cells.end());
 
-		if (primitive && other->primitive) {
+		if (fragment && other->fragment) {
 			for (auto bit : other->inbits) {
-				worker->pi_primitives_index[bit].erase(other->index);
-				if (worker->pi_primitives_index[bit].empty())
-					worker->pi_primitives_index.erase(bit);
+				worker->pi_fragments_index[bit].erase(other->index);
+				if (worker->pi_fragments_index[bit].empty())
+					worker->pi_fragments_index.erase(bit);
 			}
 		}
 		for (auto bit : other->inbits) {
@@ -441,13 +441,13 @@ struct Partition
 		}
 
 		for (auto bit : inbits) {
-			if (primitive)
-				worker->pi_primitives_index[bit].insert(index);
+			if (fragment)
+				worker->pi_fragments_index[bit].insert(index);
 			worker->pi_partitions_index[bit].insert(index);
 		}
 		for (auto bit : outbits) {
-			if (primitive)
-				worker->po_primitive_index[bit] = index;
+			if (fragment)
+				worker->po_fragment_index[bit] = index;
 			worker->po_partition_index[bit] = index;
 		}
 	}
@@ -459,7 +459,7 @@ struct Partition
 	void import(const Partition *other)
 	{
 		log_assert(!finalized);
-		log_assert(other->primitive);
+		log_assert(other->fragment);
 
 		log_assert(!full_part);
 		log_assert(!other->full_part);
@@ -503,7 +503,7 @@ struct Partition
 		gold_bit = worker->gold_sigmap(gold_bit);
 
 		log_assert(!finalized);
-		log_assert(full_part || primitive);
+		log_assert(full_part || fragment);
 		log_assert(worker->queue.count(gold_bit));
 		worker->queue.erase(gold_bit);
 
@@ -552,15 +552,15 @@ struct Partition
 						outbits.insert(gold_bit);
 						worker->queue.erase(gold_bit);
 						if (!full_part) {
-							worker->po_primitive_index[gold_bit] = index;
+							worker->po_fragment_index[gold_bit] = index;
 							worker->po_partition_index[gold_bit] = index;
 						}
 						if (inbits.count(gold_bit)) {
 							inbits.erase(gold_bit);
 							if (!full_part) {
-								worker->pi_primitives_index[gold_bit].erase(index);
-								if (worker->pi_primitives_index[gold_bit].empty())
-									worker->pi_primitives_index.erase(gold_bit);
+								worker->pi_fragments_index[gold_bit].erase(index);
+								if (worker->pi_fragments_index[gold_bit].empty())
+									worker->pi_fragments_index.erase(gold_bit);
 								worker->pi_partitions_index[gold_bit].erase(index);
 								if (worker->pi_partitions_index[gold_bit].empty())
 									worker->pi_partitions_index.erase(gold_bit);
@@ -572,7 +572,7 @@ struct Partition
 						run_other = !inbits.count(gold_bit);
 						inbits.insert(gold_bit);
 						if (!full_part) {
-							worker->pi_primitives_index[gold_bit].insert(index);
+							worker->pi_fragments_index[gold_bit].insert(index);
 							worker->pi_partitions_index[gold_bit].insert(index);
 						}
 					}
@@ -647,8 +647,8 @@ struct Partition
 			for (auto &bit : found_matched_bits) {
 				if (worker->queue.count(bit))
 					add(bit);
-				else if (worker->po_primitive_index.count(bit)) {
-					int idx = worker->po_primitive_index.at(bit);
+				else if (worker->po_fragment_index.count(bit)) {
+					int idx = worker->po_fragment_index.at(bit);
 					if (idx != index) {
 						log("Adding bit %s to partition %d by merging partition %d.\n", log_signal(bit), index, idx);
 						merge(worker->partition(idx));
@@ -1221,21 +1221,21 @@ void EqyPartitionWorker::check_integrity()
 {
 	log_debug("CHECKING DATABASE INTEGRITY\n");
 
-	dict<SigBit, int> new_po_primitive_index;
+	dict<SigBit, int> new_po_fragment_index;
 	dict<SigBit, int> new_po_partition_index;
-	dict<SigBit, pool<int>> new_pi_primitives_index;
+	dict<SigBit, pool<int>> new_pi_fragments_index;
 	dict<SigBit, pool<int>> new_pi_partitions_index;
 
 	for (int idx = 0; idx < GetSize(partitions); idx++) {
 		auto p = partition(idx);
 
-		if (p->primitive && (p->merged_into == -1 || !partition(p->merged_into)->primitive)) {
+		if (p->fragment && (p->merged_into == -1 || !partition(p->merged_into)->fragment)) {
 			for (auto bit : p->outbits) {
-				log_assert(!new_po_primitive_index.count(bit));
-				new_po_primitive_index[bit] = p->index;
+				log_assert(!new_po_fragment_index.count(bit));
+				new_po_fragment_index[bit] = p->index;
 			}
 			for (auto bit : p->inbits)
-				new_pi_primitives_index[bit].insert(p->index);
+				new_pi_fragments_index[bit].insert(p->index);
 		}
 
 		if (!p->finalized) {
@@ -1249,12 +1249,12 @@ void EqyPartitionWorker::check_integrity()
 	}
 
 #if 0
-	po_primitive_index.sort();
-	new_po_primitive_index.sort();
-	log_dump(po_primitives_index);
-	log_dump(new_po_primitives_index);
+	po_fragment_index.sort();
+	new_po_fragment_index.sort();
+	log_dump(po_fragments_index);
+	log_dump(new_po_fragments_index);
 #endif
-	log_assert(new_po_primitive_index == po_primitive_index);
+	log_assert(new_po_fragment_index == po_fragment_index);
 
 #if 0
 	po_partition_index.sort();
@@ -1265,14 +1265,14 @@ void EqyPartitionWorker::check_integrity()
 	log_assert(new_po_partition_index == po_partition_index);
 
 #if 0
-	pi_primitives_index.sort();
-	new_pi_primitives_index.sort();
-	for (auto &it : pi_primitives_index) it.second.sort();
-	for (auto &it : new_pi_primitives_index) it.second.sort();
-	log_dump(pi_primitives_index);
-	log_dump(new_pi_primitives_index);
+	pi_fragments_index.sort();
+	new_pi_fragments_index.sort();
+	for (auto &it : pi_fragments_index) it.second.sort();
+	for (auto &it : new_pi_fragments_index) it.second.sort();
+	log_dump(pi_fragments_index);
+	log_dump(new_pi_fragments_index);
 #endif
-	log_assert(new_pi_primitives_index == pi_primitives_index);
+	log_assert(new_pi_fragments_index == pi_fragments_index);
 
 #if 0
 	pi_partitions_index.sort();
@@ -1314,12 +1314,12 @@ void EqyPartitionWorker::create_partitions()
 	while (!queue.empty()) {
 		SigBit gold_bit = *queue.begin();
 		Partition *partition = create_partition();
-		partition->primitive = true;
+		partition->fragment = true;
 		partition->add(gold_bit);
 	}
 
 	log_spacer();
-	log("Final list of primitive partitions:\n");
+	log("Final list of fragment partitions:\n");
 	for (int i = 0; i < GetSize(partitions); i++) {
 		auto p = partition(i);
 		if (p->finalized) continue;
@@ -1360,7 +1360,7 @@ void EqyPartitionWorker::merge_partitions()
 						goto next_name_bit;
 					}
 				if (name_database.count(rule[2])) {
-					auto target = partition(name_database.at(rule[2]))->make_get_nonprimitive();
+					auto target = partition(name_database.at(rule[2]))->make_get_nonfragment();
 					if (target->marked_final) {
 						log("    Skipping previously named partition %d that is marked final.\n", target->index);
 						continue;
@@ -1391,7 +1391,7 @@ void EqyPartitionWorker::merge_partitions()
 					continue;
 				}
 				if (first == nullptr) {
-					first = p->make_get_nonprimitive();
+					first = p->make_get_nonfragment();
 					log("    Using partition %d as merge target.\n", first->index);
 				} else if (first != p) {
 					log("    Merging partition %d into partition %d.\n", p->index, first->index);
@@ -1409,7 +1409,7 @@ void EqyPartitionWorker::merge_partitions()
 			for (auto bit : gold_sigmap(gold->wire("\\" + rule[1]))) {
 				if (!po_partition_index.count(bit))
 					continue;
-				auto generator = partition(po_partition_index.at(bit))->make_get_nonprimitive();
+				auto generator = partition(po_partition_index.at(bit))->make_get_nonfragment();
 				log_assert(!generator->finalized);
 				log("  PO bit %s belongs to partition %d\n", log_signal(bit), generator->index);
 				if (generator->marked_final) {
@@ -1431,13 +1431,13 @@ void EqyPartitionWorker::merge_partitions()
 		if (rule[0] == "amend" && GetSize(rule) == 3) {
 			pool<int> generators, consumers;
 			for (auto bit : gold_sigmap(gold->wire("\\" + rule[1]))) {
-				if (!po_primitive_index.count(bit) && !noamend_database.count(bit)) {
-					log("  PO bit %s matches no primitive partition\n", log_signal(bit));
+				if (!po_fragment_index.count(bit) && !noamend_database.count(bit)) {
+					log("  PO bit %s matches no fragment partition\n", log_signal(bit));
 					continue;
 				}
-				auto generator = partition(po_primitive_index.at(bit));
-				log_assert(generator->primitive);
-				log("  PO bit %s belongs to primitive partition %d\n", log_signal(bit), generator->index);
+				auto generator = partition(po_fragment_index.at(bit));
+				log_assert(generator->fragment);
+				log("  PO bit %s belongs to fragment partition %d\n", log_signal(bit), generator->index);
 				generators.insert(generator->index);
 			}
 			for (auto bit : gold_sigmap(gold->wire("\\" + rule[2]))) {
@@ -1446,7 +1446,7 @@ void EqyPartitionWorker::merge_partitions()
 					continue;
 				}
 				auto consumer = partition(po_partition_index.at(bit));
-				auto p = consumer->make_get_nonprimitive();
+				auto p = consumer->make_get_nonfragment();
 				log("  match bit %s belongs to partition %d (%d)\n", log_signal(bit), p->index, consumer->index);
 				consumers.insert(p->index);
 			}
@@ -1532,9 +1532,9 @@ void EqyPartitionWorker::merge_partitions()
 			if (this_amend_with.empty()) {
 				p->amend_with = next_amend_with;
 			} else {
-				auto pp = p->make_get_nonprimitive();
+				auto pp = p->make_get_nonfragment();
 				if (p->index != pp->index) {
-					log("  created non-primitive clone of partition %d as partition %d.\n", p->index, pp->index);
+					log("  created non-fragment clone of partition %d as partition %d.\n", p->index, pp->index);
 				} else {
 					for (auto q : this_amend_with) {
 						log("  amending partition %d with partition %d.\n", p->index, q);
@@ -1562,8 +1562,8 @@ void EqyPartitionWorker::merge_partitions()
 				if (!amend_database.count(bit) && noamend_database.count(bit))
 					continue;
 
-				if (po_primitive_index.count(bit)) {
-					int pidx = po_primitive_index.at(bit);
+				if (po_fragment_index.count(bit)) {
+					int pidx = po_fragment_index.at(bit);
 					if (p->index != pidx && !p->info_amended.count(pidx) && !p->info_merged_flat.count(pidx)) {
 						if (amend_database.count(bit)) {
 							if (!pi_matches.count(pidx))
@@ -1581,10 +1581,10 @@ void EqyPartitionWorker::merge_partitions()
 
 #if 0
 			for (auto bit : p->inbits) {
-				if (noamend_database.count(bit) || !pi_primitives_index.count(bit))
+				if (noamend_database.count(bit) || !pi_fragments_index.count(bit))
 					continue;
 
-				for (auto pidx : pi_primitives_index.at(bit)) {
+				for (auto pidx : pi_fragments_index.at(bit)) {
 					if (!po_matches.count(pidx) || pi_matches.count(pidx)) continue;
 					log("    partition %d is also a PI match: %s\n", pidx, log_signal(bit));
 					pi_matches.insert(pidx);
@@ -1598,19 +1598,19 @@ void EqyPartitionWorker::merge_partitions()
 				log_assert(po_matches.count(pidx));
 
 				pool<SigBit> matched_pis, matched_pos;
-				auto prim = partition(pidx);
+				auto frag = partition(pidx);
 
-				for (auto bit : prim->inbits)
+				for (auto bit : frag->inbits)
 					if (p->inbits.count(bit)) matched_pis.insert(bit);
 
-				for (auto bit : prim->outbits)
+				for (auto bit : frag->outbits)
 					if (p->inbits.count(bit)) matched_pos.insert(bit);
-				log_assert(prim->crossbits.empty());
+				log_assert(frag->crossbits.empty());
 
 				log("    Queue amending partition %d with partition %d (%d pi matches and %d po matches).\n",
-						p->index, prim->index, GetSize(matched_pis), GetSize(matched_pos));
+						p->index, frag->index, GetSize(matched_pis), GetSize(matched_pos));
 				did_something = true;
-				p->amend_with.insert(prim->index);
+				p->amend_with.insert(frag->index);
 
 				for (auto bit : matched_pis)
 					log("      PI: %s\n", log_signal(bit));
@@ -1711,10 +1711,10 @@ void EqyPartitionWorker::merge_partitions()
 
 	log_spacer();
 	log("Partition Summary:\n");
-	log("  Primitive Partitions:\n");
+	log("  Fragments:\n");
 	for (auto &p_ptr : partitions) {
 		auto p = p_ptr.get();
-		if (!p->primitive) continue;
+		if (!p->fragment) continue;
 		std::string label;
 		SigSpec sorted_outbits = p->outbits;
 		sorted_outbits.sort_and_unify();
@@ -1727,17 +1727,17 @@ void EqyPartitionWorker::merge_partitions()
 		log("     %3d: %s\n", p->index, label.c_str());
 
 	}
-	log("  Final Partitions:\n");
+	log("  Partitions:\n");
 	for (auto &p_ptr : partitions) {
 		auto p = p_ptr.get();
 		if (p->finalized) continue;
 		log("     %3d: %s\n", p->index, p->names.front().c_str());
 	}
-	log("  Partition Matrix:\n");
+	log("  Fragment-Partition-Matrix:\n");
 	log("          ");
 	for (auto &q_ptr : partitions) {
 		auto q = q_ptr.get();
-		if (!q->primitive) continue;
+		if (!q->fragment) continue;
 		if (q->index % 5 == 0)
 			log(" ");
 		if (q->index % 10 == 0)
@@ -1749,7 +1749,7 @@ void EqyPartitionWorker::merge_partitions()
 	log("          ");
 	for (auto &q_ptr : partitions) {
 		auto q = q_ptr.get();
-		if (!q->primitive) continue;
+		if (!q->fragment) continue;
 		if (q->index % 5 == 0)
 			log(" ");
 		log("%d", q->index % 10);
@@ -1761,16 +1761,19 @@ void EqyPartitionWorker::merge_partitions()
 		log("     %3d  ", p->index);
 		for (auto &q_ptr : partitions) {
 			auto q = q_ptr.get();
-			if (!q->primitive) continue;
+			if (!q->fragment) continue;
 			if (q->index % 5 == 0)
 				log(" ");
 			log("%c", p == q ? '#' :
-					p->info_merged_hier.count(q->index) ? 'X' :
 					p->info_merged_flat.count(q->index) ? '*' :
 					p->info_amended.count(q->index) ? '+' : '.');
 		}
 		log("  %s\n", p->names.front().c_str());
 	}
+	log("  Legend for Fragment-Partition-Matrix:\n");
+	log("      #  .... partition is a single fragment\n");
+	log("      *  .... fragments merged into single partition\n");
+	log("      +  .... fragments amended to the partition\n");
 }
 
 void EqyPartitionWorker::finalize_partitions(std::ofstream &partition_list_file)
@@ -1899,7 +1902,7 @@ struct EqyPartitionPass : public Pass
 				}
 #endif
 
-				log_header(design, "Create primitive partitions for module %s.\n", gold->name.substr(6).c_str());
+				log_header(design, "Create fragment partitions for module %s.\n", gold->name.substr(6).c_str());
 				worker.create_partitions();
 				worker.check_integrity();
 

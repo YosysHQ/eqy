@@ -94,8 +94,9 @@ Collect sections
 ----------------
 
 Collect sections contain rules for the first step of the partition algorithm,
-in which individual bits from matched nets are grouped into sets that are
-closely related and thus should be proven together in one step.
+in which individual bits from matched nets are grouped into /fragments/, i.e.
+small circuits that are closely related and thus should be put in the same
+partition.
 
 .. code-block:: text
 
@@ -106,7 +107,7 @@ solo and nosolo
 ...............
 
 The ``solo <pattern>`` command prevents the auto-grouping mechanism to
-group this net with other nets into the same primitive partition. Per default
+group this net with other nets into the same fragment. Per default
 auto-grouping does group nets when
 
 - they are driven by the same cell, either in the gold or gate design, or
@@ -119,7 +120,7 @@ group and nogroup
 .................
 
 The ``group <pattern>`` command is used to group everything matching the given
-pattern into the same primitive partition.
+pattern into the same fragment.
 
 The ``group <pattern> <pattern>`` command is pairing matches for the first pattern with the sets
 of nets matching the (dependent) second pattern, and is grouping them accordingly.
@@ -131,7 +132,7 @@ bind and nobind
 ...............
 
 Marking a net as ``bind`` prevents that net from becoming a primary input of
-a primitive partition. (This has no effect on nets that are module inputs.)
+a fragment. (This has no effect on nets that are module inputs.)
 
 The ``nobind <pattern>`` command prevents all further ``bind`` commands from
 matching the speciefied nets.
@@ -140,7 +141,7 @@ join and nojoin
 .................
 
 The ``join`` command operates on a multi-bit wires and groups all bits
-from such a net into the same primary partition.
+from such a net into the same fragment.
 
 The ``nojoin`` command prevents further ``join`` commands from matching
 the given nets.
@@ -186,7 +187,7 @@ merge and nomerge
 .................
 
 The ``merge`` and ``nomerge`` commands work similar to ``group`` and ``nogroup``,
-but creates non-primitive partitions by merging the primitive partitions generated
+but creates non-fragment partitions by merging the fragment partitions generated
 by the grouping commands.
 
 path statements
@@ -216,12 +217,12 @@ the given net.
 amend, ramend, and noamend
 ..........................
 
-The ``amend <pattern>`` command finds the primitive partition(s) generating the
+The ``amend <pattern>`` command finds the fragment(s) generating the
 specified net(s), and amends all partitions using those signals with the gold
 definition of that signal.
 
 The ``amend <pattern> <pattern>`` command only amends partitions that are
-generating wires matching the second pattern.
+generating signals matching the second pattern.
 
 The ``amend`` command only amends partitions that are currently consuming
 the specified signal. The ``ramend`` command amends the target partition
