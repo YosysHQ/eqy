@@ -54,7 +54,7 @@ watch:
 		test -n "$$files"; \
 	do \
 		clear; \
-		! timeout 30 tail -fn4 `ls -rt $$files`; \
+		! timeout 30 tail -vfn4 `ls -rt $$files`; \
 	done
 
 
@@ -67,7 +67,7 @@ show_partition_matrix:
 show_partition_sizes:
 	jq -c '{(input_filename): {gold_cells: .gold_module.cellcount, gate_cells: .gate_module.cellcount}}' picorv32_vivado/modules/picorv32.json picorv32_vivado/partitions/*.json
 
-show_partition_runtime:
+show_partition_runtimes:
 	grep -h Elapsed.proc picorv32_vivado/strategies/*/pdr/*/logfile.txt | gawk '{print$$10,$$3;}' | sort
 
 clean:
