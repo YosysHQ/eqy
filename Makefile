@@ -58,8 +58,8 @@ coverage:
 	-$(MAKE) COVERAGE_FILE="$$PWD/.coverage" EQY="coverage run -a $$PWD/src/eqy.py" -C examples/simple clean test
 	-$(MAKE) COVERAGE_FILE="$$PWD/.coverage" EQY="coverage run -a $$PWD/src/eqy.py" -C examples/nerv clean test
 	lcov --capture -d . --no-external -o coverage.info
-	coverage report
-	coverage lcov
+	coverage report --omit=*/dist-packages/*
+	coverage lcov --omit=*/dist-packages/*
 	cat coverage.lcov >> coverage.info
 	genhtml coverage.info --output-directory coverage_html
 
