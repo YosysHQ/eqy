@@ -54,17 +54,19 @@ test:
 	$(MAKE) -C examples/simple
 
 coverage:
-	rm -rf coverage.info coverage_html examples/simple/htmlcov
-	$(MAKE) -C examples/simple clean
-	cd examples/simple && coverage erase
-	-$(MAKE) EQY="coverage run -a $$PWD/src/eqy.py" -C examples/simple 
+	rm -rf coverage.info coverage_html .coverage coverage.lcov
+	-$(MAKE) COVERAGE_FILE="$$PWD/.coverage" EQY="coverage run -a $$PWD/src/eqy.py" -C examples/simple clean test
+	-$(MAKE) COVERAGE_FILE="$$PWD/.coverage" EQY="coverage run -a $$PWD/src/eqy.py" -C examples/nerv clean test
 	lcov --capture -d . --no-external -o coverage.info
+	coverage report
+	coverage lcov
+	cat coverage.lcov >> coverage.info
 	genhtml coverage.info --output-directory coverage_html
-	cd examples/simple && coverage report && coverage html
 
 clean:
 	$(MAKE) -C docs clean
 	$(MAKE) -C examples/simple clean
+	$(MAKE) -C examples/nerv clean
 	find . -name "*.gcda" -type f -delete
 	find . -name "*.gcno" -type f -delete
-	rm -rf docs/build src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so src/__pycache__ coverage.info coverage_html examples/simple/htmlcov
+	rm -rf docs/build src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so src/__pycache__ coverage.info coverage_html .coverage coverage.lcov

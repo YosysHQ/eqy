@@ -43,4 +43,5 @@ coverage_html/
 *.gcda
 *.gcno
 coverage.info
+coverage.lcov
 .coverage
