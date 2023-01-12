@@ -39,6 +39,11 @@ vivado:
 	rm -f picorv32_vivado.log
 	bash -c ". /opt/Xilinx/Vivado/2021.2/settings64.sh; vivado -mode batch -nojournal -log picorv32_vivado.log -source picorv32_vivado.tcl"
 
+check_module:
+	-eqy -d $@.d -fmj6 picorv32_vivado.eqy
+	sed '/Fragment-Partition-Matrix:/,/^$$/!d;' $@.d/partition.log
+	cd $@.d/modules && sby -f picorv32.sby
+
 check_%:
 	-eqy -d $@.d -fmj6 picorv32_vivado.eqy
 	sed '/Fragment-Partition-Matrix:/,/^$$/!d;' $@.d/partition.log

@@ -625,8 +625,11 @@ struct Partition
 			}
 		};
 
-		log("Adding bit %s to partition %d.\n", log_signal(gold_bit), index);
-		add_bit_f(gold_bit, true, true, stringf("p%d>  ", index));
+		bool isoutput = !full_part || gold_bit.wire->port_output;
+		log("Adding %soutput bit %s to partition %d.\n", isoutput ? "" : "non-", log_signal(gold_bit), index);
+		add_bit_f(gold_bit, true, isoutput, stringf("p%d>  ", index));
+		if (!isoutput)
+			add_bit_f(worker->gold_matches.at(gold_bit), false, false, stringf("p%d>  ", index));
 
 		if (!full_part)
 		{
@@ -1302,7 +1305,6 @@ Partition *EqyPartitionWorker::create_full_partition()
 	auto *full_partition = create_partition();
 	full_partition->full_part = true;
 	for (auto w : gold->wires()) {
-		if (!w->port_output) continue;
 		for (auto bit : gold_sigmap(w))
 			if (gold_matches.count(bit))
 				queue.insert(bit);
