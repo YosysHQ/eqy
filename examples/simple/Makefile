@@ -24,6 +24,6 @@ fsm/PASS: fsm.eqy fsm.sv
 	$(EQY) -f fsm.eqy
 
 clean:
-	rm -rf aliases/ counter/ ex_amend/ ex_bind/ ex_group/ ex_join/ fsm/ .coverage
+	rm -rf aliases/ counter/ ex_amend/ ex_bind/ ex_group/ ex_join/ fsm/
 
 .PHONY: test clean
