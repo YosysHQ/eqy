@@ -73,7 +73,8 @@ show_partition_sizes:
 	jq -c '{(input_filename): {gold_cells: .gold_module.cellcount, gate_cells: .gate_module.cellcount}}' picorv32_vivado/modules/picorv32.json picorv32_vivado/partitions/*.json
 
 show_partition_runtimes:
-	grep -h Elapsed.proc picorv32_vivado/strategies/*/pdr/*/logfile.txt | gawk '{print$$10,$$3;}' | sort
+	grep -h Elapsed.clock picorv32_vivado/strategies/*/*/*/logfile.txt | gawk '{print$$10,$$3;}' | sort
+	grep -h Elapsed.proc picorv32_vivado/strategies/*/*/*/logfile.txt | gawk '{print$$10,$$3;}' | sort
 
 clean:
 	rm -f test_gold.vcd test_gate.vcd test_gold test_gate

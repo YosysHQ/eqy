@@ -138,7 +138,7 @@ gold-match cpu_state[7] cpu_state_reg_n_0_[7]
 solo-group cpu_state[]
 
 [partition picorv32]
-name 3_cpu_state cpu_state[]
+name 4_cpu_state cpu_state[]
 final cpu_state[]
 
 ##############################################################
@@ -195,24 +195,24 @@ solo-join alu_*
 
 [partition picorv32]
 
-name 1_pseudo_trigger decoder_pseudo_trigger
-name 2_next_pc reg_next_pc[]
-name 2_wrdata cpuregs_wrdata
-name 3_cluster_count count_*
-name 3_cluster_lached latched_*
-name 4_cluster_decoded decoded_*
-name 4_decoder_trigger decoder_trigger
-name 4_trap trap
-name 5_cluster_alu alu_*
-name 5_cluster_instr instr_*
-name 5_cluster_is is_*
+name 0_pseudo_trigger decoder_pseudo_trigger
+name 1_next_pc reg_next_pc[]
+name 3_wrdata cpuregs_wrdata
+name 5_cluster_count count_*
+name 5_cluster_lached latched_*
+name 6_cluster_decoded decoded_*
+name 6_decoder_trigger decoder_trigger
+name 6_trap trap
+name 7_cluster_alu alu_*
+name 7_cluster_instr instr_*
+name 7_cluster_is is_*
 
-name 1_mem_rinst mem_do_rinst
+name 0_mem_rinst mem_do_rinst
 final mem_do_rinst
 
 name 2_mem_addr mem_addr
-name 4_mem_wdata mem_wdata,mem_wstrb
-name 4_mem_ctrl mem_valid,mem_do_*,mem_instr
+name 6_mem_wdata mem_wdata,mem_wstrb
+name 6_mem_ctrl mem_valid,mem_do_*,mem_instr
 
 amend cpu_state[]      trap
 amend cpu_state[]      count_*
@@ -390,7 +390,23 @@ amend mem_do_rdata     mem_wdata
 [strategy pdr]
 use sby
 engine abc pdr
-timeout 5400
+timeout 2000
+
+[strategy pdr_rte]
+pin picorv32.0_mem_rinst
+pin picorv32.0_pseudo_trigger
+pin picorv32.0_regfile_byte0
+pin picorv32.0_regfile_byte1
+pin picorv32.0_regfile_byte2
+pin picorv32.0_regfile_byte3
+pin picorv32.2_mem_addr
+pin picorv32.4_cpu_state
+pin picorv32.5_cluster_lached
+pin picorv32.6_cluster_decoded
+pin picorv32.6_decoder_trigger
+use sby
+engine abc pdr -rte
+timeout 2000
 
 # [strategy sby]
 # use sby

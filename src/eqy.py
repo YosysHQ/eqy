@@ -764,6 +764,7 @@ class EqyStrategy:
 
     def __init__(self, args, cfg, name):
         self.args, self.cfg, self.name = args, cfg, name
+        self.apply_rules = list()
         self.parse()
         self.check_scfg()
 
@@ -786,6 +787,15 @@ class EqyStrategy:
         if name in self.options_seen:
             return "repeated option"
         self.options_seen.add(name)
+
+    def parse_opt_pin(self, name, value):
+        self.apply_rules.append((name, value))
+
+    def parse_opt_apply(self, name, value):
+        self.apply_rules.append((name, value))
+
+    def parse_opt_noapply(self, name, value):
+        self.apply_rules.append((name, value))
 
     def parse_other_option(self, name, value):
         return f"unknown option '{name}'"
@@ -1035,18 +1045,39 @@ def make_scripts(args, cfg, job, strategies):
         for partition in cfg.partitions:
             if not os.path.isdir(f"{args.workdir}/strategies/{partition.name}"):
                 os.mkdir(f"{args.workdir}/strategies/{partition.name}")
+
+            pinned_strategy = None
+            for strategy_name in cfg.strategy:
+                strategy = strategies[strategy_name]
+                for k, v in strategy.apply_rules:
+                    if k != "pin": continue
+                    if v == "*" or v == partition.name:
+                        pinned_strategy = strategy_name
+                        break
+                if pinned_strategy is not None:
+                    break
+
             prev_strategy = None
             for strategy_name in cfg.strategy:
-                # TODO: ensure unchanged strategies don't get re-run but changed strategies do
-
+                if pinned_strategy is not None:
+                    if strategy_name != pinned_strategy:
+                        continue
                 strategy = strategies[strategy_name]
-                if not strategy.partition_supported(job, partition):
+                noapply = False
+                for k, v in strategy.apply_rules:
+                    if v == "*" or v == partition.name:
+                        noapply = k == "noapply"
+                        break
+                    if k in ("apply", "noapply"):
+                        noapply = k == "apply"
+                if noapply or not strategy.partition_supported(job, partition):
                     continue
                 if not os.path.isdir(f"{args.workdir}/strategies/{partition.name}/{strategy.name}"):
                     os.mkdir(f"{args.workdir}/strategies/{partition.name}/{strategy.name}")
                 strategy.write(job, partition)
 
                 if prev_strategy:
+                    # TODO: ensure unchanged strategies don't get re-run but changed strategies do
                     prmkf(f"""strategies/{partition.name}/{strategy.name}/status: {prev_strategy}
 \t@if grep PASS $^ >/dev/null ; then \\
 \t\techo "PASS (cached)" > $@; \\
