@@ -4,6 +4,7 @@ import re
 from vcdvcd import VCDVCD
 
 cpuregs_only_mode = False
+exclude_cpuregs = True
 
 def vcd_extend(v, n):
     extbit = v[-1]
@@ -28,16 +29,19 @@ class VcdData:
         for key in vcd.data:
             for name in vcd.data[key].references:
                 if "BUF" in name or "._" in name: continue
-                if "dbg" in name and not "dbg_reg_x" in name: continue
+                if "dbg" in name: continue
                 if name.startswith(self.currentTop):
                     name = name[len(self.currentTop):]
                     if name.startswith("\\"): name = name[1:]
+                    if name.startswith("_"): continue
+                    if name.endswith("_"): continue
+                    if exclude_cpuregs:
+                        if name.startswith("cpuregs_reg_r") and name.endswith("]"): continue
+                        if name.startswith("cpuregs["): continue
                     if cpuregs_only_mode:
                         if name.startswith("cpuregs_reg_r") and name.endswith("]"): break
                         if name.startswith("cpuregs["): break
                     else:
-                        if name.startswith("_"): continue
-                        if name.endswith("_"): continue
                         break
             else:
                 continue
@@ -249,15 +253,15 @@ class SignalDatabase:
             if len(m) == 3 and m[0].startswith("gate.cpuregs_reg_r1_") and m[1].startswith("gate.cpuregs_reg_r2_") and m[2].startswith("gold.cpuregs["):
                 match = re.match(r"gold.cpuregs\[(\d+)\]\[(\d+)\]", m[2])
                 cpuregs[int(match[1]), int(match[2])] = (m[2], m[0], m[1])
-        print(f"Matched {len(cpuregs)} CPU Register bits:")
-        print("[match picorv32]")
-        for k in sorted(cpuregs):
-            gold_1 = cpuregs[k][0][5:]
-            gold_2 = re.sub(r"cpuregs\[(\d+)\]", r"dbg_reg_x\1", gold_1)
-            gate_1 = cpuregs[k][1][5:].replace(".\\", ".")
-            gate_2 = cpuregs[k][2][5:].replace(".\\", ".")
-            print(f"gold-match {gold_1} {gate_1}")
-            print(f"gold-match {gold_2} {gate_2}")
+        if cpuregs:
+            print(f"Matched {len(cpuregs)} CPU Register bits:")
+            for k in sorted(cpuregs):
+                gold_1 = cpuregs[k][0][5:]
+                gold_2 = re.sub(r"cpuregs\[(\d+)\]", r"dbg_reg_x\1", gold_1)
+                gate_1 = cpuregs[k][1][5:].replace(".\\", ".")
+                gate_2 = cpuregs[k][2][5:].replace(".\\", ".")
+                print(f"gold-match {gold_1} {gate_1}")
+                print(f"gold-match {gold_2} {gate_2}")
 
 db = SignalDatabase()
 db.parse("test_gold.vcd", "gold", "testbench.uut")

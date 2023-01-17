@@ -135,17 +135,15 @@ solo pcpi_rs1[]
 solo pcpi_rs2[]
 
 [partition picorv32]
-name 0_regfile_out pcpi_rs1[]
-name 0_regfile_out cpuregs_rs1[]
-#name 0_regfile_out_byte0 pcpi_rs1[0]
-#name 0_regfile_out_byte1 pcpi_rs1[8]
-#name 0_regfile_out_byte2 pcpi_rs1[16]
-#name 0_regfile_out_byte3 pcpi_rs1[24]
-#name 0_regfile_out_byte0 cpuregs_rs1[0]
-#name 0_regfile_out_byte1 cpuregs_rs1[8]
-#name 0_regfile_out_byte2 cpuregs_rs1[16]
-#name 0_regfile_out_byte3 cpuregs_rs1[24]
-name 0_regfile_dat /cpuregs\[.*/,dbg_reg_x*
+name 1_regfile_out_byte0 pcpi_rs1[0]
+name 1_regfile_out_byte1 pcpi_rs1[8]
+name 1_regfile_out_byte2 pcpi_rs1[16]
+name 1_regfile_out_byte3 pcpi_rs1[24]
+name 1_regfile_out_byte0 cpuregs_rs1[0]
+name 1_regfile_out_byte1 cpuregs_rs1[8]
+name 1_regfile_out_byte2 cpuregs_rs1[16]
+name 1_regfile_out_byte3 cpuregs_rs1[24]
+name 2_regfile_dat /cpuregs\[.*/,dbg_reg_x*
 final pcpi_rs[12][]
 final /cpuregs\[.*/
 final dbg_reg_x*
@@ -234,23 +232,6 @@ gate-nomatch decoded_imm_j[30]
 #
 # Partitioning and Strategies
 
-# New Signals:
-# cpuregs_rs1
-# mem_rdata_q[]
-# mem_state[]
-# mem_wordsize[]
-# reg_out[]
-# reg_pc[]
-# reg_sh[]
-
-#{a} amend cpuregs_rs1      XYZ
-#{b} amend mem_rdata_q[]    XYZ
-#{c} amend mem_state[]      XYZ
-#{d} amend mem_wordsize[]   XYZ
-#{e} amend reg_out[]        XYZ
-#{f} amend reg_pc[]         XYZ
-#{g} amend reg_sh[]         XYZ
-
 [collect picorv32]
 
 solo-group mem_rdata_q[]
@@ -270,23 +251,26 @@ solo-join alu_*
 [partition picorv32]
 
 name 0_pseudo_trigger  decoder_pseudo_trigger
-name 1_next_pc         reg_next_pc[]
-name 3_cpuregs_wrdata  cpuregs_wrdata
-name 5_cluster_count   count_*
-name 5_cluster_lached  latched_*
-name 6_cluster_decoded decoded_*
-name 6_decoder_trigger decoder_trigger
-name 6_trap            trap
-name 7_cluster_alu     alu_*
-name 7_cluster_instr   instr_*
-name 7_cluster_is      is_*
 
-name 0_mem_rinst mem_do_rinst
+name 2_next_pc         reg_next_pc[]
+name 3_cpuregs_wrdata  cpuregs_wrdata
+name 3_cluster_count   count_*
+name 3_cluster_lached  latched_*
+name 3_cluster_reg     reg_*
+name 3_cluster_alu     alu_*
+name 3_cluster_decoded decoded_*
+
+name 3_mem_rinst mem_do_rinst
 final mem_do_rinst
 
-name 2_mem_addr mem_addr
-name 6_mem_data mem_wdata,mem_wstrb,mem_rdata_q[]
-name 6_mem_ctrl mem_valid,mem_do_*,mem_instr,mem_state[],mem_wordsize[]
+name 3_mem_addr mem_addr
+name 3_mem_data mem_wdata,mem_wstrb,mem_rdata_q[]
+name 3_mem_ctrl mem_valid,mem_do_*,mem_instr,mem_state[],mem_wordsize[]
+
+name 4_decoder_trigger decoder_trigger
+name 4_trap            trap
+name 4_cluster_instr   instr_*
+name 4_cluster_is      is_*
 
 amend cpu_state[]      trap
 amend cpu_state[]      count_*
@@ -368,139 +352,16 @@ amend mem_do_rdata     mem_wdata
 amend mem_wordsize[]   mem_wdata
 
 amend cpu_state[]      reg_pc[]
-
 amend cpu_state[]      reg_out[]
 amend mem_*            reg_out[]
-
 amend cpu_state[]      reg_sh[]
 amend decode*          reg_sh[]
-
-
-##########################################
-# Amend Templates   (use with tryamend.sh)
-#
-#{C} amend cpu_state[]      XYZ
-#{M} amend mem_*            XYZ
-#{D} amend decode*          XYZ
-#{I} amend instr_*          XYZ
-#{S} amend is_*             XYZ
-#{A} amend alu*             XYZ
-#{N} amend count*           XYZ
-#{L} amend latch*           XYZ
-#{P} amend pcpi*            XYZ
-#{R} amend *reg*            XYZ
-#{T} amend trap             XYZ
-#
-#{M01} amend mem_addr         XYZ
-#{M02} amend mem_instr        XYZ
-#{M03} amend mem_valid        XYZ
-#{M04} amend mem_wdata        XYZ
-#{M05} amend mem_wstrb        XYZ
-#{M06} amend mem_do_prefetch  XYZ
-#{M07} amend mem_do_rdata     XYZ
-#{M08} amend mem_do_rinst     XYZ
-#{M09} amend mem_do_wdata     XYZ
-#{M10} amend mem_rdata_q[]    XYZ
-#{M11} amend mem_state[]      XYZ
-#{M12} amend mem_wordsize[]   XYZ
-#
-#{D01} amend decoded_rd       XYZ
-#{D02} amend decoded_rs1      XYZ
-#{D03} amend decoded_imm_j[]  XYZ
-#{D04} amend decoded_imm      XYZ
-#{D05} amend decoder_pseudo*  XYZ
-#{D06} amend decoder_trigger  XYZ
-#
-#{I01} amend instr_add        XYZ
-#{I02} amend instr_addi       XYZ
-#{I03} amend instr_and        XYZ
-#{I04} amend instr_andi       XYZ
-#{I05} amend instr_auipc      XYZ
-#{I06} amend instr_beq        XYZ
-#{I07} amend instr_bge        XYZ
-#{I08} amend instr_bgeu       XYZ
-#{I09} amend instr_blt        XYZ
-#{I10} amend instr_bltu       XYZ
-#{I11} amend instr_bne        XYZ
-#{I12} amend instr_jal        XYZ
-#{I13} amend instr_jalr       XYZ
-#{I14} amend instr_lb         XYZ
-#{I15} amend instr_lbu        XYZ
-#{I16} amend instr_lh         XYZ
-#{I17} amend instr_lhu        XYZ
-#{I18} amend instr_lui        XYZ
-#{I19} amend instr_lw         XYZ
-#{I20} amend instr_or         XYZ
-#{I21} amend instr_ori        XYZ
-#{I22} amend instr_rdcycle    XYZ
-#{I23} amend instr_rdcycleh   XYZ
-#{I24} amend instr_rdinstr    XYZ
-#{I25} amend instr_rdinstrh   XYZ
-#{I26} amend instr_sb         XYZ
-#{I27} amend instr_sh         XYZ
-#{I28} amend instr_sll        XYZ
-#{I29} amend instr_slli       XYZ
-#{I30} amend instr_slt        XYZ
-#{I31} amend instr_slti       XYZ
-#{I32} amend instr_sltiu      XYZ
-#{I33} amend instr_sltu       XYZ
-#{I34} amend instr_sra        XYZ
-#{I35} amend instr_srai       XYZ
-#{I36} amend instr_srl        XYZ
-#{I37} amend instr_srli       XYZ
-#{I38} amend instr_sub        XYZ
-#{I39} amend instr_sw         XYZ
-#{I40} amend instr_xor        XYZ
-#{I41} amend instr_xori       XYZ
-#
-#{S01} amend is_alu_reg_imm   XYZ
-#{S02} amend is_alu_reg_reg   XYZ
-#{S03} amend is_beq_bne_*     XYZ
-#{S04} amend is_compare       XYZ
-#{S05} amend is_jalr_addi_*   XYZ
-#{S06} amend is_lb_lh_lw_*    XYZ
-#{S07} amend is_lbu_lhu_lw    XYZ
-#{S08} amend is_lui_auipc_jal XYZ
-#{S09} amend is_lui_*_add_sub XYZ
-#{S10} amend is_sb_sh_sw      XYZ
-#{S11} amend is_sll_srl_sra   XYZ
-#{S12} amend is_slli_srli_*   XYZ
-#{S13} amend is_slti_blt_slt  XYZ
-#{S14} amend is_sltiu_bltu_*  XYZ
-#
-#{L01} amend latched_rd       XYZ
-#{L02} amend latched_branch   XYZ
-#{L03} amend latched_stalu    XYZ
-#{L04} amend latched_store    XYZ
-#{L05} amend latched_is_lb    XYZ
-#{L06} amend latched_is_lh    XYZ
-#{L07} amend latched_is_lu    XYZ
 
 [strategy pdr]
 use sby
 engine abc pdr
 timeout 2000
 
-#[strategy pdr_rte]
-#pin picorv32.0_mem_rinst
-#pin picorv32.0_pseudo_trigger
-#pin picorv32.0_regfile_byte0
-#pin picorv32.0_regfile_byte1
-#pin picorv32.0_regfile_byte2
-#pin picorv32.0_regfile_byte3
-#pin picorv32.2_mem_addr
-#pin picorv32.4_cpu_state
-#pin picorv32.5_cluster_lached
-#pin picorv32.6_cluster_decoded
-#pin picorv32.6_decoder_trigger
-#use sby
-#engine abc pdr -rte
-#timeout 2000
-
-# [strategy sby]
-# use sby
-# depth 14
-# engine smtbmc bitwuzla
 
 ##############################################################
 # register file bits, via vcdmatch.py
