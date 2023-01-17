@@ -1,0 +1,155 @@
+diff --git a/Makefile b/Makefile
+index dd2fbce..5178d90 100644
+--- a/Makefile
++++ b/Makefile
+@@ -16,7 +16,7 @@ FIRMWARE_OBJS = firmware/start.o firmware/irq.o firmware/print.o firmware/hello.
+ GCC_WARNS  = -Werror -Wall -Wextra -Wshadow -Wundef -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings
+ GCC_WARNS += -Wredundant-decls -Wstrict-prototypes -Wmissing-prototypes -pedantic # -Wconversion
+ TOOLCHAIN_PREFIX = $(RISCV_GNU_TOOLCHAIN_INSTALL_PREFIX)i/bin/riscv32-unknown-elf-
+-COMPRESSED_ISA = C
++COMPRESSED_ISA =
+ 
+ # Add things like "export http_proxy=... https_proxy=..." here
+ GIT_ENV = true
+diff --git a/firmware/start.S b/firmware/start.S
+index d95f04c..6bcb936 100644
+--- a/firmware/start.S
++++ b/firmware/start.S
+@@ -5,15 +5,15 @@
+ // binary, for any purpose, commercial or non-commercial, and by any
+ // means.
+ 
+-#define ENABLE_QREGS
++//#define ENABLE_QREGS
+ #define ENABLE_HELLO
+ #define ENABLE_RVTST
+ #define ENABLE_SIEVE
+-#define ENABLE_MULTST
++//#define ENABLE_MULTST
+ #define ENABLE_STATS
+ 
+ #ifndef ENABLE_QREGS
+-#  undef ENABLE_RVTST
++//#  undef ENABLE_RVTST
+ #endif
+ 
+ // Only save registers in IRQ wrapper that are to be saved by the caller in
+@@ -40,8 +40,8 @@
+ 
+ reset_vec:
+ 	// no more than 16 bytes here !
+-	picorv32_waitirq_insn(zero)
+-	picorv32_maskirq_insn(zero, zero)
++	/* picorv32_waitirq_insn(zero) */
++	/* picorv32_maskirq_insn(zero, zero) */
+ 	j start
+ 
+ 
+@@ -344,6 +344,47 @@ irq_stack:
+  **********************************/
+ 
+ start:
++	/* uniquely tag all register bits */
++#define set_all_regs(v) \
++	li x1, v; \
++	mv x2,x1; \
++	mv x3,x1; \
++	mv x4,x1; \
++	mv x5,x1; \
++	mv x6,x1; \
++	mv x7,x1; \
++	mv x8,x1; \
++	mv x9,x1; \
++	mv x10,x1; \
++	mv x11,x1; \
++	mv x12,x1; \
++	mv x13,x1; \
++	mv x14,x1; \
++	mv x15,x1; \
++	mv x16,x1; \
++	mv x17,x1; \
++	mv x18,x1; \
++	mv x19,x1; \
++	mv x20,x1; \
++	mv x21,x1; \
++	mv x22,x1; \
++	mv x23,x1; \
++	mv x24,x1; \
++	mv x25,x1; \
++	mv x26,x1; \
++	mv x27,x1; \
++	mv x28,x1; \
++	mv x29,x1; \
++	mv x30,x1; \
++	mv x31,x1; \
++	mv x0,x1
++	set_all_regs(0xFFFFFFFF)
++	set_all_regs(0x0000FFFF)
++	set_all_regs(0x00FF00FF)
++	set_all_regs(0x0F0F0F0F)
++	set_all_regs(0x33333333)
++	set_all_regs(0x55555555)
++
+ 	/* zero-initialize all registers */
+ 
+ 	addi x1, zero, 0
+@@ -392,7 +433,7 @@ start:
+ #  define TEST(n) \
+ 	.global n; \
+ 	addi x1, zero, 1000; \
+-	picorv32_timer_insn(zero, x1); \
++	/* picorv32_timer_insn(zero, x1); */ \
+ 	jal zero,n; \
+ 	.global n ## _ret; \
+ 	n ## _ret:
+@@ -444,6 +485,7 @@ start:
+ 	TEST(or)
+ 	TEST(and)
+ 
++	j skip_mul_div
+ 	TEST(mulh)
+ 	TEST(mulhsu)
+ 	TEST(mulhu)
+@@ -454,6 +496,7 @@ start:
+ 	TEST(rem)
+ 	TEST(remu)
+ 
++skip_mul_div:
+ 	TEST(simple)
+ 
+ 	/* set stack pointer */
+diff --git a/testbench.v b/testbench.v
+index 9d8e249..d9dfad3 100644
+--- a/testbench.v
++++ b/testbench.v
+@@ -161,18 +161,18 @@ module picorv32_wrapper #(
+ `endif
+ 
+ 	picorv32_axi #(
+-`ifndef SYNTH_TEST
+-`ifdef SP_TEST
+-		.ENABLE_REGS_DUALPORT(0),
+-`endif
+-`ifdef COMPRESSED_ISA
+-		.COMPRESSED_ISA(1),
+-`endif
+-		.ENABLE_MUL(1),
+-		.ENABLE_DIV(1),
+-		.ENABLE_IRQ(1),
+-		.ENABLE_TRACE(1)
+-`endif
++//`ifndef SYNTH_TEST
++//`ifdef SP_TEST
++//		.ENABLE_REGS_DUALPORT(0),
++//`endif
++//`ifdef COMPRESSED_ISA
++//		.COMPRESSED_ISA(1),
++//`endif
++//		.ENABLE_MUL(1),
++//		.ENABLE_DIV(1),
++//		.ENABLE_IRQ(1),
++//		.ENABLE_TRACE(1)
++//`endif
+ 	) uut (
+ 		.clk            (clk            ),
+ 		.resetn         (resetn         ),

@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 
+import re
 from vcdvcd import VCDVCD
+
+cpuregs_only_mode = False
+
+def vcd_extend(v, n):
+    extbit = v[-1]
+    if extbit == "1": extbit="0"
+    return extbit*(n-len(v)) + v
 
 class VcdData:
     def __init__(self):
@@ -19,15 +27,21 @@ class VcdData:
         """Called by VCDVCD at $enddefinitions"""
         for key in vcd.data:
             for name in vcd.data[key].references:
-                if "BUF" in name: continue
-                if "dbg" in name: continue
+                if "BUF" in name or "._" in name: continue
+                if "dbg" in name and not "dbg_reg_x" in name: continue
                 if name.startswith(self.currentTop):
                     name = name[len(self.currentTop):]
                     if name.startswith("\\"): name = name[1:]
-                    break
+                    if cpuregs_only_mode:
+                        if name.startswith("cpuregs_reg_r") and name.endswith("]"): break
+                        if name.startswith("cpuregs["): break
+                    else:
+                        if name.startswith("_"): continue
+                        if name.endswith("_"): continue
+                        break
             else:
                 continue
-            if self.currentDepth == 0 or self.currentDepth > name.count("."):
+            if self.currentDepth == 0 or self.currentDepth > name.count(".") or ".\\mem" in name:
                 name = self.currentPrefix + name
                 self.references[key] = name
                 if vcd.data[key].size == "1":
@@ -35,6 +49,7 @@ class VcdData:
                 else:
                     for idx in range(int(vcd.data[key].size)):
                         self.bitnames[name, idx] = f"{name}<{idx}>"
+                print(f"Signal: {name}")
         print(f"  found {len(self.references)} signals with {len(self.bitnames)} bits", flush=True)
 
     def time(self, vcd, time, cur_sig_vals):
@@ -51,7 +66,8 @@ class VcdData:
 
         frame = self.data[time]
         for key, name in self.references.items():
-            for idx, bit in enumerate(reversed(cur_sig_vals[key])):
+            bits = vcd_extend(cur_sig_vals[key], int(vcd.data[key].size))
+            for idx, bit in enumerate(reversed(bits)):
                 refbit = self.bitnames[name, idx]
                 if bit == "1":
                     self.onebits.add(refbit)
@@ -88,6 +104,19 @@ class SignalGroup:
         self.zeros = set()
         self.ones = set()
         self.undefs = set()
+        self.trace = ""
+
+    def __str__(self):
+        def show_first_n(s, n):
+            if len(s) <= n:
+                return ",".join(sorted(s))
+            return ",".join(sorted(s)[0:n])+f"+{len(s)-n}"
+        return f"""G({show_first_n(self.members, 10)}):
+    zeros:  [{show_first_n(self.zeros, 5)}],
+    ones:   [{show_first_n(self.ones, 5)}],
+    undefs: [{show_first_n(self.undefs, 5)}],
+    trace:  {self.trace}
+"""
 
 
 class SignalDatabase:
@@ -156,7 +185,7 @@ class SignalDatabase:
                         group.zeros.add(name)
                     elif bit == "1":
                         group.ones.add(name)
-                    elif bit == "x":
+                    elif bit == "x" or bit == "z":
                         group.undefs.add(name)
                     else:
                         assert False
@@ -170,6 +199,10 @@ class SignalDatabase:
                         self.rem(group, name)
                     for name in group.undefs:
                         self.add(newGroup, name)
+                    newGroup.trace = group.trace + f"1"
+                    group.trace += f"0"
+                else:
+                    group.trace += "_" if len(group.zeros) else "-" if len(group.ones) else "x"
 
                 group.zeros = set()
                 group.ones = set()
@@ -185,20 +218,46 @@ class SignalDatabase:
         for name in sorted(self.const_one):
             print(f"  {name}")
 
-        G = set()
-        for idx, group in enumerate(self.groups):
-            for name in sorted(group.members):
-                if name.startswith("gold."):
-                    n = "gate" + name[4:]
-                    if n in group.members: break
-            else:
-                G.add(tuple(sorted(group.members)))
+        if True:
+            G = set()
+            for group in self.groups:
+                for name in sorted(group.members):
+                    if name.startswith("gold."):
+                        n = "gate" + name[4:]
+                        if n in group.members: break
+                else:
+                    G.add(tuple(sorted(group.members)))
 
-        print(f"Left with {len(G)} groups after sorting and filtering:")
-        for idx, group in enumerate(sorted(G)):
-            print(f"  Group {idx}:")
-            for name in group:
-                print(f"    {name}")
+            print(f"Left with {len(G)} groups after sorting and filtering:")
+            for idx, group in enumerate(sorted(G)):
+                print(f"  Group {idx}:")
+                for name in group:
+                    print(f"    {name}")
+        else:
+            for idx, group in enumerate(self.groups):
+                for name in sorted(group.members):
+                    if name.startswith("gold."):
+                        n = "gate" + name[4:]
+                        if n in group.members: break
+                print(f"  Group {idx}:")
+                for name in group.members:
+                    print(f"    {name}")
+
+        cpuregs = dict()
+        for group in self.groups:
+            m = tuple(sorted(group.members))
+            if len(m) == 3 and m[0].startswith("gate.cpuregs_reg_r1_") and m[1].startswith("gate.cpuregs_reg_r2_") and m[2].startswith("gold.cpuregs["):
+                match = re.match(r"gold.cpuregs\[(\d+)\]\[(\d+)\]", m[2])
+                cpuregs[int(match[1]), int(match[2])] = (m[2], m[0], m[1])
+        print(f"Matched {len(cpuregs)} CPU Register bits:")
+        print("[match picorv32]")
+        for k in sorted(cpuregs):
+            gold_1 = cpuregs[k][0][5:]
+            gold_2 = re.sub(r"cpuregs\[(\d+)\]", r"dbg_reg_x\1", gold_1)
+            gate_1 = cpuregs[k][1][5:].replace(".\\", ".")
+            gate_2 = cpuregs[k][2][5:].replace(".\\", ".")
+            print(f"gold-match {gold_1} {gate_1}")
+            print(f"gold-match {gold_2} {gate_2}")
 
 db = SignalDatabase()
 db.parse("test_gold.vcd", "gold", "testbench.uut")

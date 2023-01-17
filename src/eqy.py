@@ -1217,6 +1217,9 @@ def main():
     elif not ctx.args.setupmode:
         run_scripts(ctx.args, ctx, ctx.job)
 
+    else:
+        ctx.job.expect.append("UNKNOWN")
+
     ctx.job.final()
     sys.exit(ctx.job.retcode)
 

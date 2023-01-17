@@ -313,7 +313,15 @@ struct Partition
 	pool<SigBit> gold_bits, gate_bits;
 	pool<Cell*> gold_cells, gate_cells;
 
+	pool<SigBit> amended_bits;
+	pool<Cell*> amended_cells;
+
 	Partition(EqyPartitionWorker *worker) : worker(worker), index(GetSize(worker->partitions)) { }
+
+	bool active_fragment()
+	{
+		return fragment && (merged_into == -1 || !worker->partition(merged_into)->fragment);
+	}
 
 	// Create a unique non-fragment clone of this partition and mark this partition as superseded.
 	Partition *make_get_nonfragment()
@@ -492,8 +500,19 @@ struct Partition
 
 		log_assert(other->crossbits.empty());
 
-		gold_bits.insert(other->gold_bits.begin(), other->gold_bits.end());
-		gold_cells.insert(other->gold_cells.begin(), other->gold_cells.end());
+		for (auto bit : other->gold_bits) {
+			if (gold_bits.count(bit))
+				continue;
+			gold_bits.insert(bit);
+			amended_bits.insert(bit);
+		}
+
+		for (auto cell : other->gold_cells) {
+			if (gold_cells.count(cell))
+				continue;
+			gold_cells.insert(cell);
+			amended_cells.insert(cell);
+		}
 	}
 
 	void add(SigBit gold_bit)
@@ -1719,18 +1738,43 @@ void EqyPartitionWorker::merge_partitions()
 	log("  Fragments:\n");
 	for (auto &p_ptr : partitions) {
 		auto p = p_ptr.get();
-		if (!p->fragment) continue;
+		if (!p->active_fragment()) continue;
 		std::string label;
+		SigSpec hidden_outbits;
 		SigSpec sorted_outbits = p->outbits;
 		sorted_outbits.sort_and_unify();
-		for (auto chunk : sorted_outbits) {
-			std::string new_label = log_signal(chunk);
-			if (label.empty() || (GetSize(new_label) < GetSize(label)) ||
-					(GetSize(new_label) == GetSize(label) && new_label < label))
-				label = new_label;
+		while (!sorted_outbits.empty()) {
+			SigChunk best_chunk;
+			std::string best_label;
+			for (auto chunk : sorted_outbits.chunks()) {
+				if (GetSize(best_chunk) != GetSize(chunk)) {
+					if (GetSize(best_chunk) < GetSize(chunk))
+						best_chunk = chunk, best_label = log_signal(chunk);
+					continue;
+				}
+				std::string this_label = log_signal(chunk);
+				if (GetSize(best_label) != GetSize(this_label)) {
+					if (GetSize(best_label) > GetSize(this_label))
+						best_chunk = chunk, best_label = this_label;
+					continue;
+				}
+				if (best_label > this_label)
+					best_chunk = chunk, best_label = this_label;
+			}
+			if (label.empty()) {
+				label = log_signal(best_chunk);
+			} else {
+				std::string new_label = label + ", " + log_signal(best_chunk);
+				if (GetSize(new_label) < 150)
+					label = new_label;
+				else
+					hidden_outbits.append(best_chunk);
+			}
+			sorted_outbits.remove(best_chunk);
 		}
+		if (!hidden_outbits.empty())
+			label += stringf(", and %d more bits", GetSize(hidden_outbits));
 		log("     %3d: %s\n", p->index, label.c_str());
-
 	}
 	log("  Partitions:\n");
 	for (auto &p_ptr : partitions) {
@@ -1769,16 +1813,53 @@ void EqyPartitionWorker::merge_partitions()
 			if (!q->fragment) continue;
 			if (q->index % 5 == 0)
 				log(" ");
-			log("%c", p == q ? '#' :
-					p->info_merged_flat.count(q->index) ? '*' :
-					p->info_amended.count(q->index) ? '+' : '.');
+			if (!q->active_fragment())  {
+				log(",");
+				continue;
+			}
+			if (p == q) {
+				log("#");
+				continue;
+			}
+			if (p->info_merged_flat.count(q->index)) {
+				log("*");
+				continue;
+			}
+			if (p->info_amended.count(q->index)) {
+				log("+");
+				continue;
+			}
+			bool is_fragment_driver = false;
+			bool is_driver = false;
+			for (auto bit : q->outbits) {
+				if (p->inbits.count(bit)) {
+					if (p->amended_bits.count(bit))
+						is_fragment_driver = true;
+					else
+						is_driver = true;
+					break;
+				}
+			}
+			if (is_driver) {
+				log("=");
+				continue;
+			}
+			if (is_fragment_driver) {
+				log("-");
+				continue;
+			}
+			log(".");
 		}
 		log("  %s\n", p->names.front().c_str());
 	}
 	log("  Legend for Fragment-Partition-Matrix:\n");
-	log("      #  .... partition is a single fragment\n");
+	log("      #  .... partition is this single fragment\n");
 	log("      *  .... fragments merged into single partition\n");
 	log("      +  .... fragments amended to the partition\n");
+	log("      =  .... fragment is driving a partition input\n");
+	log("      -  .... fragment is driving an amended fragment\n");
+	log("      .  .... no relationship between fragment and partition\n");
+	log("      ,  .... unused fragment index (as result of grouping)\n");
 }
 
 void EqyPartitionWorker::write(bool fragments)

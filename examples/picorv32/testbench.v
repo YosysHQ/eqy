@@ -25,6 +25,11 @@ module testbench;
 `endif
 		repeat (5) @(posedge clk);
 		resetn <= 1;
+		if (0) begin
+			// shorter trace for vcdmatch.py development
+			repeat (1000) @(posedge clk);
+			$finish;
+		end
 		repeat (120000) @(posedge clk);
 		$stop;
 	end
@@ -60,13 +65,13 @@ module testbench;
 	always @* begin
 		mem_ready = 0;
 		mem_rdata = 0;
-		if (resetn && mem_valid) begin
+		if (resetn && mem_valid && !hickup) begin
 			if (mem_addr < 128*1024) begin
-				mem_ready = !hickup;
+				mem_ready = 1;
 				mem_rdata = memory[mem_addr >> 2];
 			end
 			if (mem_addr == 32'h1000_0000 || mem_addr == 32'h2000_0000) begin
-				mem_ready = !hickup;
+				mem_ready = 1;
 			end
 		end
 	end

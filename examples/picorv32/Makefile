@@ -20,17 +20,29 @@ prove_vivado: picorv32_vivado.eqy picorv32_vivado.v picorv32_modified.v
 prove_modified: picorv32_modified.eqy picorv32_modified.v picorv32.v
 	eqy -fj6 picorv32_modified.eqy
 
-test_gold.vcd: test_gold
+test_gold.vcd: test_gold firmware.hex
 	vvp -N test_gold
 
-test_gate.vcd: test_gate
+test_gate.vcd: test_gate firmware.hex
 	vvp -N test_gate
 
-test_gold: testbench.v picorv32_modified.v
-	iverilog -o test_gold -D GOLD testbench.v picorv32_modified.v
+# test_gold: testbench.v picorv32_modified.v
+# 	iverilog -o test_gold -D GOLD -D DEBUGREGS testbench.v picorv32_modified.v
+#
+# test_gate: testbench.v picorv32_vivado.v
+# 	iverilog -o test_gate testbench.v picorv32_vivado.v `yosys-config --datdir/xilinx/cells_sim.v`
 
-test_gate:testbench.v picorv32_vivado.v
-	iverilog -o test_gate testbench.v picorv32_vivado.v `yosys-config --datdir/xilinx/cells_sim.v`
+test_gate_uut.v: test_gold_uut.v
+test_gold_uut.v: picorv32_modified.v picorv32_vivado.v picorv32_vivado.eqy
+	eqy -fmj6 -d netlists.d picorv32_vivado.eqy
+	yosys -o test_gold_uut.v netlists.d/gold.il
+	yosys -o test_gate_uut.v netlists.d/gate.il
+
+test_gold: testbench.v test_gold_uut.v
+	iverilog -o test_gold -D GOLD testbench.v test_gold_uut.v
+
+test_gate: testbench.v test_gate_uut.v
+	iverilog -o test_gate testbench.v test_gate_uut.v
 
 vcdmatch: test_gold.vcd test_gate.vcd
 	python3 vcdmatch.py | tee vcdmatch.out
@@ -40,22 +52,22 @@ vivado:
 	bash -c ". /opt/Xilinx/Vivado/2021.2/settings64.sh; vivado -mode batch -nojournal -log picorv32_vivado.log -source picorv32_vivado.tcl"
 
 check_module:
-	-eqy -d $@.d -fmj6 picorv32_vivado.eqy
+	eqy -d $@.d -fmj6 picorv32_vivado.eqy
 	sed '/Fragment-Partition-Matrix:/,/^$$/!d;' $@.d/partition.log
 	cd $@.d/modules && sby -f picorv32.sby
 
 check_%:
-	-eqy -d $@.d -fmj6 picorv32_vivado.eqy
+	eqy -d $@.d -fmj6 picorv32_vivado.eqy
 	sed '/Fragment-Partition-Matrix:/,/^$$/!d;' $@.d/partition.log
 	cd $@.d/partitions && sby -f picorv32.$(subst check_,,$@).sby
 
 prove_%:
 	# -eqy -d check_$(subst prove_,,$@).d -fmj6 picorv32_vivado.eqy
-	cd check_$(subst prove_,,$@).d/strategies/picorv32.$(subst prove_,,$@)/pdr && sby -f picorv32.$(subst prove_,,$@).sby
+	cd check_$(subst prove_,,$@).d/strategies/picorv32.$(subst prove_,,$@)/pdr* && sby -f picorv32.$(subst prove_,,$@).sby
 
 watch:
 	@while \
-		files=`sh -c 'fuser */strategies/*/pdr/*/logfile.txt' 2>&1 | cut -f1 -d: | sed "s,^$$PWD/,,"`; \
+		files=`sh -c 'fuser */strategies/*/*/*/logfile.txt' 2>&1 | cut -f1 -d: | sed "s,^$$PWD/,,"`; \
 		test -n "$$files"; \
 	do \
 		clear; \
