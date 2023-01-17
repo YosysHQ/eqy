@@ -1,0 +1,31 @@
+[gold]
+read -sv risc16f84-free.v
+prep -top pic_16f84_core
+async2sync
+memory_map
+
+[gate]
+read -sv risc16f84-in.v
+prep -top pic_16f84_core
+async2sync
+memory_map
+
+[strategy sby]
+use sby
+depth 2
+engine smtbmc bitwuzla
+
+[collect pic_16f84_core]
+join *
+#group inte int*
+group wdt_init* wdt_*
+group inst_*
+group addr_*
+group stack_*
+group rb*_int
+group ram*
+group porta*
+group portb*
+group alu*
+group inc_*
+group write*
