@@ -117,12 +117,23 @@ struct EqyPartitionWorker
 	{
 		// Copy data from collect rules into local databases
 
-		if (rule[0] == "group" && GetSize(rule) == 3) {
-			SigSpec sig = gold_sigmap({gold->wire("\\" + rule[1]), gold->wire("\\" + rule[2])});
-			sig.remove_const();
-			for (int i = 1; i < GetSize(sig); i++) {
-				group_database[sig[0]].insert(sig[i]);
-				group_database[sig[i]].insert(sig[0]);
+		if (rule[0] == "group" && GetSize(rule) >= 2) {
+			SigBit firstBit;
+			bool foundFirstBit = false;
+			for (int i = 1; i < GetSize(rule); i++) {
+				SigSpec sig = gold_sigmap(gold->wire("\\" + rule[i]));
+				sig.remove_const();
+				for (auto bit : sig) {
+					if (!queue.count(bit))
+						continue;
+					if (foundFirstBit) {
+						group_database[firstBit].insert(bit);
+						group_database[bit].insert(firstBit);
+					} else {
+						firstBit = bit;
+						foundFirstBit = true;
+					}
+				}
 			}
 			return;
 		}
@@ -131,16 +142,6 @@ struct EqyPartitionWorker
 			for (SigBit bit : gold_sigmap(gold->wire("\\" + rule[1])))
 				if (gold_drivers.count(bit))
 					bind_database.insert(bit);
-			return;
-		}
-
-		if (rule[0] == "join" && GetSize(rule) == 2) {
-			SigSpec sig = gold_sigmap(gold->wire("\\" + rule[1]));
-			sig.remove_const();
-			for (int i = 1; i < GetSize(sig); i++) {
-				group_database[sig[0]].insert(sig[i]);
-				group_database[sig[i]].insert(sig[0]);
-			}
 			return;
 		}
 
@@ -2047,14 +2048,20 @@ struct EqyPartitionPass : public Pass
 		std::string line;
 		for (int linenr=1; std::getline(partition_names_file, line); linenr++) {
 			std::vector<std::string> things = split_tokens(line);
-			if ((things[0] == "name" || things[0] == "group" || things[0] == "merge" || things[0] == "path" ||
+			if ((things[0] == "name" || things[0] == "merge" || things[0] == "path" ||
 					things[0] == "amend" || things[0] == "ramend") && GetSize(things) == 4) {
 				partition_ids[things[1]].push_back({things[0], things[2], things[3]});
 				continue;
 			}
-			if ((things[0] == "bind" || things[0] == "sticky" || things[0] == "join" || things[0] == "solo" ||
-					things[0] == "final" || things[0] == "amend" || things[0] == "noamend") && GetSize(things) == 3) {
+			if ((things[0] == "bind" || things[0] == "sticky" || things[0] == "solo" || things[0] == "final" ||
+					things[0] == "amend" || things[0] == "noamend") && GetSize(things) == 3) {
 				partition_ids[things[1]].push_back({things[0], things[2]});
+				continue;
+			}
+			if (things[0] == "group" && GetSize(things) >= 3) {
+				auto modname = things[1];
+				things.erase(things.begin()+1);
+				partition_ids[modname].push_back(things);
 				continue;
 			}
 			log_error("Malformed line %d in file %s\n", linenr, filename.c_str());

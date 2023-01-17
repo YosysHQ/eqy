@@ -244,7 +244,7 @@ reg  [4:0] eecon1_reg;       // EECON1
 reg  [13:0] inst_reg;        // Hold fetched op-code/operand
 reg  [7:0] aluinp1_reg;      // data source (1 of 2)
 reg  [7:0] aluinp2_reg;      // data source (2 of 2)
-reg        c_in;             // Used with ALU data sources.
+reg        c_in = 0;         // Used with ALU data sources.
 reg  [7:0] aluout_reg;       // result of calculation
 reg  exec_op_reg;            // if L (i.e. GOTO instruction etc), stall exec.
 reg  intstart_reg;           // if H (i.e. interrupt), stall instr. exec.

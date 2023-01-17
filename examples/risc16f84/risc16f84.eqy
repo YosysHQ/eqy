@@ -17,8 +17,8 @@ engine smtbmc bitwuzla
 
 [collect pic_16f84_core]
 join *
-#group inte int*
-group wdt_init* wdt_*
+group intc*
+group wdt_*
 group inst_*
 group addr_*
 group stack_*
