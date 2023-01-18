@@ -1403,24 +1403,26 @@ void EqyPartitionWorker::merge_partitions()
 			continue;
 		}
 
-		if (rule[0] == "merge" && GetSize(rule) == 3) {
+		if (rule[0] == "merge" && GetSize(rule) >= 3) {
 			Partition *first = nullptr;
-			for (auto bit : gold_sigmap({gold->wire("\\" + rule[1]), gold->wire("\\" + rule[2])})) {
-				if (!po_partition_index.count(bit))
-					continue;
-				auto p = partition(po_partition_index.at(bit));
-				log_assert(!p->superseded);
-				log("  PO bit %s belongs to partition %d\n", log_signal(bit), p->index);
-				if (p->marked_final) {
-					log("    Skipping partition marked final.\n");
-					continue;
-				}
-				if (first == nullptr) {
-					first = p->make_get_nonfragment();
-					log("    Using partition %d as merge target.\n", first->index);
-				} else if (first != p) {
-					log("    Merging partition %d into partition %d.\n", p->index, first->index);
-					first->merge(p);
+			for (int i = 1; i < GetSize(rule); i++) {
+				for (auto bit : gold_sigmap(gold->wire("\\" + rule[i]))) {
+					if (!po_partition_index.count(bit))
+						continue;
+					auto p = partition(po_partition_index.at(bit));
+					log_assert(!p->superseded);
+					log("  PO bit %s belongs to partition %d\n", log_signal(bit), p->index);
+					if (p->marked_final) {
+						log("    Skipping partition marked final.\n");
+						continue;
+					}
+					if (first == nullptr) {
+						first = p->make_get_nonfragment();
+						log("    Using partition %d as merge target.\n", first->index);
+					} else if (first != p) {
+						log("    Merging partition %d into partition %d.\n", p->index, first->index);
+						first->merge(p);
+					}
 				}
 			}
 			continue;
@@ -2048,8 +2050,7 @@ struct EqyPartitionPass : public Pass
 		std::string line;
 		for (int linenr=1; std::getline(partition_names_file, line); linenr++) {
 			std::vector<std::string> things = split_tokens(line);
-			if ((things[0] == "name" || things[0] == "merge" || things[0] == "path" ||
-					things[0] == "amend" || things[0] == "ramend") && GetSize(things) == 4) {
+			if ((things[0] == "name" || things[0] == "path" || things[0] == "amend") && GetSize(things) == 4) {
 				partition_ids[things[1]].push_back({things[0], things[2], things[3]});
 				continue;
 			}
@@ -2058,7 +2059,7 @@ struct EqyPartitionPass : public Pass
 				partition_ids[things[1]].push_back({things[0], things[2]});
 				continue;
 			}
-			if (things[0] == "group" && GetSize(things) >= 3) {
+			if ((things[0] == "group" || things[0] == "merge") && GetSize(things) >= 3) {
 				auto modname = things[1];
 				things.erase(things.begin()+1);
 				partition_ids[modname].push_back(things);

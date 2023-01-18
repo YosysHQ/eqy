@@ -700,23 +700,20 @@ def partition_ids(ctx):
 
             if line[0] == "merge" and len(line) == 2:
                 for module_match in search_modules(ctx, ctx.matched_ids, pattern):
-                    first_entity = None
+                    group = set()
                     for entity_match, _ in search_entities(ctx, ctx.matched_ids[module_match], None, line[1], None, no_database[line[0]]):
-                        if first_entity is None:
-                            first_entity = entity_match
-                        else:
-                            print(line[0], module_match, first_entity, entity_match, file=partids_f)
+                        group.add(entity_match)
+                    print(line[0], module_match, *sorted(group), file=partids_f)
                 continue
 
             if line[0] == "merge" and len(line) == 3:
                 for module_match in search_modules(ctx, ctx.matched_ids, pattern):
+                    groups = collections.defaultdict(set)
                     for lhs, rhs in search_entities(ctx, ctx.matched_ids[module_match], ctx.matched_ids[module_match],
                                                         line[1], line[2], no_database[line[0]], no_database[line[0]]):
-                        if (module_match, lhs) not in no_database["join"]:
-                            print("join", module_match, lhs, file=partids_f)
-                        if (module_match, rhs) not in no_database["join"]:
-                            print("join", module_match, rhs, file=partids_f)
-                        print(line[0], module_match, lhs, rhs, file=partids_f)
+                        groups[lhs].add(rhs)
+                    for lhs, rhs in groups.items():
+                        print(line[0], module_match, lhs, *rhs, file=partids_f)
                 continue
 
             if line[0] in ("path", "amend") and len(line) == 3:
