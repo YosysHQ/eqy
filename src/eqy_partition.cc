@@ -1790,12 +1790,8 @@ void EqyPartitionWorker::merge_partitions()
 	for (auto &q_ptr : partitions) {
 		auto q = q_ptr.get();
 		if (!q->fragment) continue;
-		if (q->index % 5 == 0)
-			log(" ");
 		if (q->index % 10 == 0)
-			log("%d", q->index / 10);
-		else
-			log(" ");
+			log(" %-11d", q->index / 10);
 	}
 	log("\n");
 	log("          ");

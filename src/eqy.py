@@ -659,7 +659,8 @@ def partition_ids(ctx):
                         if solo_mode and (module_match, entity_match) not in no_database["solo"]:
                             print("solo", module_match, entity_match, file=partids_f)
                         group.add(entity_match)
-                    print(line[0], module_match, *sorted(group), file=partids_f)
+                    if group:
+                        print(line[0], module_match, *sorted(group), file=partids_f)
                 continue
 
             if line[0] == "group" and len(line) == 3:
@@ -703,7 +704,8 @@ def partition_ids(ctx):
                     group = set()
                     for entity_match, _ in search_entities(ctx, ctx.matched_ids[module_match], None, line[1], None, no_database[line[0]]):
                         group.add(entity_match)
-                    print(line[0], module_match, *sorted(group), file=partids_f)
+                    if group:
+                        print(line[0], module_match, *sorted(group), file=partids_f)
                 continue
 
             if line[0] == "merge" and len(line) == 3:
