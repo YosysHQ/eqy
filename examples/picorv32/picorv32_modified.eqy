@@ -30,5 +30,5 @@ group decoded_*
 group cpuregs[]
 
 [strategy simple]
-use satseq
+use sat
 depth 3

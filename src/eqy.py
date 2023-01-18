@@ -136,7 +136,7 @@ read -sv {3}
 prep -top {1}
 
 [strategy simple]
-use satseq
+use sat
 depth 10
 """.format(*ctx.args.init_config_file))
         print("eqy template config written to '{}'.".format(ctx.args.init_config_file[0]), file=sys.stderr)
@@ -851,7 +851,7 @@ class EqyDummyStrategy(EqyStrategy):
             print(f"echo \"Setting unknown status for partition '{partition.name}' via dummy strategy '{self.name}'\"", file=run_f)
 
 
-class EqySatseqStrategy(EqyStrategy):
+class EqySatStrategy(EqyStrategy):
     default_scfg = dict(depth=5)
     parse_opt_depth = EqyStrategy.int_opt_parser
 
@@ -969,7 +969,7 @@ class EqySbyStrategy(EqyStrategy):
 
 strategy_types = {
     "dummy": EqyDummyStrategy,
-    "satseq": EqySatseqStrategy,
+    "sat": EqySatStrategy,
     "sby": EqySbyStrategy,
     # add strategies here
 }

@@ -16,5 +16,5 @@ join Y
 amend X
 
 [strategy simple]
-use satseq
+use sat
 depth 10

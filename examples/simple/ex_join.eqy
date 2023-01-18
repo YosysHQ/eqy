@@ -13,5 +13,5 @@ solo *
 join X
 
 [strategy simple]
-use satseq
+use sat
 depth 10

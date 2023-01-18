@@ -14,5 +14,5 @@ bind Y
 solo *
 
 [strategy simple]
-use satseq
+use sat
 depth 10
