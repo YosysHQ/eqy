@@ -259,7 +259,8 @@ use statements
 The ``use strategy_type`` command selects a strategy type for this strategy. Each
 strategy type defines its own custom commands for the strategy section. For example,
 the ``depth`` command in the example above is a custom command only understood by
-the ``sat`` strategy type.
+the ``sat`` strategy type. See the :doc:`EQY Strategies reference page
+<strategies>` for details on the individual strategy types.
 
 apply and noapply
 .................

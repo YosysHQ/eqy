@@ -62,3 +62,7 @@ p {
 .injected .rst-current-version, .injected dt {
     color: #6ecbd7 !important;
 }
+
+dd { /* use the same indentation as for code blocks */
+    margin-inline-start: 1.5rem;
+}
