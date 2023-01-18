@@ -385,8 +385,8 @@ amend decode*          reg_sh[]
 
 [strategy pdr]
 use sby
-engine abc pdr
-timeout 2000
+engine abc pdr -r
+timeout 900
 
 
 ##############################################################
