@@ -224,19 +224,59 @@ class SignalDatabase:
 
         if True:
             G = set()
+            stmts = list()
             for group in self.groups:
-                for name in sorted(group.members):
+                M = tuple(sorted(group.members))
+                for name in M:
                     if name.startswith("gold."):
                         n = "gate" + name[4:]
                         if n in group.members: break
-                else:
-                    G.add(tuple(sorted(group.members)))
 
-            print(f"Left with {len(G)} groups after sorting and filtering:")
+                    if name.startswith("gold.cpu_state["): break
+                    if name.startswith("gold.cpuregs_rs1["): break
+                    if name.startswith("gold.next_pc["): break
+                    if name.startswith("gold.mem_rdata_latched[["): break
+                    if name.startswith("gold.cpuregs_rs2[["): break
+
+                    if name == "gold.instr_trap": break
+                    if name == "gold.is_rdcycle_rdcycleh_rdinstr_rdinstrh": break
+
+                    if name.startswith("gold.alu_out["): break
+                    if name.startswith("gold.count_instr["): break
+                    if name.startswith("gold.mem_rdata_q["): break
+                    if name.startswith("gold.mem_state["): break
+                    if name.startswith("gold.mem_wordsize["): break
+                    if name.startswith("gold.reg_next_pc["): break
+                    if name.startswith("gold.reg_out["): break
+                    if name.startswith("gold.reg_pc["): break
+                    if name.startswith("gold.reg_sh["): break
+
+                    if name == "gold.decoder_pseudo_trigger": break
+                    if name == "gold.decoder_trigger": break
+                    if name == "gold.latched_branch": break
+                    if name == "gold.latched_is_lb": break
+                    if name == "gold.latched_is_lh": break
+                    if name == "gold.latched_is_lu": break
+                    if name == "gold.latched_stalu": break
+                    if name == "gold.latched_store": break
+                    if name == "gold.mem_do_prefetch": break
+                    if name == "gold.mem_do_rinst": break
+                else:
+                    if len(M) == 2:
+                        gate, gold = M
+                        gate = re.sub(r"\[\d+:\d+\]<(\d+)>$", r"[\1]", gate)
+                        gold = re.sub(r"\[\d+:\d+\]<(\d+)>$", r"[\1]", gold)
+                        stmts.append(f"final-gold-match {gold[5:]:30} {gate[5:]}")
+                    else:
+                        G.add(M)
+
+            print(f"Left with {len(G)} groups after sorting and filtering{':' if G else '.'}")
             for idx, group in enumerate(sorted(G)):
                 print(f"  Group {idx}:")
                 for name in group:
                     print(f"    {name}")
+            for stmt in sorted(stmts):
+                print(stmt)
         else:
             for idx, group in enumerate(self.groups):
                 for name in sorted(group.members):

@@ -32,12 +32,16 @@ hierarchy -top picorv32
 
 ##############################################################
 #
-# Delete unused outputs
+# Delete unused outputs and unused net labels
 
 [script]
 cd picorv32
 delete -output mem_la_* trace_* pcpi_* eoi
 rename -hide mem_la_* trace_* pcpi_valid pcpi_insn eoi
+
+[gold]
+rename -hide mem_rdata_latched_noshuffle
+
 
 ##############################################################
 #
@@ -48,13 +52,14 @@ splitnets alu_out
 splitnets count_instr
 splitnets cpu_state
 splitnets mem_rdata_q
+splitnets mem_rdata_latched
 splitnets mem_state
 splitnets mem_wordsize
 splitnets reg_next_pc
 splitnets reg_out
 splitnets reg_pc
 splitnets reg_sh
-splitnets cpuregs_rs1
+splitnets cpuregs_rs[12]
 
 [gate]
 splitnets p_4_out0_in
@@ -118,10 +123,10 @@ group pcpi_rs1[0]  /pcpi_rs[12]\[[0-7]\]/
 group pcpi_rs1[8]  /pcpi_rs[12]\[([89]|1[0-5])\]/
 group pcpi_rs1[16] /pcpi_rs[12]\[(1[6-9]|2[0-3])\]/
 group pcpi_rs1[24] /pcpi_rs[12]\[(2[4-9]|3[01])\]/
-group cpuregs_rs1[0]  /cpuregs_rs1\[[0-7]\]/
-group cpuregs_rs1[8]  /cpuregs_rs1\[([89]|1[0-5])\]/
-group cpuregs_rs1[16] /cpuregs_rs1\[(1[6-9]|2[0-3])\]/
-group cpuregs_rs1[24] /cpuregs_rs1\[(2[4-9]|3[01])\]/
+group cpuregs_rs1[0]  /cpuregs_rs[12]\[[0-7]\]/
+group cpuregs_rs1[8]  /cpuregs_rs[12]\[([89]|1[0-5])\]/
+group cpuregs_rs1[16] /cpuregs_rs[12]\[(1[6-9]|2[0-3])\]/
+group cpuregs_rs1[24] /cpuregs_rs[12]\[(2[4-9]|3[01])\]/
 group /cpuregs\[\d+\]\[0\]/  /cpuregs\[\d+\]\[[0-7]\]/
 group /cpuregs\[\d+\]\[8\]/  /cpuregs\[\d+\]\[([89]|1[0-5])\]/
 group /cpuregs\[\d+\]\[16\]/ /cpuregs\[\d+\]\[(1[6-9]|2[0-3])\]/
@@ -131,6 +136,7 @@ group /dbg_reg_x\d+\[8\]/  /dbg_reg_x\d+\[([89]|1[0-5])\]/
 group /dbg_reg_x\d+\[16\]/ /dbg_reg_x\d+\[(1[6-9]|2[0-3])\]/
 group /dbg_reg_x\d+\[24\]/ /dbg_reg_x\d+\[(2[4-9]|3[01])\]/
 solo cpuregs_rs1[]
+solo cpuregs_rs2[]
 solo pcpi_rs1[]
 solo pcpi_rs2[]
 
@@ -175,12 +181,14 @@ solo-group cpu_state[]
 name 3_cpu_state cpu_state[]
 final cpu_state[]
 
+
 ##############################################################
 #
 # More Manual Matches
 # .. identified via vcdmatch.py
 
 [match picorv32]
+final-gold-match instr_trap      cpu_state[7]_i_8_n_0
 final-gold-match alu_out[]      alu_out_q[\2]_i_1_n_0
 
 final-gold-match count_instr[]    count_instr_reg_n_0_[\2]
@@ -202,6 +210,7 @@ final-gold-match latched_stalu             \0_reg_n_0
 final-gold-match latched_store             \0_reg_n_0
 final-gold-match mem_do_prefetch           \0_reg_n_0
 final-gold-match mem_do_rinst              \0_reg_n_0
+
 
 ##############################################################
 #
@@ -234,13 +243,17 @@ gate-nomatch decoded_imm_j[30]
 
 [collect picorv32]
 
+solo-group count_instr[]
+solo-group reg_next_pc[]
 solo-group mem_rdata_q[]
+solo-group mem_rdata_latched[]
 solo-group mem_state[]
 solo-group mem_wordsize[]
 solo-group reg_out[]
 solo-group reg_pc[]
 solo-group reg_sh[]
 
+solo-join count_cycle
 solo-join cpuregs_wrdata
 solo-join decoded_*
 solo-join /(instr|is)_.*/
@@ -264,7 +277,7 @@ name 3_mem_rinst mem_do_rinst
 final mem_do_rinst
 
 name 3_mem_addr mem_addr
-name 3_mem_data mem_wdata,mem_wstrb,mem_rdata_q[]
+name 3_mem_data mem_wdata,mem_wstrb,mem_rdata_q[],mem_rdata_latched[]
 name 3_mem_ctrl mem_valid,mem_do_*,mem_instr,mem_state[],mem_wordsize[]
 
 name 4_decoder_trigger decoder_trigger
@@ -276,6 +289,9 @@ amend cpu_state[]      trap
 amend cpu_state[]      count_*
 amend cpu_state[]      decoder_trigger
 
+amend mem_rdata_la*[]  instr_*
+amend mem_rdata_la*[]  is_*
+
 amend cpu_state[]      decoder_pseudo_trigger
 amend mem_state[]      decoder_pseudo_trigger
 amend mem_valid        decoder_pseudo_trigger
@@ -285,6 +301,7 @@ amend is_lbu_lhu_lw    decoder_pseudo_trigger
 amend is_slti_blt_slt  decoder_pseudo_trigger
 amend is_sltiu_bltu_*  decoder_pseudo_trigger
 amend is_sll_srl_sra   decoder_pseudo_trigger
+amend is_rdcycle_*     decoder_pseudo_trigger
 amend decoder_trigger  decoder_pseudo_trigger
 amend latched_is_lb    decoder_pseudo_trigger
 amend latched_is_lh    decoder_pseudo_trigger
@@ -294,12 +311,17 @@ amend mem_do_prefetch  cpu_state[]
 amend mem_do_rdata     cpu_state[]
 amend mem_do_wdata     cpu_state[]
 amend decoded_imm_j[]  cpu_state[]
+amend is_rdcycle_*     cpu_state[]
+amend instr_trap       cpu_state[]
 
 amend cpu_state[]      reg_next_pc[]
 amend mem_do_prefetch  reg_next_pc[]
 amend mem_do_rdata     reg_next_pc[]
 amend decoded_rs1      reg_next_pc[]
 amend decoded_imm_j[]  reg_next_pc[]
+amend cpuregs_rs2[]    reg_next_pc[]
+amend is_rdcycle_*     reg_next_pc[]
+amend instr_trap       reg_next_pc[]
 
 amend cpu_state[]      cpuregs_wrdata
 amend decoded_imm_j[]  cpuregs_wrdata
@@ -318,13 +340,17 @@ amend instr_sra        pcpi_rs1[]
 amend instr_srai       pcpi_rs1[]
 amend instr_srl        pcpi_rs1[]
 amend instr_srli       pcpi_rs1[]
+amend instr_trap       pcpi_rs1[]
 amend is_sll_srl_sra   pcpi_rs1[]
 amend is_slli_srli_*   pcpi_rs1[]
-amend cpuregs_rs1[]    pcpi_rs1[]
+amend is_rdcycle_*     pcpi_rs1[]
+amend cpuregs_rs[12][] pcpi_rs1[]
 amend /cpuregs\[.*/    pcpi_rs1[]
 
 amend cpu_state[]      decoded_imm
 amend decode*          decoded_imm
+amend mem_valid        decoded_imm
+amend mem_rdata_la*[]  decoded_imm
 
 amend cpu_state[]      latched_rd
 amend decoder_trigger  latched_rd
@@ -361,6 +387,78 @@ amend decode*          reg_sh[]
 use sby
 engine abc pdr
 timeout 2000
+
+
+##############################################################
+# more complex matches, via vcdmatch.py
+[match picorv32]
+final-gold-match is_rdcycle_rdcycleh_rdinstr_rdinstrh cpu_state[6]_i_2_n_0
+
+final-gold-match cpuregs_rs2[0]            cpuregs_reg_r1_0_31_0_5_n_1
+final-gold-match cpuregs_rs2[10]           cpuregs_reg_r1_0_31_6_11_n_5
+final-gold-match cpuregs_rs2[11]           cpuregs_reg_r1_0_31_6_11_n_4
+final-gold-match cpuregs_rs2[12]           cpuregs_reg_r1_0_31_12_17_n_1
+final-gold-match cpuregs_rs2[13]           cpuregs_reg_r1_0_31_12_17_n_0
+final-gold-match cpuregs_rs2[14]           cpuregs_reg_r1_0_31_12_17_n_3
+final-gold-match cpuregs_rs2[15]           cpuregs_reg_r1_0_31_12_17_n_2
+final-gold-match cpuregs_rs2[16]           cpuregs_reg_r1_0_31_12_17_n_5
+final-gold-match cpuregs_rs2[17]           cpuregs_reg_r1_0_31_12_17_n_4
+final-gold-match cpuregs_rs2[18]           cpuregs_reg_r1_0_31_18_23_n_1
+final-gold-match cpuregs_rs2[19]           cpuregs_reg_r1_0_31_18_23_n_0
+final-gold-match cpuregs_rs2[1]            cpuregs_reg_r1_0_31_0_5_n_0
+final-gold-match cpuregs_rs2[20]           cpuregs_reg_r1_0_31_18_23_n_3
+final-gold-match cpuregs_rs2[21]           cpuregs_reg_r1_0_31_18_23_n_2
+final-gold-match cpuregs_rs2[22]           cpuregs_reg_r1_0_31_18_23_n_5
+final-gold-match cpuregs_rs2[23]           cpuregs_reg_r1_0_31_18_23_n_4
+final-gold-match cpuregs_rs2[24]           cpuregs_reg_r1_0_31_24_29_n_1
+final-gold-match cpuregs_rs2[25]           cpuregs_reg_r1_0_31_24_29_n_0
+final-gold-match cpuregs_rs2[26]           cpuregs_reg_r1_0_31_24_29_n_3
+final-gold-match cpuregs_rs2[27]           cpuregs_reg_r1_0_31_24_29_n_2
+final-gold-match cpuregs_rs2[28]           cpuregs_reg_r1_0_31_24_29_n_5
+final-gold-match cpuregs_rs2[29]           cpuregs_reg_r1_0_31_24_29_n_4
+final-gold-match cpuregs_rs2[2]            cpuregs_reg_r1_0_31_0_5_n_3
+final-gold-match cpuregs_rs2[30]           cpuregs_reg_r1_0_31_30_31_n_0
+final-gold-match cpuregs_rs2[31]           cpuregs_reg_r1_0_31_30_31__0_n_0
+final-gold-match cpuregs_rs2[3]            cpuregs_reg_r1_0_31_0_5_n_2
+final-gold-match cpuregs_rs2[4]            cpuregs_reg_r1_0_31_0_5_n_5
+final-gold-match cpuregs_rs2[5]            cpuregs_reg_r1_0_31_0_5_n_4
+final-gold-match cpuregs_rs2[6]            cpuregs_reg_r1_0_31_6_11_n_1
+final-gold-match cpuregs_rs2[7]            cpuregs_reg_r1_0_31_6_11_n_0
+final-gold-match cpuregs_rs2[8]            cpuregs_reg_r1_0_31_6_11_n_3
+final-gold-match cpuregs_rs2[9]            cpuregs_reg_r1_0_31_6_11_n_2
+
+final-gold-match mem_rdata_latched[0]      mem_rdata_q[0]_i_1_n_0
+final-gold-match mem_rdata_latched[10]     decoded_rd[3]_i_1_n_0
+final-gold-match mem_rdata_latched[11]     decoded_rd[4]_i_1_n_0
+final-gold-match mem_rdata_latched[12]     mem_rdata_q[12]_i_1_n_0
+final-gold-match mem_rdata_latched[13]     mem_rdata_q[13]_i_1_n_0
+final-gold-match mem_rdata_latched[14]     mem_rdata_q[14]_i_1_n_0
+final-gold-match mem_rdata_latched[15]     decoded_rs1_rep_rep[0]_i_1_n_0
+final-gold-match mem_rdata_latched[16]     decoded_rs1_rep_rep[1]_i_1_n_0
+final-gold-match mem_rdata_latched[17]     decoded_rs1_rep_rep[2]_i_1_n_0
+final-gold-match mem_rdata_latched[18]     decoded_rs1_rep_rep[3]_i_1_n_0
+final-gold-match mem_rdata_latched[19]     decoded_rs1_rep_rep[4]_i_1_n_0
+final-gold-match mem_rdata_latched[1]      mem_rdata_q[1]_i_1_n_0
+final-gold-match mem_rdata_latched[20]     decoded_rs2_rep_rep[0]_i_1_n_0
+final-gold-match mem_rdata_latched[21]     decoded_rs2_rep_rep[1]_i_1_n_0
+final-gold-match mem_rdata_latched[22]     decoded_rs2_rep_rep[2]_i_1_n_0
+final-gold-match mem_rdata_latched[23]     decoded_rs2_rep_rep[3]_i_1_n_0
+final-gold-match mem_rdata_latched[24]     decoded_rs2_rep_rep[4]_i_1_n_0
+final-gold-match mem_rdata_latched[25]     decoded_imm_j[5]_i_1_n_0
+final-gold-match mem_rdata_latched[26]     decoded_imm_j[6]_i_1_n_0
+final-gold-match mem_rdata_latched[27]     decoded_imm_j[7]_i_1_n_0
+final-gold-match mem_rdata_latched[28]     decoded_imm_j[8]_i_1_n_0
+final-gold-match mem_rdata_latched[29]     decoded_imm_j[9]_i_1_n_0
+final-gold-match mem_rdata_latched[2]      mem_rdata_q[2]_i_1_n_0
+final-gold-match mem_rdata_latched[30]     decoded_imm_j[10]_i_1_n_0
+final-gold-match mem_rdata_latched[31]     p_0_in0
+final-gold-match mem_rdata_latched[3]      mem_rdata_q[3]_i_1_n_0
+final-gold-match mem_rdata_latched[4]      mem_rdata_q[4]_i_1_n_0
+final-gold-match mem_rdata_latched[5]      mem_rdata_q[5]_i_1_n_0
+final-gold-match mem_rdata_latched[6]      mem_rdata_q[6]_i_1_n_0
+final-gold-match mem_rdata_latched[7]      decoded_rd[0]_i_1_n_0
+final-gold-match mem_rdata_latched[8]      decoded_rd[1]_i_1_n_0
+final-gold-match mem_rdata_latched[9]      decoded_rd[2]_i_1_n_0
 
 
 ##############################################################
