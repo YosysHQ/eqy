@@ -153,17 +153,12 @@ class EqyTask:
             self.running = True
             return
 
-        while True:
-            outs = self.p.stdout.readline().decode("utf-8")
-            if len(outs) == 0: break
-            if outs[-1] != '\n':
-                self.linebuffer += outs
-                break
-            outs = (self.linebuffer + outs).strip()
-            self.linebuffer = ""
-            self.handle_output(outs)
+        self.read_output()
 
         if self.p.poll() is not None:
+            # The process might have written something since the last time we checked
+            self.read_output()
+
             if not self.silent:
                 self.job.log("{}: finished (returncode={})".format(click.style(self.info, fg="magenta"), self.p.returncode))
             self.job.tasks_running.remove(self)
@@ -192,6 +187,17 @@ class EqyTask:
             for next_task in self.notify:
                 next_task.poll()
             return
+
+    def read_output(self):
+        while True:
+            outs = self.p.stdout.readline().decode("utf-8")
+            if len(outs) == 0: break
+            if outs[-1] != '\n':
+                self.linebuffer += outs
+                break
+            outs = (self.linebuffer + outs).strip()
+            self.linebuffer = ""
+            self.handle_output(outs)
 
 
 class EqyAbort(BaseException):
