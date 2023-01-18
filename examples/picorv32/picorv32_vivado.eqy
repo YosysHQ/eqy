@@ -172,7 +172,7 @@ gold-match cpu_state[7] cpu_state_reg_n_0_[7]
 solo-group cpu_state[]
 
 [partition picorv32]
-name 4_cpu_state cpu_state[]
+name 3_cpu_state cpu_state[]
 final cpu_state[]
 
 ##############################################################
@@ -250,9 +250,9 @@ solo-join alu_*
 
 [partition picorv32]
 
+name 0_next_pc         reg_next_pc[]
 name 0_pseudo_trigger  decoder_pseudo_trigger
 
-name 2_next_pc         reg_next_pc[]
 name 3_cpuregs_wrdata  cpuregs_wrdata
 name 3_cluster_count   count_*
 name 3_cluster_lached  latched_*
