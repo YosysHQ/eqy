@@ -13,5 +13,6 @@ hardware equivalence checking.
    config.rst
    strategies.rst
    outdir.rst
+   xprop.rst
    license.rst
 
