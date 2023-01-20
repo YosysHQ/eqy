@@ -55,9 +55,9 @@ test:
 
 coverage:
 	rm -rf coverage.info coverage_html .coverage coverage.lcov
-	yosys -m src/eqy_combine.so -m src/eqy_partition.so -m src/eqy_recode.so -p 'help eqy_combine; help eqy_partition; help eqy_recode'
 	-$(MAKE) COVERAGE_FILE="$$PWD/.coverage" EQY="coverage run -a $$PWD/src/eqy.py" -C examples/simple clean test
 	-$(MAKE) COVERAGE_FILE="$$PWD/.coverage" EQY="coverage run -a $$PWD/src/eqy.py" -C examples/nerv clean test
+	+cd tests/plugin && bash run-test.sh
 	lcov --capture -d . --no-external -o coverage.info
 	coverage report --omit=*/dist-packages/*
 	coverage lcov --omit=*/dist-packages/*
