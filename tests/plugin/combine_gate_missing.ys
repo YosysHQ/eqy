@@ -1,0 +1,7 @@
+logger -expect error "Design .gate. not found in saved designs." 1
+read_verilog << EOF
+module top();
+endmodule
+EOF
+design -save gold
+eqy_combine

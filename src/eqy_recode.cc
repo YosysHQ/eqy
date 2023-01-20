@@ -74,7 +74,7 @@ struct EqyRecodePass : public Pass
 		log_header(design, "Executing EQY RECODE task.\n");
 
 		if (saved_designs.find("gold") == saved_designs.end())
-			log_error("Design \"gold\" not found in saved designs.");
+			log_error("Design \"gold\" not found in saved designs.\n");
 
 		Design *gold_design = saved_designs.at("gold");
 

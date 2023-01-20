@@ -1,0 +1,21 @@
+logger -expect error "Top modules of gold and gate do not have the same name." 1
+
+read_verilog << EOF
+module top(input i, output o);
+assign o = i;
+endmodule
+EOF
+uniquify
+hierarchy
+design -stash gold
+
+read_verilog << EOF
+module top_new(input i, output o);
+assign o = i;
+endmodule
+EOF
+uniquify
+hierarchy
+design -stash gate
+
+eqy_combine
