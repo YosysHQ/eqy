@@ -1,6 +1,6 @@
 EQY := eqy
 
-test: read_source_fail/logfile.txt debug_mode/PASS error_verilog/logfile.txt none/none dummy/FAIL backup/PASS
+test: read_source_fail/logfile.txt debug_mode/PASS error_verilog/logfile.txt none/none dummy/FAIL backup/PASS generate.eqy splitnets/PASS
 
 read_source_fail/logfile.txt: read_source_fail.eqy counter.sv
 	-$(EQY) -f read_source_fail.eqy --yosys /tmp/yosys
@@ -30,11 +30,18 @@ backup/PASS: backup.eqy counter.sv
 
 none/none:
 	-$(EQY)
+	-$(EQY) -f dupl_section.eqy
 
 dummy/FAIL:
 	-$(EQY) -f dummy.eqy
 
+generate.eqy:
+	$(EQY) --init-config-file generate.eqy counter counter.sv counter.sv
+
+splitnets/PASS: splitnets.eqy counter.sv
+	$(EQY) -f splitnets.eqy
+
 clean:
-	rm -rf read_source_fail/ debug_mode/ error_verilog/ backup/ backup.bak*/ dummy/
+	rm -rf read_source_fail/ debug_mode/ error_verilog/ backup/ backup.bak*/ dummy/ generate.eqy splitnets/
 
 .PHONY: test clean
