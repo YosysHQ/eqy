@@ -1,0 +1,13 @@
+[options]
+
+[gold]
+read_verilog counter.sv
+prep -top counter
+
+[gate]
+read_verilog counter.sv
+synth -top counter
+
+[strategy simple]
+use satseq
+depth 10
