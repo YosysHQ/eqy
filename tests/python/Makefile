@@ -1,6 +1,6 @@
 EQY := eqy
 
-test: read_source_fail/logfile.txt debug_mode/PASS error_verilog/logfile.txt none/none dummy/FAIL backup/PASS generate.eqy splitnets/PASS
+test: read_source_fail/logfile.txt debug_mode/PASS error_verilog/logfile.txt none/none dummy/FAIL backup/PASS generate.eqy splitnets/PASS picorv32_vivado/FAIL
 
 read_source_fail/logfile.txt: read_source_fail.eqy counter.sv
 	-$(EQY) -f read_source_fail.eqy --yosys /tmp/yosys
@@ -24,6 +24,9 @@ backup/PASS: backup.eqy counter.sv
 	-$(EQY) backup.eqy -d backup # setting workdir
 	-$(EQY) -c backup.eqy # continue
 	-rm -rf backup/
+	-echo 1 > backup.test
+	-$(EQY) -c backup.eqy -d backup.test # continue
+	-rm -f backup.test
 	-$(EQY) -c backup.eqy # Cannot continue
 	-$(EQY) -f backup.eqy -p stat counter.state # working command
 	-$(EQY) -f backup.eqy -p stat_error counter.state # non-working command
@@ -41,7 +44,10 @@ generate.eqy:
 splitnets/PASS: splitnets.eqy counter.sv
 	$(EQY) -f splitnets.eqy
 
+picorv32_vivado/FAIL:
+	-$(EQY) -f picorv32_vivado.eqy
+
 clean:
-	rm -rf read_source_fail/ debug_mode/ error_verilog/ backup/ backup.bak*/ dummy/ generate.eqy splitnets/
+	rm -rf read_source_fail/ debug_mode/ error_verilog/ backup/ backup.bak*/ dummy/ generate.eqy splitnets/ picorv32_vivado/
 
 .PHONY: test clean
