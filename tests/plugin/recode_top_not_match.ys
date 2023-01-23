@@ -16,6 +16,5 @@ endmodule
 EOF
 uniquify
 hierarchy
-design -stash gate
 
-eqy_combine
+eqy_recode

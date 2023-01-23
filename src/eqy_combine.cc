@@ -165,6 +165,10 @@ struct EqyCombinePass : public Pass
 		Design *gold_design = saved_designs.at("gold");
 		Design *gate_design = saved_designs.at("gate");
 
+		if (gold_design->top_module() == nullptr)
+			log_cmd_error("No \"gold\" top module found!\n");
+		if (gate_design->top_module() == nullptr)
+			log_cmd_error("No \"gate\" top module found!\n");
 		IdString gold_top = gold_design->top_module()->name;
 		IdString gate_top = gate_design->top_module()->name;
 		if (gold_top != gate_top)

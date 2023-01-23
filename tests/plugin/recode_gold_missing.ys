@@ -1,0 +1,2 @@
+logger -expect error "Design .gold. not found in saved designs." 1
+eqy_recode
