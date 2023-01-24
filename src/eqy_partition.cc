@@ -810,7 +810,6 @@ struct Partition
 				bool is_reg = RTLIL::builtin_ff_cell_types().count(c->type);
 				for (auto &conn : c->connections()) {
 					SigSpec s;
-					int bit_index = 0;
 					if (c->input(conn.first))
 						for (auto bit : conn.second)
 							unused_inputs.erase(sigmap(bit));
@@ -834,7 +833,6 @@ struct Partition
 								xbits_partition = true;
 							out_initvals.set_init(out_bit, initval);
 						}
-						bit_index++;
 					}
 					log_debug("    port %s: %s => %s => %s\n", log_id(conn.first), log_signal(conn.second),
 							log_signal(sigmap(conn.second)), log_signal(s));
