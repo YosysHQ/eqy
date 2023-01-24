@@ -9,5 +9,8 @@ read_verilog counter.sv
 synth -top counter
 
 [strategy simple]
-use satseq
+use sby
 depth 10
+engine smtbmc bitwuzla
+xprop on
+timeout 100

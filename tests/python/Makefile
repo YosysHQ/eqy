@@ -3,7 +3,7 @@ EQY := eqy
 test: failing_tests passing_tests
 
 passing_tests:
-	@$(EQY) -f splitnets.eqy
+	@$(EQY) -f splitnets.eqy > /dev/null
 	@$(EQY) --init-config-file generate.eqy counter counter.sv counter.sv 2>&1 | grep -i "template config written to"
 	@rm -rf backup/ backup.bak*/; $(EQY) backup.eqy > /dev/null
 	@$(EQY) -b backup.eqy > /dev/null # 1st backup
@@ -22,6 +22,7 @@ failing_tests:
 	@mkdir -p backup; $(EQY) backup.eqy 2>&1 | grep -i "Directory 'backup' already exists"
 	@$(EQY) backup.eqy -d backup 2>&1 | grep -i "Directory 'backup' already exists" # setting workdir when exist
 	@$(EQY) -f backup.eqy -p stat_error counter.state 2>&1 | grep -i "returned a non-zero exit code" # non-working command
+	@$(EQY) -c backup.eqy -d backup.eqy 2>&1 | grep -i "Cannot continue in 'backup.eqy': not a directory"
 	@rm -rf backup/; $(EQY) -c backup.eqy 2>&1 | grep -i "Cannot continue in" # Cannot continue
 	@$(EQY) --debug -f picorv32_vivado.eqy 2>&1 | grep -i "DONE (FAIL, rc=2)"
 
