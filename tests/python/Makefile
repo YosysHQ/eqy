@@ -1,56 +1,31 @@
 EQY := eqy
 
-test: read_source_fail/logfile.txt debug_mode/PASS error_verilog/logfile.txt none/none dummy/FAIL backup/PASS generate.eqy splitnets/PASS picorv32_vivado/FAIL timeout/PASS
+test: failing_tests passing_tests
 
-read_source_fail/logfile.txt: read_source_fail.eqy counter.sv
-	-$(EQY) -f read_source_fail.eqy --yosys /tmp/yosys
+passing_tests:
+	@$(EQY) -f splitnets.eqy
+	@$(EQY) --init-config-file generate.eqy counter counter.sv counter.sv 2>&1 | grep -i "template config written to"
+	@rm -rf backup/ backup.bak*/; $(EQY) backup.eqy > /dev/null
+	@$(EQY) -b backup.eqy > /dev/null # 1st backup
+	@$(EQY) -b backup.eqy > /dev/null # 2nd backup
+	@$(EQY) backup.eqy -t | grep -i "DONE (PASS, rc=0)" # Use temp
+	@rm -rf backup/ backup.bak*/; $(EQY) backup.eqy -d backup > /dev/null  # setting workdir
+	@$(EQY) -c backup.eqy > /dev/null # continue
 
-debug_mode/PASS: debug_mode.eqy counter.sv
-	$(EQY) --debug -f debug_mode.eqy
-
-error_verilog/logfile.txt: error_verilog.eqy error_verilog.sv
-	-$(EQY) -f error_verilog.eqy
-
-backup/PASS: backup.eqy counter.sv
-	-$(EQY) backup.eqy
-	-$(EQY) -b backup.eqy # 1st backup
-	-$(EQY) -b backup.eqy # 2nd backup
-	-$(EQY) -f backup.eqy # force recreate
-	-$(EQY) backup.eqy   # fail on existing
-	-$(EQY) backup.eqy -t -d backup # Cannot use -d with -t
-	-$(EQY) backup.eqy -t # Use temp
-	-$(EQY) backup.eqy -d backup # setting workdir when exist
-	-rm -rf backup/
-	-$(EQY) backup.eqy -d backup # setting workdir
-	-$(EQY) -c backup.eqy # continue
-	-rm -rf backup/
-	-echo 1 > backup.test
-	-$(EQY) -c backup.eqy -d backup.test # continue
-	-rm -f backup.test
-	-$(EQY) -c backup.eqy # Cannot continue
-	-$(EQY) -f backup.eqy -p stat counter.state # working command
-	-$(EQY) -f backup.eqy -p stat_error counter.state # non-working command
-
-timeout/PASS:
-	-timeout 2s $(EQY) -f timeout.eqy
-
-none/none:
-	-$(EQY)
-	-$(EQY) -f dupl_section.eqy
-
-dummy/FAIL:
-	-$(EQY) -f dummy.eqy
-
-generate.eqy:
-	$(EQY) --init-config-file generate.eqy counter counter.sv counter.sv
-
-splitnets/PASS: splitnets.eqy counter.sv
-	$(EQY) -f splitnets.eqy
-
-picorv32_vivado/FAIL:
-	-$(EQY) -f picorv32_vivado.eqy
+failing_tests:
+	@$(EQY) 2>&1 | grep -i "No config file given"
+	@$(EQY) -f dupl_section.eqy 2>&1 | grep -i "duplicated strategy section"
+	@$(EQY) -f error_verilog.eqy 2>&1 | grep -i "Reading sources failed"
+	@$(EQY) -f read_source_fail.eqy --yosys /tmp/yosys 2>&1 | grep -i "Reading sources failed"
+	@timeout 2s $(EQY) -f timeout.eqy 2>&1 | grep -i "Keyboard interrupt or external termination signal"
+	@$(EQY) backup.eqy -t -d backup 2>&1 | grep -i "Cannot use -d with -t"
+	@mkdir -p backup; $(EQY) backup.eqy 2>&1 | grep -i "Directory 'backup' already exists"
+	@$(EQY) backup.eqy -d backup 2>&1 | grep -i "Directory 'backup' already exists" # setting workdir when exist
+	@$(EQY) -f backup.eqy -p stat_error counter.state 2>&1 | grep -i "returned a non-zero exit code" # non-working command
+	@rm -rf backup/; $(EQY) -c backup.eqy 2>&1 | grep -i "Cannot continue in" # Cannot continue
+	@$(EQY) --debug -f picorv32_vivado.eqy 2>&1 | grep -i "DONE (FAIL, rc=2)"
 
 clean:
-	rm -rf read_source_fail/ debug_mode/ error_verilog/ backup/ backup.bak*/ dummy/ generate.eqy splitnets/ picorv32_vivado/ timeout/
+	rm -rf backup/ backup.bak*/ error_verilog/ generate.eqy picorv32_vivado/ read_source_fail/ timeout/ splitnets/
 
 .PHONY: test clean
