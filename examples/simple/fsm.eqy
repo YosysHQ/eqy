@@ -21,5 +21,5 @@ prep -top top
 1000 11
 
 [strategy simple]
-use satseq
+use sat
 depth 10

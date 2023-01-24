@@ -13,5 +13,5 @@ solo *
 group X Y
 
 [strategy simple]
-use satseq
+use sat
 depth 10

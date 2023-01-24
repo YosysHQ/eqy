@@ -7,5 +7,5 @@ read_verilog -DGATE aliases.sv
 prep -top aliases
 
 [strategy simple]
-use satseq
+use sat
 depth 10
