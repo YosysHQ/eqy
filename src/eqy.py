@@ -1150,7 +1150,7 @@ def main():
     strategies = parse_strategies(ctx.args, ctx)
     setup_workdir(ctx.args)
 
-    ctx.job = EqyJob(ctx.args, ctx, [])
+    ctx.job = EqyJob(ctx.args, ctx)
 
     if ctx.args.purgelist is not None:
         for pattern in ctx.args.purgelist:
