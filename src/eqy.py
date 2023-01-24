@@ -823,19 +823,6 @@ class EqyStrategy:
             return "expected one of 'on', 'off'"
         setattr(self.scfg, name, value == "on")
 
-    @staticmethod
-    def make_enum_parser(values):
-        def enum_parser(self, name, value):
-            if name in self.options_seen:
-                return "repeated option"
-            self.options_seen.add(name)
-            if value is None:
-                return "expected option value"
-            if value not in values:
-                return "expected one of " + ', '.join(map(repr, values))
-            setattr(self.scfg, name, value)
-        return enum_parser
-
     def partition_supported(self, job, partition):
         return True
 
@@ -1163,7 +1150,7 @@ def main():
     strategies = parse_strategies(ctx.args, ctx)
     setup_workdir(ctx.args)
 
-    ctx.job = EqyJob(ctx.args, ctx, [])
+    ctx.job = EqyJob(ctx.args, ctx)
 
     if ctx.args.purgelist is not None:
         for pattern in ctx.args.purgelist:

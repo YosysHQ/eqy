@@ -1,0 +1,19 @@
+logger -expect error "No .gate. top module found!" 1
+
+read_verilog << EOF
+module top(input i, output o);
+assign o = i;
+endmodule
+EOF
+uniquify
+hierarchy
+design -stash gold
+
+read_verilog << EOF
+module top_new(input i, output o);
+endmodule
+EOF
+uniquify
+hierarchy
+
+eqy_recode

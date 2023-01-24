@@ -21,13 +21,13 @@ if os.name == "posix":
 signal.signal(signal.SIGINT, force_shutdown)
 signal.signal(signal.SIGTERM, force_shutdown)
 
-def process_filename(filename):
-    if filename.startswith("~/"):
-        filename = os.environ['HOME'] + filename[1:]
-
-    filename = os.path.expandvars(filename)
-
-    return filename
+# def process_filename(filename):
+#     if filename.startswith("~/"):
+#         filename = os.environ['HOME'] + filename[1:]
+# 
+#     filename = os.path.expandvars(filename)
+# 
+#     return filename
 
 class EqyTask:
     def __init__(self, job, info, deps, cmdline, logfile=None, logstderr=True, silent=False):
@@ -206,7 +206,7 @@ class EqyAbort(BaseException):
 
 class EqyJob:
     # def __init__(self, sbyconfig, workdir, early_logs, reusedir):
-    def __init__(self, args, cfg, early_logs, timeout=None):
+    def __init__(self, args, cfg): #, early_logs, timeout=None):
         self.args = args
         self.cfg = cfg
         # self.options = dict()
@@ -220,7 +220,7 @@ class EqyJob:
         # self.reusedir = reusedir
         self.status = "UNKNOWN"
         self.total_time = 0
-        self.timeout = timeout
+        #self.timeout = timeout
         self.expect = ["PASS"]
 
         self.exe_paths = args.exe_paths
@@ -238,8 +238,8 @@ class EqyJob:
 
         self.logfile = open("{}/logfile.txt".format(self.workdir), "a")
 
-        for line in early_logs:
-            click.echo(line, file=self.logfile)
+        # for line in early_logs:
+        #     click.echo(line, file=self.logfile)
 
         # if not reusedir:
         #     with open("{}/config.sby".format(workdir), "w") as f:
@@ -270,12 +270,12 @@ class EqyJob:
             for task in self.tasks_pending:
                 task.poll()
 
-            if self.timeout is not None:
-                total_clock_time = int(time() - self.start_clock_time)
-                if total_clock_time > self.timeout:
-                    self.log("Reached TIMEOUT ({} seconds). Terminating all tasks.".format(self.timeout))
-                    self.status = "TIMEOUT"
-                    self.terminate(timeout=True)
+            # if self.timeout is not None:
+            #     total_clock_time = int(time() - self.start_clock_time)
+            #     if total_clock_time > self.timeout:
+            #         self.log("Reached TIMEOUT ({} seconds). Terminating all tasks.".format(self.timeout))
+            #         self.status = "TIMEOUT"
+            #         self.terminate(timeout=True)
 
     def dress_message(self, logmessage):
         tm = localtime()
@@ -296,17 +296,17 @@ class EqyJob:
         click.echo(text)
         click.echo(text, file=self.logfile)
 
-    def error(self, logmessage):
-        text = self.dress_message(click.style("ERROR: " + logmessage, fg="red", bold=True))
-        click.echo(text)
-        click.echo(text, file=self.logfile)
-        self.status = "ERROR"
-        if "ERROR" not in self.expect:
-            self.retcode = 16
-        self.terminate()
-        with open("{}/{}".format(self.workdir, self.status), "w") as f:
-            click.echo(logmessage, file=f)
-        raise EqyAbort(logmessage)
+    # def error(self, logmessage):
+    #     text = self.dress_message(click.style("ERROR: " + logmessage, fg="red", bold=True))
+    #     click.echo(text)
+    #     click.echo(text, file=self.logfile)
+    #     self.status = "ERROR"
+    #     if "ERROR" not in self.expect:
+    #         self.retcode = 16
+    #     self.terminate()
+    #     with open("{}/{}".format(self.workdir, self.status), "w") as f:
+    #         click.echo(logmessage, file=f)
+    #     raise EqyAbort(logmessage)
 
     # def makedirs(self, path):
     #     if self.reusedir and os.path.isdir(path):

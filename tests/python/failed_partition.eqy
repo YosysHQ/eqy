@@ -1,0 +1,14 @@
+[gold]
+read_verilog -sv ../../examples/nerv/nerv.sv
+prep -top nerv
+
+[gate]
+read_verilog -sv ../../examples/nerv/nerv_change.sv
+prep -top nerv
+
+[collect *]
+group regfile*
+
+[strategy sby]
+use satseq
+depth 10

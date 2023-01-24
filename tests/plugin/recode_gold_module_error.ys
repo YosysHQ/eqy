@@ -1,0 +1,24 @@
+logger -expect error "Module 'a' not found in gold." 1
+
+read_verilog << EOF
+module top(input i, output o);
+assign o = i;
+endmodule
+EOF
+uniquify
+hierarchy
+design -stash gold
+
+read_verilog << EOF
+module a(input i, output o);
+assign o = i;
+endmodule
+
+module top(input i, output o);
+a t(.i(i),.o(o));
+endmodule
+EOF
+uniquify
+hierarchy -top top
+
+eqy_recode -recode data/gold_module_error.ids

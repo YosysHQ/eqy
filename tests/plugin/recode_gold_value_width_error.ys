@@ -1,0 +1,20 @@
+logger -expect error "Mapping gold value '0001' not proper width." 1
+
+read_verilog << EOF
+module top(input i, output o);
+assign o = i;
+endmodule
+EOF
+uniquify
+hierarchy
+design -stash gold
+
+read_verilog << EOF
+module top(input [1:0] i, output o);
+assign o = i;
+endmodule
+EOF
+uniquify
+hierarchy
+
+eqy_recode -recode data/gold_value_width_error.ids

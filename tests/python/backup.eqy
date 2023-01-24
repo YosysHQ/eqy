@@ -1,0 +1,16 @@
+[options]
+
+[gold]
+read_verilog counter.sv
+prep -top counter
+
+[gate]
+read_verilog counter.sv
+synth -top counter
+
+[strategy simple]
+use sby
+depth 10
+engine smtbmc bitwuzla
+xprop on
+timeout 100

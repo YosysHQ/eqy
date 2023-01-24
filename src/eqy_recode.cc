@@ -74,14 +74,22 @@ struct EqyRecodePass : public Pass
 		log_header(design, "Executing EQY RECODE task.\n");
 
 		if (saved_designs.find("gold") == saved_designs.end())
-			log_error("Design \"gold\" not found in saved designs.");
+			log_error("Design \"gold\" not found in saved designs.\n");
 
 		Design *gold_design = saved_designs.at("gold");
+
+		if (gold_design->top_module() == nullptr)
+			log_cmd_error("No \"gold\" top module found!\n");
+		if (design->top_module() == nullptr)
+			log_cmd_error("No \"gate\" top module found!\n");
 
 		IdString gold_top = gold_design->top_module()->name;
 		IdString gate_top = design->top_module()->name;
 		if (gold_top != gate_top)
 			log_error("Top modules of gold and gate do not have the same name.\n");
+
+		if (recode_filename.empty())
+			log_error("Recode data mapping file must be specified.\n");
 
 		auto recode_data = read_recode_data(recode_filename);
 
