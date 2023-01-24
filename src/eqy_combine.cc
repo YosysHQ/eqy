@@ -1,8 +1,8 @@
 /*
 Equivalence Checking with Yosys (eqy)
 
-Copyright (C) 2020 Claire Wolf <claire@symbioticeda.com>
-Copyright (C) 2020 N. Engelhardt <nak@symbioticeda.com>
+Copyright (C) 2020 Claire Xenia Wolf <claire@yosyshq.com>
+Copyright (C) 2020 N. Engelhardt <nak@yosyshq.com>
 
 Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
