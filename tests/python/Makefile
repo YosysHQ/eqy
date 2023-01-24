@@ -1,6 +1,6 @@
 EQY := eqy
 
-test: read_source_fail/logfile.txt debug_mode/PASS error_verilog/logfile.txt none/none dummy/FAIL backup/PASS generate.eqy splitnets/PASS picorv32_vivado/FAIL
+test: read_source_fail/logfile.txt debug_mode/PASS error_verilog/logfile.txt none/none dummy/FAIL backup/PASS generate.eqy splitnets/PASS picorv32_vivado/FAIL timeout/PASS
 
 read_source_fail/logfile.txt: read_source_fail.eqy counter.sv
 	-$(EQY) -f read_source_fail.eqy --yosys /tmp/yosys
@@ -31,6 +31,9 @@ backup/PASS: backup.eqy counter.sv
 	-$(EQY) -f backup.eqy -p stat counter.state # working command
 	-$(EQY) -f backup.eqy -p stat_error counter.state # non-working command
 
+timeout/PASS:
+	-timeout 2s $(EQY) -f timeout.eqy
+
 none/none:
 	-$(EQY)
 	-$(EQY) -f dupl_section.eqy
@@ -48,6 +51,6 @@ picorv32_vivado/FAIL:
 	-$(EQY) -f picorv32_vivado.eqy
 
 clean:
-	rm -rf read_source_fail/ debug_mode/ error_verilog/ backup/ backup.bak*/ dummy/ generate.eqy splitnets/ picorv32_vivado/
+	rm -rf read_source_fail/ debug_mode/ error_verilog/ backup/ backup.bak*/ dummy/ generate.eqy splitnets/ picorv32_vivado/ timeout/
 
 .PHONY: test clean
