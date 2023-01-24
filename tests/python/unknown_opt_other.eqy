@@ -13,4 +13,3 @@ synth -top counter
 use satseq
 depth 10
 unknown
-
