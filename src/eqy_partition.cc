@@ -2090,7 +2090,9 @@ struct EqyPartitionPass : public Pass
 
 		log_header(design, "Executing EQY PARTITION task.\n");
 
-		// TBD: handle absent arguments
+		if (matched_ids_filename.empty() || partition_ids_filename.empty())
+			log_error("Both matched ids and partition ids parameters are required.\n");
+
 		auto matched_ids = read_matched_ids(matched_ids_filename);
 		dict<std::string, std::vector<std::vector<std::string>>> partition_ids = read_partition_ids(partition_ids_filename);
 

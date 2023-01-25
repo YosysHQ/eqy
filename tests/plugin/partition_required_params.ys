@@ -1,0 +1,2 @@
+logger -expect error "Both matched ids and partition ids parameters are required." 1
+eqy_partition -matched_ids notfound.ids

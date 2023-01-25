@@ -1,0 +1,2 @@
+logger -expect error "Cannot open file" 1
+eqy_partition -matched_ids data/matched_ok.ids -partition_ids notfound.ids
