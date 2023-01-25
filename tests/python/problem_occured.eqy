@@ -12,6 +12,6 @@ prep -top nerv
 join imm_*
 join insn*
 
-[strategy sby]
-use satseq
+[strategy simple]
+use sat
 depth 10

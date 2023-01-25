@@ -9,5 +9,5 @@ read_verilog error_verilog.sv
 synth -top counter
 
 [strategy simple]
-use satseq
+use sat
 depth 10

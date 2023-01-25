@@ -13,5 +13,5 @@ synth -top counter
 stat
 
 [strategy simple]
-use satseq
+use sat
 depth 10

@@ -9,6 +9,6 @@ prep -top nerv
 [collect *]
 group regfile*
 
-[strategy sby]
-use satseq
+[strategy simple]
+use sat
 depth 10

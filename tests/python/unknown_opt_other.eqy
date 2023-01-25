@@ -10,6 +10,6 @@ read_verilog counter.sv
 synth -top counter
 
 [strategy simple]
-use satseq
+use sat
 depth 10
 unknown
