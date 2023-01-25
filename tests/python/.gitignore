@@ -1,10 +1,8 @@
 generate.eqy
-/debug_mode/
 /read_source_fail/
 /error_verilog/
-/backup/
-/backup.bak*/
-/dummy/
+/counter/
+/counter.bak*/
 /splitnets/
 /picorv32_vivado/
 /timeout/

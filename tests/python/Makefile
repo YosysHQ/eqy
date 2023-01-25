@@ -5,12 +5,12 @@ test: failing_tests passing_tests
 passing_tests:
 	@$(EQY) -f splitnets.eqy > /dev/null
 	@$(EQY) --init-config-file generate.eqy counter counter.sv counter.sv 2>&1 | grep -i "template config written to"
-	@rm -rf backup/ backup.bak*/; $(EQY) backup.eqy > /dev/null
-	@$(EQY) -b backup.eqy > /dev/null # 1st backup
-	@$(EQY) -b backup.eqy > /dev/null # 2nd backup
-	@$(EQY) backup.eqy -t | grep -i "DONE (PASS, rc=0)" # Use temp
-	@rm -rf backup/ backup.bak*/; $(EQY) backup.eqy -d backup > /dev/null  # setting workdir
-	@$(EQY) -c backup.eqy > /dev/null # continue
+	@rm -rf counter/ counter.bak*/; $(EQY) counter.eqy > /dev/null
+	@$(EQY) -b counter.eqy > /dev/null # 1st counter
+	@$(EQY) -b counter.eqy > /dev/null # 2nd counter
+	@$(EQY) counter.eqy -t | grep -i "DONE (PASS, rc=0)" # Use temp
+	@rm -rf counter/ counter.bak*/; $(EQY) counter.eqy -d counter > /dev/null  # setting workdir
+	@$(EQY) -c counter.eqy > /dev/null # continue
 
 failing_tests:
 	@$(EQY) 2>&1 | grep -i "No config file given"
@@ -18,12 +18,12 @@ failing_tests:
 	@$(EQY) -f error_verilog.eqy 2>&1 | grep -i "Reading sources failed"
 	@$(EQY) -f read_source_fail.eqy --yosys /tmp/yosys 2>&1 | grep -i "Reading sources failed"
 	@timeout 2s $(EQY) -f timeout.eqy 2>&1 | grep -i "Keyboard interrupt or external termination signal"
-	@$(EQY) backup.eqy -t -d backup 2>&1 | grep -i "Cannot use -d with -t"
-	@mkdir -p backup; $(EQY) backup.eqy 2>&1 | grep -i "Directory 'backup' already exists"
-	@$(EQY) backup.eqy -d backup 2>&1 | grep -i "Directory 'backup' already exists" # setting workdir when exist
-	@$(EQY) -f backup.eqy -p stat_error counter.state 2>&1 | grep -i "returned a non-zero exit code" # non-working command
-	@$(EQY) -c backup.eqy -d backup.eqy 2>&1 | grep -i "Cannot continue in 'backup.eqy': not a directory"
-	@rm -rf backup/; $(EQY) -c backup.eqy 2>&1 | grep -i "Cannot continue in" # Cannot continue
+	@$(EQY) counter.eqy -t -d counter 2>&1 | grep -i "Cannot use -d with -t"
+	@mkdir -p counter; $(EQY) counter.eqy 2>&1 | grep -i "Directory 'counter' already exists"
+	@$(EQY) counter.eqy -d counter 2>&1 | grep -i "Directory 'counter' already exists" # setting workdir when exist
+	@$(EQY) -f counter.eqy -p stat_error counter.state 2>&1 | grep -i "returned a non-zero exit code" # non-working command
+	@$(EQY) -c counter.eqy -d counter.eqy 2>&1 | grep -i "Cannot continue in 'counter.eqy': not a directory"
+	@rm -rf counter/; $(EQY) -c counter.eqy 2>&1 | grep -i "Cannot continue in" # Cannot continue
 	@$(EQY) --debug -f picorv32_vivado.eqy 2>&1 | grep -i "DONE (FAIL, rc=2)"
 	@$(EQY) -f syntax_error.eqy 2>&1 | grep -i "syntax error in syntax_error.eqy line 16"
 	@$(EQY) -f unknown_option.eqy 2>&1 | grep -i "unknown option"
@@ -43,6 +43,6 @@ failing_tests:
 	@$(EQY) -f problem_occured.eqy 2>&1 | grep -i "No configured strategy supports partition"
 
 clean:
-	# @rm -rf backup/ backup.bak*/ error_verilog/ generate.eqy picorv32_vivado/ read_source_fail/ timeout/ splitnets/ problem_occured/ failed_partition/ equivalence_problem/
+	@rm -rf counter/ counter.bak*/ error_verilog/ generate.eqy picorv32_vivado/ read_source_fail/ timeout/ splitnets/ problem_occured/ failed_partition/ equivalence_problem/
 
 .PHONY: test clean
