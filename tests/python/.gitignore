@@ -3,6 +3,7 @@ generate.eqy
 /error_verilog/
 /counter/
 /counter.bak*/
+/counter_cells/
 /splitnets/
 /picorv32_vivado/
 /timeout/

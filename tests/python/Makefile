@@ -11,6 +11,7 @@ passing_tests:
 	@$(EQY) counter.eqy -t | grep -i "DONE (PASS, rc=0)" # Use temp
 	@rm -rf counter/ counter.bak*/; $(EQY) counter.eqy -d counter > /dev/null  # setting workdir
 	@$(EQY) -c counter.eqy > /dev/null # continue
+	@$(EQY) -f counter_cells.eqy > /dev/null # matching cells
 
 failing_tests:
 	@$(EQY) 2>&1 | grep -i "No config file given"
@@ -43,6 +44,6 @@ failing_tests:
 	@$(EQY) -f problem_occured.eqy 2>&1 | grep -i "No configured strategy supports partition"
 
 clean:
-	@rm -rf counter/ counter.bak*/ error_verilog/ generate.eqy picorv32_vivado/ read_source_fail/ timeout/ splitnets/ problem_occured/ failed_partition/ equivalence_problem/
+	@rm -rf counter/ counter.bak*/ counter_cells/ error_verilog/ generate.eqy picorv32_vivado/ read_source_fail/ timeout/ splitnets/ problem_occured/ failed_partition/ equivalence_problem/
 
 .PHONY: test clean
