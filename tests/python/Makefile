@@ -8,11 +8,11 @@ passing_tests:
 	@rm -rf counter/ counter.bak*/; $(EQY) counter.eqy > /dev/null
 	@$(EQY) -b counter.eqy > /dev/null # 1st counter
 	@$(EQY) -b counter.eqy > /dev/null # 2nd counter
-	@$(EQY) counter.eqy -t | grep -i "DONE (PASS, rc=0)" # Use temp
-	@rm -rf counter/ counter.bak*/; $(EQY) counter.eqy -d counter > /dev/null  # setting workdir
+	@$(EQY) -t counter.eqy | grep -i "make -C /tmp/" # Use temp
+	@rm -rf counter/ counter.bak*/; $(EQY) counter.eqy -d counter | grep -i "make -C counter -f strategies.mk"   # setting workdir
 	@$(EQY) -c counter.eqy > /dev/null # continue
-	@$(EQY) -f counter_cells.eqy > /dev/null # matching cells
-	@$(EQY) - < counter.eqy > /dev/null # stdin
+	@$(EQY) -f counter_cells.eqy 2>&1 | grep -i "counter.state__SDFF_PP0__Q" # matching cells
+	@$(EQY) - < counter.eqy 2>&1 | grep -i "Cannot derive workdir name from config file name" # stdin
 
 failing_tests:
 	@$(EQY) 2>&1 | grep -i "No config file given"
