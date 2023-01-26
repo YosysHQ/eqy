@@ -1,0 +1,14 @@
+[options]
+
+[gold]
+read_verilog counter.sv
+prep -top counter
+exec -- sleep 10
+
+[gate]
+read_verilog counter.sv
+synth -top counter
+
+[strategy simple]
+use unknown
+depth 10

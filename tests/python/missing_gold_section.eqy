@@ -1,0 +1,9 @@
+[options]
+
+[gate]
+read_verilog counter.sv
+synth -top counter
+
+[strategy simple]
+use sat
+depth 10

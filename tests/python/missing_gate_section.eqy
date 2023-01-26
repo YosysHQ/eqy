@@ -1,0 +1,10 @@
+[options]
+
+[gold]
+read_verilog counter.sv
+prep -top counter
+exec -- sleep 10
+
+[strategy simple]
+use sat
+depth 10

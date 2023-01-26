@@ -12,6 +12,7 @@ passing_tests:
 	@rm -rf counter/ counter.bak*/; $(EQY) counter.eqy -d counter > /dev/null  # setting workdir
 	@$(EQY) -c counter.eqy > /dev/null # continue
 	@$(EQY) -f counter_cells.eqy > /dev/null # matching cells
+	@$(EQY) - < counter.eqy > /dev/null # stdin
 
 failing_tests:
 	@$(EQY) 2>&1 | grep -i "No config file given"
@@ -28,6 +29,7 @@ failing_tests:
 	@$(EQY) --debug -f picorv32_vivado.eqy 2>&1 | grep -i "DONE (FAIL, rc=2)"
 	@$(EQY) -f syntax_error.eqy 2>&1 | grep -i "syntax error in syntax_error.eqy line 16"
 	@$(EQY) -f unknown_option.eqy 2>&1 | grep -i "unknown option"
+	@$(EQY) -f unknown_strategy.eqy 2>&1 | grep -i "Unknown strategy type"
 	@$(EQY) -f expected_opt_bool_val.eqy 2>&1 | grep -i "expected option value"
 	@$(EQY) -f expected_opt_str_val.eqy 2>&1 | grep -i "expected option value"
 	@$(EQY) -f expected_opt_int_val.eqy 2>&1 | grep -i "expected option value"
@@ -42,6 +44,8 @@ failing_tests:
 	@$(EQY) -f failed_partition.eqy 2>&1 | grep -i "Failed to partition design."
 	@$(EQY) -f equivalence_problem.eqy 2>&1 | grep -i "A problem occurred during equivalence check."
 	@$(EQY) -f problem_occured.eqy 2>&1 | grep -i "No configured strategy supports partition"
+	@$(EQY) -f missing_gate_section.eqy 2>&1 | grep -i "section \[gate\] missing"
+	@$(EQY) -f missing_gold_section.eqy 2>&1 | grep -i "section \[gold\] missing"
 
 clean:
 	@rm -rf counter/ counter.bak*/ counter_cells/ error_verilog/ generate.eqy picorv32_vivado/ read_source_fail/ timeout/ splitnets/ problem_occured/ failed_partition/ equivalence_problem/
