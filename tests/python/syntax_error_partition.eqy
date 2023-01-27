@@ -1,0 +1,18 @@
+[options]
+
+[gold]
+read_verilog counter.sv
+prep -top counter
+exec -- sleep 10
+
+[gate]
+read_verilog counter.sv
+synth -top counter
+
+
+[partition test]
+unknown
+
+[strategy simple]
+use sat
+depth 10

@@ -10,3 +10,5 @@ generate.eqy
 /problem_occured/
 /failed_partition/
 /equivalence_problem/
+/syntax_error_partition/
+/syntax_error_collect/

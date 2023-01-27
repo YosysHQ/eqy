@@ -10,9 +10,10 @@ passing_tests:
 	@$(EQY) -b counter.eqy > /dev/null # 2nd counter
 	@$(EQY) -t counter.eqy | grep -i "make -C /tmp/" # Use temp
 	@rm -rf counter/ counter.bak*/; $(EQY) counter.eqy -d counter | grep -i "make -C counter -f strategies.mk"   # setting workdir
-	@$(EQY) -c counter.eqy > /dev/null # continue
+	@$(EQY) -c counter.eqy --purge "counter.state/simple" 2>&1 | grep -i "Removing" # continue with purge
 	@$(EQY) -f counter_cells.eqy 2>&1 | grep -i "counter.state__SDFF_PP0__Q" # matching cells
 	@$(EQY) - < counter.eqy 2>&1 | grep -i "Cannot derive workdir name from config file name" # stdin
+	@$(EQY) -f counter.eqy --setup | grep -i "DONE (UNKNOWN, rc=0)" # setup only
 
 failing_tests:
 	@$(EQY) 2>&1 | grep -i "No config file given"
@@ -28,6 +29,9 @@ failing_tests:
 	@rm -rf counter/; $(EQY) -c counter.eqy 2>&1 | grep -i "Cannot continue in" # Cannot continue
 	@$(EQY) --debug -f picorv32_vivado.eqy 2>&1 | grep -i "DONE (FAIL, rc=2)"
 	@$(EQY) -f syntax_error.eqy 2>&1 | grep -i "syntax error in syntax_error.eqy line 16"
+	@$(EQY) -f syntax_error_options.eqy 2>&1 | grep -i "syntax error in options section"
+	@$(EQY) -f syntax_error_partition.eqy 2>&1 | grep -i "Syntax error in partition command"
+	@$(EQY) -f syntax_error_collect.eqy 2>&1 | grep -i "Syntax error in collect command"
 	@$(EQY) -f unknown_option.eqy 2>&1 | grep -i "unknown option"
 	@$(EQY) -f unknown_strategy.eqy 2>&1 | grep -i "Unknown strategy type"
 	@$(EQY) -f expected_opt_bool_val.eqy 2>&1 | grep -i "expected option value"
@@ -48,6 +52,6 @@ failing_tests:
 	@$(EQY) -f missing_gold_section.eqy 2>&1 | grep -i "section \[gold\] missing"
 
 clean:
-	@rm -rf counter/ counter.bak*/ counter_cells/ error_verilog/ generate.eqy picorv32_vivado/ read_source_fail/ timeout/ splitnets/ problem_occured/ failed_partition/ equivalence_problem/
+	@rm -rf counter/ counter.bak*/ counter_cells/ error_verilog/ generate.eqy picorv32_vivado/ read_source_fail/ timeout/ splitnets/ problem_occured/ failed_partition/ equivalence_problem/ syntax_error_partition/ syntax_error_collect/
 
 .PHONY: test clean
