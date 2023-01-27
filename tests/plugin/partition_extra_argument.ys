@@ -1,0 +1,2 @@
+logger -expect error "Command syntax error: Extra argument." 1
+eqy_partition top

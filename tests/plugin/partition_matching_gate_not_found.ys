@@ -1,0 +1,5 @@
+logger -expect error "Could not find matching gate for module gold.counter" 1
+read_ilang data/counter_combined.il
+insbuf -chain
+delete gate.counter
+eqy_partition -matched_ids data/counter_matched.ids -partition_ids data/counter_partition.ids -write_fragments

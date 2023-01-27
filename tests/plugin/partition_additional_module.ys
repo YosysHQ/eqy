@@ -1,0 +1,7 @@
+logger -expect error "Found module top that is neither gate nor gold nor miter." 1
+read_verilog << EOF
+module top(input i, output o);
+assign o = i;
+endmodule
+EOF
+eqy_partition -matched_ids data/counter_matched.ids -partition_ids data/counter_partition.ids

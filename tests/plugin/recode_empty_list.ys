@@ -1,0 +1,20 @@
+logger -expect warning "No recode data found in mapping file." 1
+
+read_verilog << EOF
+module top(input i, output o);
+assign o = i;
+endmodule
+EOF
+uniquify
+hierarchy
+design -stash gold
+
+read_verilog << EOF
+module top(input i1, output o);
+assign o = i1;
+endmodule
+EOF
+uniquify
+hierarchy
+
+eqy_recode -recode data/empty.ids

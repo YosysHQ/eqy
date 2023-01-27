@@ -336,7 +336,8 @@ struct Partition
 		log_assert(!superseded);
 		log_assert(!full_part);
 
-		if (!fragment) return this;
+		if (!fragment)
+			return this;
 
 		Partition *other = worker->create_partition();
 		merged_into = other->index;
@@ -698,7 +699,8 @@ struct Partition
 			json_bits.sort();
 			bool first = true;
 			for (auto &it : json_bits) {
-				if (!first) json_file << ",\n";
+				if (!first)
+					json_file << ",\n";
 				json_file << stringf("      \"%s\": [", it.first.c_str());
 				it.second.sort();
 				for (int i : it.second) {
@@ -764,14 +766,17 @@ struct Partition
 			pool<SigBit> unused_inputs;
 
 			for (auto bit : pi) unused_inputs.insert(sigmap(bit));
-			if (!in_gold) for (auto bit : cp) unused_inputs.insert(sigmap(bit));
+			if (!in_gold)
+				for (auto bit : cp) unused_inputs.insert(sigmap(bit));
 
 			for (auto bit : po) unused_inputs.erase(sigmap(bit));
-			if (in_gold) for (auto bit : cp) unused_inputs.erase(sigmap(bit));
+			if (in_gold)
+				for (auto bit : cp) unused_inputs.erase(sigmap(bit));
 
 			for (auto bit : gg_bits) {
 				Wire *w = bit.wire;
-				if (!w) continue;
+				if (!w)
+					continue;
 				log_debug("  %s partition bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
 				if (!mapped_wires.count(w)) {
 					Wire *ww = out_mod->addWire(w->name, GetSize(w));
@@ -968,12 +973,17 @@ struct Partition
 
 		for (auto bit : gold_bits)
 		{
-			if (!worker->gold_matches.count(bit)) continue;
-			if (inbits.count(bit)) continue;
-			if (outbits.count(bit)) continue;
-			if (crossbits.count(bit)) continue;
+			if (!worker->gold_matches.count(bit))
+				continue;
+			if (inbits.count(bit))
+				continue;
+			if (outbits.count(bit))
+				continue;
+			if (crossbits.count(bit))
+				continue;
 			auto gate_bit = worker->gold_matches.at(bit);
-			if (!gate_bits.count(gate_bit)) continue;
+			if (!gate_bits.count(gate_bit))
+				continue;
 			log("  partition mp bit %d: %s <-> %s\n", GetSize(gold_mp), log_signal(bit), log_signal(gate_bit));
 			gold_mp.append(bit);
 			gate_mp.append(gate_bit);
@@ -993,18 +1003,24 @@ struct Partition
 				bitpairs.emplace_back(sig1[i], sig2[i]);
 			std::sort(bitpairs.begin(), bitpairs.end(), [&](const pair<SigBit,SigBit> &a, const pair<SigBit,SigBit> &b) {
 				if (a.first.wire == nullptr || b.first.wire == nullptr) {
-					if (a.first.wire != b.first.wire) return a.first.wire == nullptr;
+					if (a.first.wire != b.first.wire)
+						return a.first.wire == nullptr;
 					return a.first.data < b.first.data;
 				}
 				if (a.second.wire == nullptr || b.second.wire == nullptr) {
-					if (a.second.wire != b.second.wire) return a.second.wire == nullptr;
+					if (a.second.wire != b.second.wire)
+						return a.second.wire == nullptr;
 					return a.second.data < b.second.data;
 				}
 				log_assert(a.first.wire && a.second.wire && b.first.wire && b.second.wire);
-				if (a.first.wire != b.first.wire) return a.first.wire->name.str() < b.first.wire->name.str();
-				if (a.second.wire != b.second.wire) return a.second.wire->name.str() < b.second.wire->name.str();
-				if (a.first.offset != b.first.offset) return a.first.offset < b.first.offset;
-				if (a.second.offset != b.second.offset) return a.second.offset < b.second.offset;
+				if (a.first.wire != b.first.wire)
+					return a.first.wire->name.str() < b.first.wire->name.str();
+				if (a.second.wire != b.second.wire)
+					return a.second.wire->name.str() < b.second.wire->name.str();
+				if (a.first.offset != b.first.offset)
+					return a.first.offset < b.first.offset;
+				if (a.second.offset != b.second.offset)
+					return a.second.offset < b.second.offset;
 				return false;
 			});
 			sig1 = SigSpec();
@@ -1220,7 +1236,8 @@ struct Partition
 			sby_file << "verilog_defaults -add -D COVER_DEF_GATE_MATCH_POINTS\n";
 			sby_file << "verilog_defaults -add -D COVER_DEF_GOLD_OUTPUTS\n";
 			sby_file << "verilog_defaults -add -D COVER_DEF_GATE_OUTPUTS\n";
-			if (xbits_partition) sby_file << "# ";
+			if (xbits_partition)
+				sby_file << "# ";
 			sby_file << "verilog_defaults -add -D DIRECT_CROSS_POINTS\n";
 			sby_file << "# verilog_defaults -add -D ASSUME_DEFINED_INPUTS\n";
 			sby_file << "read_verilog -sv ../../" << partname.substr(1) << ".sv\n";
@@ -1229,7 +1246,8 @@ struct Partition
 			sby_file << "formalff -clk2ff -ff2anyinit gate." << partname.substr(1) << "\n";
 			sby_file << "setundef -anyseq gate." << partname.substr(1) << "\n";
 			sby_file << "flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean\n";
-			if (!xbits_partition) sby_file << "# ";
+			if (!xbits_partition)
+				sby_file << "# ";
 			sby_file << "xprop -formal -split-ports -assume-def-inputs miter\n";
 			sby_file << "\n";
 			sby_file << "[engines]\n";
@@ -1345,7 +1363,8 @@ void EqyPartitionWorker::create_partitions()
 	log("Final list of fragment partitions:\n");
 	for (int i = 0; i < GetSize(partitions); i++) {
 		auto p = partition(i);
-		if (p->superseded) continue;
+		if (p->superseded)
+			continue;
 		log("  %d", i);
 		for (auto bit : p->outbits)
 			log(" %s", log_signal(bit));
@@ -1626,10 +1645,12 @@ void EqyPartitionWorker::merge_partitions()
 				auto frag = partition(pidx);
 
 				for (auto bit : frag->inbits)
-					if (p->inbits.count(bit)) matched_pis.insert(bit);
+					if (p->inbits.count(bit))
+						matched_pis.insert(bit);
 
 				for (auto bit : frag->outbits)
-					if (p->inbits.count(bit)) matched_pos.insert(bit);
+					if (p->inbits.count(bit))
+						matched_pos.insert(bit);
 				log_assert(frag->crossbits.empty());
 
 				log("    Queue amending partition %d with partition %d (%d pi matches and %d po matches).\n",
@@ -1674,7 +1695,8 @@ void EqyPartitionWorker::merge_partitions()
 	for (auto &it : partitions)
 	{
 		Partition *partition = it.get();
-		if (partition->superseded) continue;
+		if (partition->superseded)
+			continue;
 
 		if (partition->name_priority) {
 			log("Partition %d already has a name: %s\n", partition->index, partition->names.front().c_str());
@@ -1719,7 +1741,8 @@ void EqyPartitionWorker::merge_partitions()
 		for (int extra_idx = 0; !partition->name_priority; ++extra_idx) {
 			for (auto &it : candidates) {
 				std::string name = std::get<1>(it);
-				if (extra_idx) name += stringf("_%d", extra_idx);
+				if (extra_idx)
+					name += stringf("_%d", extra_idx);
 				if (name_database.count(name)) {
 					log_debug("  name '%s' is already taken\n", name.c_str());
 					continue;
@@ -1739,7 +1762,8 @@ void EqyPartitionWorker::merge_partitions()
 	log("  Fragments:\n");
 	for (auto &p_ptr : partitions) {
 		auto p = p_ptr.get();
-		if (!p->active_fragment()) continue;
+		if (!p->active_fragment())
+			continue;
 		std::string label;
 		SigSpec hidden_outbits;
 		SigSpec sorted_outbits = p->outbits;
@@ -1780,14 +1804,16 @@ void EqyPartitionWorker::merge_partitions()
 	log("  Partitions:\n");
 	for (auto &p_ptr : partitions) {
 		auto p = p_ptr.get();
-		if (p->superseded) continue;
+		if (p->superseded)
+			continue;
 		log("     %3d: %s\n", p->index, p->names.front().c_str());
 	}
 	log("  Fragment-Partition-Matrix:\n");
 	log("          ");
 	for (auto &q_ptr : partitions) {
 		auto q = q_ptr.get();
-		if (!q->fragment) continue;
+		if (!q->fragment)
+			continue;
 		if (q->index % 10 == 0)
 			log(" %-11d", q->index / 10);
 	}
@@ -1795,7 +1821,8 @@ void EqyPartitionWorker::merge_partitions()
 	log("          ");
 	for (auto &q_ptr : partitions) {
 		auto q = q_ptr.get();
-		if (!q->fragment) continue;
+		if (!q->fragment)
+			continue;
 		if (q->index % 5 == 0)
 			log(" ");
 		log("%d", q->index % 10);
@@ -1803,11 +1830,13 @@ void EqyPartitionWorker::merge_partitions()
 	log("\n");
 	for (auto &p_ptr : partitions) {
 		auto p = p_ptr.get();
-		if (p->superseded) continue;
+		if (p->superseded)
+			continue;
 		log("     %3d  ", p->index);
 		for (auto &q_ptr : partitions) {
 			auto q = q_ptr.get();
-			if (!q->fragment) continue;
+			if (!q->fragment)
+				continue;
 			if (q->index % 5 == 0)
 				log(" ");
 			if (!q->active_fragment())  {
@@ -1867,9 +1896,11 @@ void EqyPartitionWorker::write(bool fragments)
 	{
 		Partition *partition = it.get();
 		if (fragments) {
-			if (!partition->fragment) continue;
+			if (!partition->fragment)
+				continue;
 		} else {
-			if (partition->superseded) continue;
+			if (partition->superseded)
+				continue;
 		}
 
 		std::string partname = partition->full_part ? gold->name.substr(6) : partition->name_priority ?
@@ -1953,7 +1984,8 @@ struct EqyPartitionPass : public Pass
 			{
 				num_gold_modules++;
 				Module *gate = design->module("\\gate." + gold->name.substr(6));
-				if (!gate) log_error("Could not find matching gate for module %s\n", log_id(gold));
+				if (!gate)
+					log_error("Could not find matching gate for module %s\n", log_id(gold));
 				log_header(design, "Processing module pair %s / %s.\n", log_id(gold), log_id(gate));
 				log_push();
 
@@ -2090,7 +2122,9 @@ struct EqyPartitionPass : public Pass
 
 		log_header(design, "Executing EQY PARTITION task.\n");
 
-		// TBD: handle absent arguments
+		if (matched_ids_filename.empty() || partition_ids_filename.empty())
+			log_error("Both matched ids and partition ids parameters are required.\n");
+
 		auto matched_ids = read_matched_ids(matched_ids_filename);
 		dict<std::string, std::vector<std::vector<std::string>>> partition_ids = read_partition_ids(partition_ids_filename);
 

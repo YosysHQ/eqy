@@ -1,0 +1,15 @@
+[options]
+
+[gold]
+read_verilog counter.sv
+synth -top counter
+autoname
+
+[gate]
+read_verilog counter.sv
+synth -top counter
+autoname
+
+[strategy simple]
+use sat
+depth 10

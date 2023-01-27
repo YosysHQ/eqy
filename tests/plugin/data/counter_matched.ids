@@ -1,0 +1,5 @@
+# [*] gold-match *
+counter clk clk
+counter en en
+counter rst rst
+counter state state
