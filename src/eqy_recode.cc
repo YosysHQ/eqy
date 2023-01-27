@@ -93,7 +93,10 @@ struct EqyRecodePass : public Pass
 
 		auto recode_data = read_recode_data(recode_filename);
 
-		if (recode_data.empty()) return;
+		if (recode_data.empty()) {
+			log_warning("No recode data found in mapping file.\n");
+			return;
+		}
 
 		for (auto mod : recode_data) {
 			IdString module_name = RTLIL::escape_id(mod.first);

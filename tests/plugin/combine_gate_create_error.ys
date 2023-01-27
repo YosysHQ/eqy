@@ -1,0 +1,2 @@
+logger -expect error "Can't create file not_exist/dummy.ids." 1
+eqy_combine -gate_ids not_exist/dummy.ids

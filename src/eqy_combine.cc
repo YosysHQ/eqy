@@ -142,12 +142,14 @@ struct EqyCombinePass : public Pass
 		{
 			if ((args[argidx] == "-gold_ids") && argidx+1 < args.size()) {
 				gold_ids = fopen(args[++argidx].c_str(), "w");
-				if (!gold_ids) log_cmd_error("Can't create file %s.\n", args[argidx].c_str());
+				if (!gold_ids)
+					log_cmd_error("Can't create file %s.\n", args[argidx].c_str());
 				continue;
 			}
 			if ((args[argidx] == "-gate_ids") && argidx+1 < args.size()) {
 				gate_ids = fopen(args[++argidx].c_str(), "w");
-				if (!gate_ids) log_cmd_error("Can't create file %s.\n", args[argidx].c_str());
+				if (!gate_ids)
+					log_cmd_error("Can't create file %s.\n", args[argidx].c_str());
 				continue;
 			}
 			if (args[argidx] == "-nocombine") {
@@ -200,10 +202,12 @@ struct EqyCombinePass : public Pass
 		{
 			if (!gold_design->module(m->name))
 				log_error("Unmatched module exists in gate that does not exist in gold. This should not happen. Please report this bug.\n");
-			if (gate_ids) print_ids(gate_ids, m);
+			if (gate_ids)
+				print_ids(gate_ids, m);
 		}
 
-		if (nocombine) return;
+		if (nocombine)
+			return;
 
 		for (auto mod : design->modules())
 		{
