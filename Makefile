@@ -52,6 +52,9 @@ html:
 test:
 	$(MAKE) -C examples/simple clean
 	$(MAKE) -C examples/simple
+	$(MAKE) -C tests/python clean
+	$(MAKE) -C tests/python
+	+cd tests/plugin && bash run-test.sh
 
 coverage:
 	rm -rf coverage.info coverage_html .coverage coverage.lcov
