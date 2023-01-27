@@ -1953,7 +1953,8 @@ struct EqyPartitionPass : public Pass
 			{
 				num_gold_modules++;
 				Module *gate = design->module("\\gate." + gold->name.substr(6));
-				if (!gate) log_error("Could not find matching gate for module %s\n", log_id(gold));
+				if (!gate)
+					log_error("Could not find matching gate for module %s\n", log_id(gold));
 				log_header(design, "Processing module pair %s / %s.\n", log_id(gold), log_id(gate));
 				log_push();
 
