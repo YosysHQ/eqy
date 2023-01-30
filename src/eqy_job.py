@@ -40,7 +40,7 @@ class EqyTask:
         self.deps = deps
         if os.name == "posix":
             self.cmdline = cmdline
-        else:
+        else: # pragma: no cover
             # Windows command interpreter equivalents for sequential
             # commands (; => &) command grouping ({} => ()).
             replacements = {
@@ -113,7 +113,7 @@ class EqyTask:
             if os.name == "posix":
                 try:
                     os.killpg(self.p.pid, signal.SIGTERM)
-                except PermissionError:
+                except PermissionError: # pragma: no cover
                     pass
             self.p.terminate()
             self.job.tasks_running.remove(self)
@@ -133,7 +133,7 @@ class EqyTask:
                 self.job.log("{}: starting process \"{}\"".format(click.style(self.info, fg="magenta"), self.cmdline))
 
             if os.name == "posix":
-                def preexec_fn():
+                def preexec_fn(): # pragma: no cover
                     signal.signal(signal.SIGINT, signal.SIG_IGN)
                     os.setpgrp()
 
@@ -143,7 +143,7 @@ class EqyTask:
                 fl = fcntl.fcntl(self.p.stdout, fcntl.F_GETFL)
                 fcntl.fcntl(self.p.stdout, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
-            else:
+            else: # pragma: no cover
                 self.p = subprocess.Popen(self.cmdline, shell=True, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                         stderr=(subprocess.STDOUT if self.logstderr else None))
 
@@ -259,9 +259,9 @@ class EqyJob:
             if os.name == "posix":
                 try:
                     select(fds, [], [], 1.0) == ([], [], [])
-                except InterruptedError:
+                except InterruptedError: # pragma: no cover
                     pass
-            else:
+            else: # pragma: no cover
                 sleep(0.1)
 
             for task in self.tasks_running:
@@ -683,7 +683,7 @@ class EqyJob:
                 "Elapsed process time [H:MM:SS (secs)]: {}:{:02d}:{:02d} ({})".format
                         (total_process_time // (60*60), (total_process_time // 60) % 60, total_process_time % 60, total_process_time),
             ] + self.summary
-        else:
+        else: # pragma: no cover
             self.summary = [
                 "Elapsed clock time [H:MM:SS (secs)]: {}:{:02d}:{:02d} ({})".format
                         (total_clock_time // (60*60), (total_clock_time // 60) % 60, total_clock_time % 60, total_clock_time),
