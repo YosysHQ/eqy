@@ -31,13 +31,17 @@ perform left shifts as well.
            function [31:0] bitreverse(input [31:0] arg);
                    for (integer i = 0; i < 32; i++) bitreverse[i] = arg[31-i];
            endfunction
-           wire [32:0] shift_t1 = {insn_funct7[5] && rs1_value[31], insn_funct3 == 3'b001 ? bitreverse(rs1_value) : rs1_value};
+           wire [32:0] shift_t1 = {insn_funct7[5] && rs1_value[31],
+                   insn_funct3 == 3'b001 ? bitreverse(rs1_value) : rs1_value};
    `ifdef SHIFTER_BUG
-           wire [31:0] shift_t2 = $signed(shift_t1) >>> (insn_opcode == OPCODE_OP_IMM ? insn[24:20] : rs2_value[5:0]);
+           wire [31:0] shift_t2 = $signed(shift_t1) >>>
+                   (insn_opcode == OPCODE_OP_IMM ? insn[24:20] : rs2_value[5:0]);
    `else
-           wire [31:0] shift_t2 = $signed(shift_t1) >>> (insn_opcode == OPCODE_OP_IMM ? insn[24:20] : rs2_value[4:0]);
+           wire [31:0] shift_t2 = $signed(shift_t1) >>>
+                   (insn_opcode == OPCODE_OP_IMM ? insn[24:20] : rs2_value[4:0]);
    `endif
-           wire [31:0] shift_out = insn_funct3 == 3'b001 ? bitreverse(shift_t2) : shift_t2;
+           wire [31:0] shift_out =
+                   insn_funct3 == 3'b001 ? bitreverse(shift_t2) : shift_t2;
 
 Imagine that we accidentally write an error in the code by using
 ``rs2_value[5:0]`` instead of ``rs2_value[4:0]``. This can be tested
@@ -49,7 +53,7 @@ To test if this design is equivalent to the original, we need to write a
 First, we’ll give the Yosys commands to process the known-good (“gold”)
 design:
 
-::
+.. code-block:: text
 
    [gold]
    read_verilog -sv nerv.sv
@@ -63,7 +67,7 @@ synthesise the design with ``nerv`` as top module, and then we use
 The design to be checked for equivalence (the “gate” design) has a
 similar script.
 
-::
+.. code-block:: text
 
    [gate]
    read_verilog -sv -DSHIFTER_BUG nerv_change.sv
@@ -73,7 +77,7 @@ similar script.
 Then we need to tell EQY to collect sections that should be proven
 together, like the register file and some logic known to be identical.
 
-::
+.. code-block:: text
 
    [collect *]
    group regfile*
@@ -82,7 +86,7 @@ together, like the register file and some logic known to be identical.
 
 Finally, we need to tell EQY how to prove these designs equivalent.
 
-::
+.. code-block:: text
 
    [strategy sby]
    use sby
@@ -94,13 +98,13 @@ can check equivalence through ``eqy nerv_change_fail.eqy``.
 
 EQY will give output that ends like this:
 
-::
+.. code-block:: text
 
-   EQY 16:33:44 [nerv_change_fail] Warning: Failed to prove equivalence for 1/44 partitions:
-   EQY 16:33:44 [nerv_change_fail] Failed to prove equivalence of partition nerv.next_rd
-   EQY 16:33:44 [nerv_change_fail] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:18 (18)
-   EQY 16:33:44 [nerv_change_fail] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:22 (22)
-   EQY 16:33:44 [nerv_change_fail] DONE (FAIL, rc=2)
+   EQY [nerv_change_fail] Warning: Failed to prove equivalence for 1/44 partitions:
+   EQY [nerv_change_fail] Failed to prove equivalence of partition nerv.next_rd
+   EQY [nerv_change_fail] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:18 (18)
+   EQY [nerv_change_fail] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:22 (22)
+   EQY [nerv_change_fail] DONE (FAIL, rc=2)
 
 And we can see that these designs are not equivalent. EQY will create a
 trace of the failing case in
@@ -120,11 +124,11 @@ consists of just removing the ``SHIFTER_BUG`` ifdef, which can be found
 in ``nerv_change_pass.eqy``. Running ``eqy nerv_change_pass.eqy``, the
 output ends in
 
-::
+.. code-block:: text
 
-   EQY 18:40:56 [nerv_change_pass] Successfully proved designs equivalent
-   EQY 18:40:56 [nerv_change_pass] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:21 (21)
-   EQY 18:40:56 [nerv_change_pass] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:28 (28)
-   EQY 18:40:56 [nerv_change_pass] DONE (PASS, rc=0)
+   EQY [nerv_change_pass] Successfully proved designs equivalent
+   EQY [nerv_change_pass] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:21 (21)
+   EQY [nerv_change_pass] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:28 (28)
+   EQY [nerv_change_pass] DONE (PASS, rc=0)
 
 and EQY has proven the designs equivalent.
