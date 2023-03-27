@@ -279,7 +279,7 @@ struct EqyPartitionWorker
 
 	void create_partitions();
 	void merge_partitions();
-	void write(bool fragments);
+	void write(bool fragments, std::ofstream &list_file);
 };
 
 struct Partition
@@ -1888,10 +1888,8 @@ void EqyPartitionWorker::merge_partitions()
 	log("      ,  .... unused fragment index (as result of grouping)\n");
 }
 
-void EqyPartitionWorker::write(bool fragments)
+void EqyPartitionWorker::write(bool fragments, std::ofstream &list_file)
 {
-	std::ofstream list_file = std::ofstream(fragments ? "fragment.list" : "partition.list", std::ofstream::out);
-
 	for (auto &it : partitions)
 	{
 		Partition *partition = it.get();
@@ -1978,6 +1976,13 @@ struct EqyPartitionPass : public Pass
 			const dict<std::string, std::vector<std::pair<std::string, std::string>>> &matched_ids,
 			const dict<std::string, std::vector<std::vector<std::string>>> &partiton_ids)
 	{
+
+		std::ofstream partition_list = std::ofstream("partition.list", std::ofstream::out);
+		std::ofstream fragment_list;
+
+		if (write_fragments)
+			fragment_list.open("fragment.list", std::ofstream::out);
+
 		int num_gold_modules = 0;
 		for (auto gold : design->modules())
 		{
@@ -2034,12 +2039,12 @@ struct EqyPartitionPass : public Pass
 
 				if (write_fragments) {
 					log_header(design, "Write fragments for module %s.\n", gold->name.substr(6).c_str());
-					worker.write(true);
+					worker.write(true, fragment_list);
 				}
 
 				log_header(design, "Write partitions for module %s.\n", gold->name.substr(6).c_str());
 				worker.create_full_partition();
-				worker.write(false);
+				worker.write(false, partition_list);
 				log_pop();
 			}
 			else if (!gold->name.begins_with("\\gate.") && gold->name != "\\miter")
