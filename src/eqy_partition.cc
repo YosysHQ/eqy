@@ -1954,7 +1954,8 @@ void EqyPartitionWorker::write(bool fragments)
 
 		Backend::backend_call(partdesign, nullptr, filename_prefix + ".il", "rtlil");
 		partdesign->check();
-		Pass::call(partdesign, "check -assert -initdrv");
+		if (!partition->full_part)
+			Pass::call(partdesign, "check -assert -initdrv");
 		delete partdesign;
 		log_spacer();
 	}
