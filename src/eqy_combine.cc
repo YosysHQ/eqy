@@ -176,6 +176,11 @@ struct EqyCombinePass : public Pass
 		if (gold_top != gate_top)
 			log_error("Top modules of gold and gate do not have the same name.\n");
 
+		Pass::call(gold_design, "setattr -unset keep_hierarchy");
+		Pass::call(gate_design, "setattr -unset keep_hierarchy");
+		Pass::call(gold_design, "setattr -unset keep_hierarchy -mod");
+		Pass::call(gate_design, "setattr -unset keep_hierarchy -mod");
+
 		bool did_something = true;
 		while (did_something)
 		{
