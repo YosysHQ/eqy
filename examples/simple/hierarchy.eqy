@@ -1,0 +1,17 @@
+[options]
+
+[gold]
+read_verilog hierarchy.sv
+prep -top top
+
+[gate]
+read_verilog hierarchy.sv
+synth -top top
+
+[match top]
+gold-nomatch b
+gold-nomatch a
+
+[strategy simple]
+use sat
+depth 10

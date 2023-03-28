@@ -1,0 +1,21 @@
+[options]
+
+[gold]
+read_verilog combine.sv
+setattr -set keep_hierarchy 1 */t:pipeline
+flatten
+prep -top top
+
+[gate]
+read_verilog combine.sv
+setattr -set keep_hierarchy 1 */t:multiplier
+flatten
+prep -top top
+
+[collect top]
+group y *.y,c
+group clk *.clk
+
+[strategy simple]
+use sat
+depth 10
