@@ -1,0 +1,20 @@
+[gold]
+read_verilog -formal spm.v
+
+[gate]
+exec -- python3 formal_pdk_proc.py primitives.v sky130_fd_sc_hd.v -o spm/formal_pdk.v
+read -sv spm/formal_pdk.v spm.nl.v
+
+[script]
+hierarchy -check -top spm
+prep
+async2sync
+
+[strategy sat]
+use sat
+depth 2
+
+[strategy sby]
+use sby
+depth 2
+engine smtbmc bitwuzla
