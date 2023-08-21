@@ -4,6 +4,8 @@ PREFIX = /usr/local
 PROGRAM_PREFIX =
 YOSYS_CFGFLAGS =
 
+YOSYS_CONFIG ?= yosys-config
+
 # On Windows, manually setting absolute path to Python binary may be required
 # for launcher executable to work. From MSYS2, this can be done using the
 # following command: "which python3 | cygpath -w -m -f -".
@@ -21,13 +23,13 @@ YOSYS_CFGFLAGS += --coverage
 endif
 
 src/eqy_combine.so: src/eqy_combine.cc
-	yosys-config --build $@ $(DEBUG_CXXFLAGS) $^ $(YOSYS_CFGFLAGS)
+	$(YOSYS_CONFIG) --build $@ $(DEBUG_CXXFLAGS) $^ $(YOSYS_CFGFLAGS)
 
 src/eqy_partition.so: src/eqy_partition.cc
-	yosys-config --build $@ $(DEBUG_CXXFLAGS) $^ $(YOSYS_CFGFLAGS)
+	$(YOSYS_CONFIG) --build $@ $(DEBUG_CXXFLAGS) $^ $(YOSYS_CFGFLAGS)
 
 src/eqy_recode.so: src/eqy_recode.cc
-	yosys-config --build $@ $(DEBUG_CXXFLAGS) $^ $(YOSYS_CFGFLAGS)
+	$(YOSYS_CONFIG) --build $@ $(DEBUG_CXXFLAGS) $^ $(YOSYS_CFGFLAGS)
 
 install: src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
