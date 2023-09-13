@@ -21,6 +21,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include "kernel/sigtools.h"
 #include "kernel/ffinit.h"
 #include "kernel/mem.h"
+#include "kernel/json.h"
 
 USING_YOSYS_NAMESPACE
 PRIVATE_NAMESPACE_BEGIN
@@ -687,31 +688,34 @@ struct Partition
 
 		log("Writing %s %d as %s.\n", fragment ? "fragment" : "partition", index, log_id(partname));
 
-		std::ofstream json_file((filename_prefix + ".json").c_str(), std::ofstream::trunc);
-		json_file << stringf("{\n");
-		json_file << stringf("  \"%s\": {\n", fragment ? "fragment" : "partition");
-		json_file << stringf("    \"index\": %d,\n", index);
-		json_file << stringf("    \"name\": \"%s\",\n", log_id(partname));
+		PrettyJson json;
+		std::string filename = filename_prefix + ".json";
+
+		if (!json.write_to_file(filename))
+			log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
+
+		json.begin_object(); // top-level
+
+		json.name(fragment ? "fragment" : "partition");
+		json.begin_object(); // fragment/partition
+		json.entry("index", index);
+		json.entry("name", log_id(partname));
 
 		dict<std::string, pool<int>> json_bits;
-		auto write_json_bits = [&](const char *name, bool last = false)->void {
-			json_file << stringf("    \"%s\": {\n", name);
+		auto write_json_bits = [&](const char *name)->void {
+			json.name(name); 
+			json.begin_object(); // bits name
 			json_bits.sort();
-			bool first = true;
 			for (auto &it : json_bits) {
-				if (!first)
-					json_file << ",\n";
-				json_file << stringf("      \"%s\": [", it.first.c_str());
+				json.name(it.first.c_str());
+				json.begin_array();
 				it.second.sort();
 				for (int i : it.second) {
-					if (i != *it.second.begin())
-						json_file << ", ";
-					json_file << i;
+					json.value(i);
 				}
-				json_file << "]";
-				first = false;
+				json.end_array();
 			}
-			json_file << stringf("%s    }%s\n", json_bits.empty() ? "" : "\n", last ? "" : ",");
+			json.end_object(); // bits name
 			json_bits.clear();
 		};
 
@@ -721,17 +725,17 @@ struct Partition
 
 		for (auto &bit : outbits)
 			json_bits[unescape_id(bit.wire->name)].insert(bit.offset);
-		write_json_bits("outbits", fragment);
+		write_json_bits("outbits");
 
 		if (fragment) {
 			log_assert(crossbits.empty());
 		} else {
 			for (auto &bit : crossbits)
 				json_bits[unescape_id(bit.wire->name)].insert(bit.offset);
-			write_json_bits("crossbits", true);
+			write_json_bits("crossbits");
 		}
 
-		json_file << stringf("  },\n");
+		json.end_object(); // fragment/partition
 
 		Design *partdesign = new Design();
 
@@ -743,8 +747,9 @@ struct Partition
 		auto copy_mod_contents = [&](bool in_gold, const SigSpec &pi, const SigSpec &cp,
 				const SigSpec &mp, const SigSpec &po, const SigSig &conn)->void
 		{
-			json_file << stringf("  \"%s_module\": {\n", in_gold ? "gold" : "gate");
-			json_file << stringf("    \"name\": \"%s\",\n", log_id(mod_gold));
+			json.name(stringf("%s_module", in_gold ? "gold" : "gate").c_str());
+			json.begin_object(); // {gold,gate}_module
+			json.entry("name", log_id(mod_gold));
 
 			// Module *in_mod = in_gold ? gold : gate;
 			Module *out_mod = in_gold ? mod_gold : mod_gate;
@@ -849,9 +854,9 @@ struct Partition
 				json_bits[unescape_id(bit.wire->name)].insert(bit.offset);
 			write_json_bits("unused");
 
-			json_file << stringf("    \"cellcount\": %d,\n", GetSize(gg_cells));
-			json_file << stringf("    \"bitcount\": %d\n", GetSize(gg_bits));
-			json_file << stringf("  }%s\n", in_gold ? "," : "");
+			json.entry("cellcount", GetSize(gg_cells));
+			json.entry("bitcount", GetSize(gg_bits));
+			json.end_object();  // {gold,gate}_module
 
 			SigSpec out_pi, out_po, out_cp, out_mp;
 			for (auto bit : sigmap(pi))
@@ -1055,7 +1060,8 @@ struct Partition
 		copy_mod_contents(true, gold_pi, gold_cp, gold_mp, gold_po, gold_conn);
 		copy_mod_contents(false, gate_pi, gate_cp, gate_mp, gate_po, gate_conn);
 
-		json_file << stringf("}\n");
+		json.end_object(); // top-level
+		json.flush();
 
 		if (!fragment) {
 			std::ofstream vlog_file((filename_prefix + ".sv").c_str(), std::ofstream::trunc);
