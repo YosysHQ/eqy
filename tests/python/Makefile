@@ -1,4 +1,5 @@
 EQY := eqy
+PYTHON_TEMPDIR := $(shell python3 -c "import tempfile; print(tempfile.gettempdir())")
 
 test: failing_tests passing_tests
 
@@ -8,7 +9,7 @@ passing_tests:
 	@rm -rf counter/ counter.bak*/; $(EQY) counter.eqy > /dev/null
 	@$(EQY) -b counter.eqy > /dev/null # 1st counter
 	@$(EQY) -b counter.eqy > /dev/null # 2nd counter
-	@$(EQY) -t counter.eqy | grep -i "make -C /tmp/" # Use temp
+	@$(EQY) -t counter.eqy | grep -i "make -C $(PYTHON_TEMPDIR)" # Use temp
 	@rm -rf counter/ counter.bak*/; $(EQY) counter.eqy -d counter | grep -i "make -C counter -f strategies.mk"   # setting workdir
 	@$(EQY) -c counter.eqy --purge "counter.state/simple" 2>&1 | grep -i "Removing" # continue with purge
 	@$(EQY) -f counter_cells.eqy 2>&1 | grep -i "counter.state__SDFF_PP0__Q" # matching cells
