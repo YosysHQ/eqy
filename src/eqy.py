@@ -1079,7 +1079,7 @@ def make_scripts(args, cfg, job, strategies):
 
         prmkf(f".PHONY: all summary")
         prmkf(f"all: {' '.join(sorted(final_targets))}")
-        prmkf(f"\t$(MAKE) -f strategies.mk summary")
+        prmkf(f"\txargs -s 1000000 $(MAKE) -f strategies.mk summary")
         prmkf(f"""summary:""")
         prmkf(f"""\t@rc=0 ; \\""")
         prmkf(f"""\tfor f in {" ".join(final_targets)} ; do \\""")
