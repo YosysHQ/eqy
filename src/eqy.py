@@ -474,6 +474,9 @@ class Pattern:
                 else:
                     regex.append(f"({tok})")
                 continue
+            if tok == "\\":
+                regex.append(tok + next(chars))
+                continue
             regex.append(tok)
         return re.compile("".join(regex))
 
