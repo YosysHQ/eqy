@@ -1080,19 +1080,23 @@ def make_scripts(args, cfg, job, strategies):
                 exit_with_error(f"No configured strategy supports partition {partition.name}")
             final_targets.append(prev_strategy)
 
+        with open(f"{args.workdir}/summary_targets.list", "w") as targets_f:
+            for target in final_targets:
+                print(target, file=targets_f)
+
         prmkf(f".PHONY: all summary")
         prmkf(f"all: {' '.join(sorted(final_targets))}")
         prmkf(f"\t$(MAKE) -f strategies.mk summary")
         prmkf(f"""summary:""")
         prmkf(f"""\t@rc=0 ; \\""")
-        prmkf(f"""\tfor f in {" ".join(final_targets)} ; do \\""")
+        prmkf(f"""\twhile read f; do \\""")
         prmkf(f"""\t\tp=$${{f#strategies/}} ; p=$${{p%/*/status}} ; \\""")
         prmkf(f"""\t\tif grep -q "PASS" $$f ; then \\""")
         prmkf(f"""\t\t\techo "* Successfully proved equivalence of partition $$p" ; \\""")
         prmkf(f"""\t\telse \\""")
         prmkf(f"""\t\t\techo "* Failed to prove equivalence of partition $$p" ; rc=1 ; \\""")
         prmkf(f"""\t\tfi ; \\""")
-        prmkf(f"""\tdone ; \\""")
+        prmkf(f"""\tdone < summary_targets.list ; \\""")
         prmkf(f"""\tif [ "$$rc" -eq 0 ] ; then \\""")
         prmkf(f"""\t\techo "* Successfully proved designs equivalent" ; \\""")
         prmkf(f"""\tfi""")
