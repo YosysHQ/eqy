@@ -1,0 +1,15 @@
+[gold]
+read_verilog -sv -DGOLD submodules.sv
+[gate]
+read_verilog -sv -DGATE submodules.sv
+
+[script]
+prep -top top
+
+[strategy sat]
+use sat
+depth 5
+
+[strategy pdr]
+use sby
+engine abc pdr -rfi
