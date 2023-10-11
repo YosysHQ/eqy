@@ -1,6 +1,6 @@
 EQY := eqy
 
-test: aliases/PASS combine/PASS counter/PASS ex_amend/PASS ex_bind/PASS ex_group/PASS ex_join/PASS fsm/PASS hierarchy/PASS
+test: aliases/PASS combine/PASS counter/PASS ex_amend/PASS ex_bind/PASS ex_group/PASS ex_join/PASS fsm/PASS hierarchy/PASS submodules/PASS
 
 aliases/PASS: aliases.eqy aliases.sv
 	$(EQY) -f aliases.eqy
@@ -29,7 +29,10 @@ fsm/PASS: fsm.eqy fsm.sv
 hierarchy/PASS: hierarchy.eqy hierarchy.sv
 	$(EQY) -f hierarchy.eqy
 
+submodules/PASS: submodules.eqy submodules.sv
+	$(EQY) -f submodules.eqy
+
 clean:
-	rm -rf aliases/ combine/ counter/ ex_amend/ ex_bind/ ex_group/ ex_join/ fsm/ hierarchy/
+	rm -rf aliases/ combine/ counter/ ex_amend/ ex_bind/ ex_group/ ex_join/ fsm/ hierarchy/ submodules/
 
 .PHONY: test clean
