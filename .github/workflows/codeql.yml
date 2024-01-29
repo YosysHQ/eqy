@@ -14,15 +14,15 @@ jobs:
       run: sudo apt-get install bison flex libreadline-dev tcl-dev libffi-dev
 
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install OSS-Cad-Suite
-      uses: YosysHQ/setup-oss-cad-suite@v2
+      uses: YosysHQ/setup-oss-cad-suite@v3
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
+      uses: github/codeql-action/init@v3
       with:
         languages: cpp, python
         queries: security-extended,security-and-quality
@@ -31,4 +31,4 @@ jobs:
       run: make
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+      uses: github/codeql-action/analyze@v3
