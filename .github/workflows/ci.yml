@@ -7,9 +7,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install deps
-        run: sudo apt-get install bison flex libreadline-dev tcl-dev libffi-dev
-
       - name: Checkout repository
         uses: actions/checkout@v4
       
@@ -19,7 +16,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
-        run: docker run --rm -it -v $(pwd):/work -v /home/runner/work/_temp/oss-cad-suite:/tabby yosyshq/plugin_build_x64:22.04 make
+        run: docker run --rm -v $(pwd):/work -v /home/runner/work/_temp/oss-cad-suite:/tabby yosyshq/plugin_build_x64:22.04 make
 
       - name: Test
         run: make test
