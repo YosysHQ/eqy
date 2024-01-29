@@ -18,5 +18,12 @@ jobs:
       - name: Build
         run: docker run --rm -v $(pwd):/work -v /home/runner/work/_temp/oss-cad-suite:/tabby yosyshq/plugin_build_x64:22.04 make
 
+      - name: Install
+        run: |
+          cp /home/runner/work/_temp/oss-cad-suite/bin/eqy .
+          make install PREFIX=/home/runner/work/_temp/oss-cad-suite
+          cp -f /home/runner/work/_temp/oss-cad-suite/bin/eqy /home/runner/work/_temp/oss-cad-suite/libexec/.
+          cp -f eqy /home/runner/work/_temp/oss-cad-suite/bin/.
+
       - name: Test
         run: make test
