@@ -880,6 +880,7 @@ class EqySatStrategy(EqyStrategy):
             print(f"read_verilog -sv ../../../partitions/{partition.name}.sv", file=ys_f)
             print(f"read_ilang ../../../partitions/{partition.name}.il", file=ys_f)
             print(f"hierarchy -top miter; proc; chformal -cover -remove", file=ys_f)
+            print("async2sync", file=ys_f)  # async2sync after a user script clk2fflogic is a noop
             print(f"formalff -clk2ff -ff2anyinit gate.{partition.name}", file=ys_f)
             print(f"setundef -anyseq gate.{partition.name}", file=ys_f)
             print(f"flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean", file=ys_f)
