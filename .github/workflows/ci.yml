@@ -7,7 +7,7 @@ on:
     - cron: '0 1 * * *'
 
 jobs:
-  build:
+  build_oss:
     runs-on: ubuntu-latest
 
     steps:
@@ -31,3 +31,61 @@ jobs:
 
       - name: Test
         run: make test
+
+  build_verific:
+    runs-on: [self-hosted, linux, x64]
+    steps:
+      - name: Checkout EQY
+        uses: actions/checkout@v4
+
+      - name: Checkout Yosys
+        uses: actions/checkout@v4
+        with:
+          repository: 'YosysHQ/yosys'
+          path: 'yosys'
+
+      - name: Runtime environment
+        run: |
+          echo "procs=$(nproc)" >> $GITHUB_ENV
+
+      - name: Build Yosys
+        run: |
+          cd yosys
+          make config-clang
+          echo "ENABLE_VERIFIC := 1" >> Makefile.conf
+          echo "ENABLE_VERIFIC_EDIF := 1" >> Makefile.conf
+          echo "ENABLE_VERIFIC_LIBERTY := 1" >> Makefile.conf
+          echo "ENABLE_CCACHE := 1" >> Makefile.conf
+          make -j${{ env.procs }}
+          make install DESTDIR=${GITHUB_WORKSPACE}/.local PREFIX=
+          sed -i 's,/usr/local/share,${GITHUB_WORKSPACE}/.local/share,g' ${GITHUB_WORKSPACE}/.local/bin/yosys-config
+          sed -i 's,/usr/local/include,${GITHUB_WORKSPACE}/.local/include,g' ${GITHUB_WORKSPACE}/.local/bin/yosys-config
+          sed -i 's,/usr/local/lib,${GITHUB_WORKSPACE}/.local/lib,g' ${GITHUB_WORKSPACE}/.local/bin/yosys-config
+
+      - name: Checkout SBY
+        uses: actions/checkout@v4
+        with:
+          repository: 'YosysHQ/sby'
+          path: 'sby'
+
+      - name: Build SBY
+        run: |
+          make -C sby install DESTDIR=${GITHUB_WORKSPACE}/.local PREFIX=
+
+      - name: EQY Coverage
+        run: |
+          sed -i 's,clang,g,g' ${GITHUB_WORKSPACE}/.local/bin/yosys-config
+          sed -i 's,--gcov-tool $$PWD/llvm-gcov.sh,,g' Makefile
+          sed -i "s,--no-external,--no-external --exclude '*/.local/share/*',g" Makefile
+          make clean
+          make COVERAGE=1
+          make coverage
+          lcov_cobertura coverage.info --excludes .local.share --demangle
+
+      - name: Report
+        uses: 5monkeys/cobertura-action@master
+        with:
+          path: coverage.xml
+          minimum_coverage: 90
+          skip_covered: false
+          fail_below_threshold: true
