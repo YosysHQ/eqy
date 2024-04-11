@@ -73,16 +73,23 @@ jobs:
           make -C sby install DESTDIR=${GITHUB_WORKSPACE}/.local PREFIX=
 
       - name: EQY Coverage
+        if: (github.event_name != 'schedule')
         run: |
           sed -i 's,clang,g,g' ${GITHUB_WORKSPACE}/.local/bin/yosys-config
           sed -i 's,--gcov-tool $$PWD/llvm-gcov.sh,,g' Makefile
           sed -i "s,--no-external,--no-external --exclude '*/.local/share/*',g" Makefile
-          make clean
           make COVERAGE=1
           make coverage
           lcov_cobertura coverage.info --excludes .local.share --demangle
 
+      - name: EQY Tests
+        if: (github.event_name == 'schedule')
+        run: |
+          make
+          make test EQY="python3 $(pwd)/src/eqy.py"
+
       - name: Report
+        if: (github.event_name != 'schedule')
         uses: 5monkeys/cobertura-action@master
         with:
           path: coverage.xml
