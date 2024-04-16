@@ -90,9 +90,5 @@ jobs:
 
       - name: Report
         if: (github.event_name != 'schedule')
-        uses: 5monkeys/cobertura-action@master
-        with:
-          path: coverage.xml
-          minimum_coverage: 90
-          skip_covered: false
-          fail_below_threshold: true
+        run: |
+          python3 .github/workflows/get_markdown.py coverage.xml 90
