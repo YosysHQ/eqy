@@ -931,6 +931,7 @@ class EqySbyStrategy(EqyStrategy):
 
             if self.scfg.xprop:
                 print(textwrap.dedent(f"""
+                    async2sync
                     formalff -clk2ff -ff2anyinit gate.{partition.name}
                     setundef -anyseq gate.{partition.name}
                     flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean
