@@ -41,7 +41,7 @@ compiled in the same environment as the Yosys binary you are using. If you
 would like to build EQY from source but use a precompiled Yosys binary, you can
 use the `Tabby CAD Plugin Build docker environment 
 <https://github.com/YosysHQ-GmbH/tabby-cad-plugin-build>`_ to compile the EQY
-plugins (the environtment works for both Tabby and OSS CAD Suite Yosys).
+plugins (the environment works for both Tabby and OSS CAD Suite Yosys).
 
 To use ``[strategy sby]``, you also need to have a
 `matching version <https://github.com/YosysHQ/sby/tags>`_ of
