@@ -816,6 +816,12 @@ class EqyStrategy:
             return "expected option value"
         setattr(self.scfg, name, value)
 
+    def multi_string_opt_parser(self, name, value):
+        if name not in self.options_seen:
+            self.options_seen.add(name)
+            setattr(self.scfg, name, [])
+        getattr(self.scfg, name).append(value)
+
     def bool_opt_parser(self, name, value):
         if name in self.options_seen:
             return "repeated option"
@@ -889,11 +895,12 @@ class EqySatStrategy(EqyStrategy):
 
 
 class EqySbyStrategy(EqyStrategy):
-    default_scfg = dict(engine='smtbmc', depth=5, xprop=True, timeout=None)
+    default_scfg = dict(engine='smtbmc', depth=5, xprop=True, timeout=None, option=())
     parse_opt_engine = EqyStrategy.string_opt_parser
     parse_opt_depth = EqyStrategy.int_opt_parser
     parse_opt_xprop = EqyStrategy.bool_opt_parser
     parse_opt_timeout = EqyStrategy.int_opt_parser
+    parse_opt_option = EqyStrategy.multi_string_opt_parser
 
     def write(self, job, partition):
         with open(self.path(partition.name, f"{partition.name}.sby"), "w") as sby_f:
@@ -906,6 +913,9 @@ class EqySbyStrategy(EqyStrategy):
 
             if self.scfg.timeout:
                 print(f"timeout {self.scfg.timeout}", file=sby_f)
+
+            for option in self.scfg.option:
+                print(option, file=sby_f)
 
             print(textwrap.dedent(f"""
 
@@ -921,6 +931,7 @@ class EqySbyStrategy(EqyStrategy):
 
             if self.scfg.xprop:
                 print(textwrap.dedent(f"""
+                    async2sync
                     formalff -clk2ff -ff2anyinit gate.{partition.name}
                     setundef -anyseq gate.{partition.name}
                     flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean

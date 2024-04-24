@@ -83,6 +83,10 @@ Strategy Options
     ``xprop`` pass, but may prevent proving partitions equivalent when they
     contain uninitialized state or don't-care values. (default value: on)
 
+``option <option_name> <option_value>``
+    Set arbitrary option in the generated ``.sby`` files. Can be used multiple
+    times.
+
 Example Configurations
 ......................
 
