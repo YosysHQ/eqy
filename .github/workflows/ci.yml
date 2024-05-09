@@ -43,6 +43,7 @@ jobs:
         with:
           repository: 'YosysHQ/yosys'
           path: 'yosys'
+          submodules: true
 
       - name: Runtime environment
         run: |
