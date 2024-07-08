@@ -13,6 +13,12 @@ ifeq ($(OS), Windows_NT)
 PYTHON = $(shell cygpath -w -m $(PREFIX)/bin/python3)
 endif
 
+ifeq ($(file < .gittag),$$Format:%(describe)$$)
+YOSYS_RELEASE_VERSION := EQY $(shell git describe --dirty)
+else
+YOSYS_RELEASE_VERSION := EQY $(file < .gittag)
+endif
+
 build: src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so
 
 DEBUG_CXXFLAGS :=
@@ -41,10 +47,12 @@ install: src/eqy_combine.so src/eqy_partition.so src/eqy_recode.so
 	cp src/eqy_recode.so $(DESTDIR)$(PREFIX)/share/yosys/plugins/
 ifeq ($(OS), Windows_NT)
 	sed -e 's|##yosys-sys-path##|sys.path += [os.path.dirname(__file__) + p for p in ["/share/python3", "/../share/yosys/python3"]]|;' \
+		-e "s|##yosys-release-version##|release_version = '$(YOSYS_RELEASE_VERSION)'|;" \
 		-e "s|#!/usr/bin/env python3|#!$(PYTHON)|" < src/eqy.py > $(DESTDIR)$(PREFIX)/bin/eqy-script.py
 	gcc -DGUI=0 -O -s -o $(DESTDIR)$(PREFIX)/bin/eqy.exe extern/launcher.c
 else
-	sed 's|##yosys-sys-path##|sys.path += [os.path.dirname(__file__) + p for p in ["/share/python3", "/../share/yosys/python3"]]|;' < src/eqy.py > $(DESTDIR)$(PREFIX)/bin/eqy
+	sed -e 's|##yosys-sys-path##|sys.path += [os.path.dirname(__file__) + p for p in ["/share/python3", "/../share/yosys/python3"]]|;' \
+		-e "s|##yosys-release-version##|release_version = '$(YOSYS_RELEASE_VERSION)'|;" < src/eqy.py > $(DESTDIR)$(PREFIX)/bin/eqy
 	chmod +x $(DESTDIR)$(PREFIX)/bin/eqy
 endif
 

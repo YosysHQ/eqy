@@ -25,6 +25,9 @@ import click, json, collections
 
 from eqy_job import EqyJob, EqyTask
 
+release_version = 'unknown EQY version'
+##yosys-release-version##
+
 def exit_with_error(error, retcode=1):
     print("ERROR:", error, file=sys.stderr)
     exit(retcode)
@@ -101,6 +104,8 @@ def parse_args(ctx):
     exes.add_argument("--pono", metavar="<path_to_executable>",
             action=DictAction, dest="exe_paths",
             help="configure which executable to use for the respective tool")
+
+    parser.add_argument('--version', action='version', version=release_version)
 
     ctx.args = parser.parse_args()
 
@@ -1183,7 +1188,7 @@ def main():
         build_recode(ctx.args, ctx, ctx.job)
     else:
         shutil.copyfile(f"{ctx.args.workdir}/gate.il", f"{ctx.args.workdir}/gate_recoded.il")
-        
+
     build_combined(ctx.args, ctx, ctx.job)
 
     ctx.gold_ids = read_ids(ctx.args.workdir + "/gold.ids")
