@@ -33,7 +33,7 @@ jobs:
         run: make test
 
   build_verific:
-    runs-on: [self-hosted, linux, x64]
+    runs-on: [self-hosted, linux, x64, fast]
     steps:
       - name: Checkout EQY
         uses: actions/checkout@v4
