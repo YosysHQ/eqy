@@ -976,10 +976,38 @@ class EqySbyStrategy(EqyStrategy):
             """[1:-1]), file=run_f)
 
 
+class EqyImctkStrategy(EqySbyStrategy):
+    default_scfg = dict(
+        engine='aiger imctk-eqy-engine',
+        depth=5,
+        xprop=True,
+        rarity_sim_rounds=5,
+        window_min=3,
+        window_max=8,
+        timeout=None,
+        option=()
+    )
+    parse_opt_rarity_sim_rounds = EqyStrategy.int_opt_parser
+    parse_opt_window_min = EqyStrategy.int_opt_parser
+    parse_opt_window_max = EqyStrategy.int_opt_parser
+    def parse_opt_engine(self, *line):
+        self.parse_other_option(*line)
+
+
+    def write(self, job, partition):
+        self.scfg.engine = ' '.join([
+            'aiger imctk-eqy-engine',
+            f'--rarity-sim-rounds {self.scfg.rarity_sim_rounds}',
+            f'--window-min {self.scfg.window_min}',
+            f'--window-max {self.scfg.window_max}',
+        ])
+        super().write(job, partition)
+
 strategy_types = {
     "dummy": EqyDummyStrategy,
     "sat": EqySatStrategy,
     "sby": EqySbyStrategy,
+    "imctk": EqyImctkStrategy
     # add strategies here
 }
 
