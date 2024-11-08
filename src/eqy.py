@@ -297,7 +297,7 @@ def build_gate_gold(args, cfg, job):
         print("opt_clean", file=f)
         print("check -initdrv", file=f)
         print("setundef -undriven -undef", file=f)
-        print("write_ilang {}/gold.il".format(args.workdir), file=f)
+        print("write_rtlil {}/gold.il".format(args.workdir), file=f)
     with open(args.workdir + "/gate.ys", "w") as f:
         for line in cfg.gate:
             print(line, file=f)
@@ -306,7 +306,7 @@ def build_gate_gold(args, cfg, job):
         print("opt_clean", file=f)
         print("check -initdrv", file=f)
         print("setundef -undriven -undef", file=f)
-        print("write_ilang {}/gate.il".format(args.workdir), file=f)
+        print("write_rtlil {}/gate.il".format(args.workdir), file=f)
 
     gold_task = EqyTask(job, "read_gold", [], "{yosys}{gopt} -ql {workdir}/gold.log {workdir}/gold.ys".format(
             yosys=args.exe_paths["yosys"], gopt=" -g" if args.debugmode else "", workdir=args.workdir))
@@ -326,11 +326,11 @@ def build_get_ids(args, cfg, job):
         plugin_path = root_path() # for development
     with open(args.workdir + "/get_ids.ys", "w") as f:
         print("plugin -i {}/eqy_combine.so".format(plugin_path), file=f)
-        print("read_ilang {}/gold.il".format(args.workdir), file=f)
+        print("read_rtlil {}/gold.il".format(args.workdir), file=f)
         print("uniquify", file=f)
         print("hierarchy", file=f)
         print("design -stash gold", file=f)
-        print("read_ilang {}/gate.il".format(args.workdir), file=f)
+        print("read_rtlil {}/gate.il".format(args.workdir), file=f)
         print("uniquify", file=f)
         print("hierarchy", file=f)
         print("design -stash gate", file=f)
@@ -374,11 +374,11 @@ def build_recode(args, ctx, job):
         plugin_path = root_path() # for development
     with open(args.workdir + "/recode.ys", "w") as f:
         print("plugin -i {}/eqy_recode.so".format(plugin_path), file=f)
-        print("read_ilang {}/gold.il".format(args.workdir), file=f)
+        print("read_rtlil {}/gold.il".format(args.workdir), file=f)
         print("design -stash gold", file=f)
-        print("read_ilang {}/gate.il".format(args.workdir), file=f)
+        print("read_rtlil {}/gate.il".format(args.workdir), file=f)
         print("{dbg}eqy_recode -recode {wd}/recode.ids".format(dbg="debug " if args.debugmode else "", wd=args.workdir), file=f)
-        print("write_ilang {}/gate_recoded.il".format(args.workdir), file=f)
+        print("write_rtlil {}/gate_recoded.il".format(args.workdir), file=f)
 
     recode_task = EqyTask(job, "recode", [], "{yosys}{gopt} -ql {workdir}/recode.log {workdir}/recode.ys".format(
             yosys=args.exe_paths["yosys"], gopt=" -g" if args.debugmode else "", workdir=args.workdir))
@@ -396,16 +396,16 @@ def build_combined(args, cfg, job):
         plugin_path = root_path() # for development
     with open(args.workdir + "/combine.ys", "w") as f:
         print("plugin -i {}/eqy_combine.so".format(plugin_path), file=f)
-        print("read_ilang {}/gold.il".format(args.workdir), file=f)
+        print("read_rtlil {}/gold.il".format(args.workdir), file=f)
         print("uniquify", file=f)
         print("hierarchy", file=f)
         print("design -stash gold", file=f)
-        print("read_ilang {}/gate_recoded.il".format(args.workdir), file=f)
+        print("read_rtlil {}/gate_recoded.il".format(args.workdir), file=f)
         print("uniquify", file=f)
         print("hierarchy", file=f)
         print("design -stash gate", file=f)
         print("{dbg}eqy_combine -gold_ids {wd}/gold.ids -gate_ids {wd}/gate_recoded.ids".format(dbg="debug " if args.debugmode else "", wd=args.workdir), file=f)
-        print("write_ilang {}/combined.il".format(args.workdir), file=f)
+        print("write_rtlil {}/combined.il".format(args.workdir), file=f)
 
     combine_task = EqyTask(job, "combine", [], "{yosys}{gopt} -ql {workdir}/combine.log {workdir}/combine.ys".format(
             yosys=args.exe_paths["yosys"], gopt=" -g" if args.debugmode else "", workdir=args.workdir))
@@ -742,7 +742,7 @@ def make_partitions(args, cfg, job):
         plugin_path = root_path() # for development
     with open(args.workdir + "/partition.ys", "w") as f:
         print("plugin -i {}/eqy_partition.so".format(plugin_path), file=f)
-        print("read_ilang combined.il".format(args.workdir), file=f)
+        print("read_rtlil combined.il".format(args.workdir), file=f)
         if cfg.options.insbuf:
             print("insbuf -chain", file=f)
         print("{dbg}eqy_partition -matched_ids matched.ids -partition_ids partition.ids".format(dbg="debug " if args.debugmode else ""), file=f)
@@ -889,7 +889,7 @@ class EqySatStrategy(EqyStrategy):
         with open(self.path(partition.name, "run.ys"), "w") as ys_f:
             print(f"verilog_defaults -add -D CHECK_OUTPUTS", file=ys_f)
             print(f"read_verilog -sv ../../../partitions/{partition.name}.sv", file=ys_f)
-            print(f"read_ilang ../../../partitions/{partition.name}.il", file=ys_f)
+            print(f"read_rtlil ../../../partitions/{partition.name}.il", file=ys_f)
             print(f"hierarchy -top miter; proc; chformal -cover -remove", file=ys_f)
             print("async2sync", file=ys_f)  # async2sync after a user script clk2fflogic is a noop
             print(f"formalff -clk2ff -ff2anyinit gate.{partition.name}", file=ys_f)
@@ -930,7 +930,7 @@ class EqySbyStrategy(EqyStrategy):
                 [script]
                 verilog_defaults -add -D CHECK_OUTPUTS
                 read_verilog -sv ../../../../../partitions/{partition.name}.sv
-                read_ilang ../../../../../partitions/{partition.name}.il
+                read_rtlil ../../../../../partitions/{partition.name}.il
                 hierarchy -top miter; proc
             """[1:-1]), file=sby_f)
 

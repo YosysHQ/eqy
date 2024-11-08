@@ -1247,7 +1247,7 @@ struct Partition
 			sby_file << "verilog_defaults -add -D DIRECT_CROSS_POINTS\n";
 			sby_file << "# verilog_defaults -add -D ASSUME_DEFINED_INPUTS\n";
 			sby_file << "read_verilog -sv ../../" << partname.substr(1) << ".sv\n";
-			sby_file << "read_ilang ../../" << partname.substr(1) << ".il\n";
+			sby_file << "read_rtlil ../../" << partname.substr(1) << ".il\n";
 			sby_file << "hierarchy -top miter; proc\n";
 			sby_file << "formalff -clk2ff -ff2anyinit gate." << partname.substr(1) << "\n";
 			sby_file << "setundef -anyseq gate." << partname.substr(1) << "\n";
