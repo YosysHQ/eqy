@@ -391,7 +391,7 @@ class EqyJob:
     #             print("opt -keepdc -fast", file=f)
     #             print("check", file=f)
     #             print("hierarchy -simcheck", file=f)
-    #             print("write_ilang ../model/design{}.il".format("" if model_name == "base" else "_nomem"), file=f)
+    #             print("write_rtlil ../model/design{}.il".format("" if model_name == "base" else "_nomem"), file=f)
     #
     #         task = SbyTask(self, model_name, [],
     #                 "cd {}/src; {} -ql ../model/design{s}.log ../model/design{s}.ys".format(self.workdir, self.exe_paths["yosys"],
@@ -403,7 +403,7 @@ class EqyJob:
     #     if re.match(r"^smt2(_syn)?(_nomem)?(_stbv|_stdt)?$", model_name):
     #         with open("{}/model/design_{}.ys".format(self.workdir, model_name), "w") as f:
     #             print("# running in {}/model/".format(self.workdir), file=f)
-    #             print("read_ilang design{}.il".format("_nomem" if "_nomem" in model_name else ""), file=f)
+    #             print("read_rtlil design{}.il".format("_nomem" if "_nomem" in model_name else ""), file=f)
     #             if "_syn" in model_name:
     #                 print("techmap", file=f)
     #                 print("opt -fast", file=f)
@@ -427,7 +427,7 @@ class EqyJob:
     #     if re.match(r"^btor(_syn)?(_nomem)?$", model_name):
     #         with open("{}/model/design_{}.ys".format(self.workdir, model_name), "w") as f:
     #             print("# running in {}/model/".format(self.workdir), file=f)
-    #             print("read_ilang design{}.il".format("_nomem" if "_nomem" in model_name else ""), file=f)
+    #             print("read_rtlil design{}.il".format("_nomem" if "_nomem" in model_name else ""), file=f)
     #             print("flatten", file=f)
     #             print("setundef -undriven -anyseq", file=f)
     #             if "_syn" in model_name:
@@ -452,7 +452,7 @@ class EqyJob:
     #     if model_name == "aig":
     #         with open("{}/model/design_aiger.ys".format(self.workdir), "w") as f:
     #             print("# running in {}/model/".format(self.workdir), file=f)
-    #             print("read_ilang design_nomem.il", file=f)
+    #             print("read_rtlil design_nomem.il", file=f)
     #             print("flatten", file=f)
     #             print("setundef -undriven -anyseq", file=f)
     #             print("setattr -unset keep", file=f)

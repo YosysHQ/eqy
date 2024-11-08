@@ -1,4 +1,4 @@
 logger -expect error "No matched IDs for module counter." 1
-read_ilang data/counter_combined.il
+read_rtlil data/counter_combined.il
 insbuf -chain
 eqy_partition -matched_ids data/matched_empty.ids -partition_ids data/counter_partition.ids

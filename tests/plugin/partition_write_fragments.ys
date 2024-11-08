@@ -1,6 +1,6 @@
 exec -- rm -rf fragments/ modules/ partitions/ partition.list fragment.list
 exec -- mkdir -p fragments modules partitions
-read_ilang data/counter_combined.il
+read_rtlil data/counter_combined.il
 insbuf -chain
 eqy_partition -matched_ids data/counter_matched.ids -partition_ids data/counter_partition.ids -write_fragments
 exec -- rm -rf fragments/ modules/ partitions/ partition.list fragment.list
