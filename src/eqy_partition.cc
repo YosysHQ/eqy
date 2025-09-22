@@ -826,7 +826,7 @@ struct Partition
 				// TBD: Copy some of the cell metadata
 				cc->parameters = c->parameters;
 
-				bool is_reg = RTLIL::builtin_ff_cell_types().count(c->type);
+				bool is_reg = c->is_builtin_ff();
 				for (auto &conn : c->connections()) {
 					SigSpec s;
 					if (c->input(conn.first))
