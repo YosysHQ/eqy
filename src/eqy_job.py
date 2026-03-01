@@ -5,7 +5,7 @@ import subprocess, signal
 from select import select
 if os.name == "posix":
     from time import time, localtime
-else
+else:
     from time import time, localtime, sleep
 import click
 
