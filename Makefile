@@ -5,6 +5,8 @@ PROGRAM_PREFIX =
 YOSYS_CFGFLAGS =
 
 YOSYS_CONFIG ?= yosys-config
+LLVM_PROFILE_FILE ?= $(PWD)/coverage_%p.profraw
+export LLVM_PROFILE_FILE
 
 # On Windows, manually setting absolute path to Python binary may be required
 # for launcher executable to work. From MSYS2, this can be done using the
@@ -25,7 +27,7 @@ DEBUG_CXXFLAGS :=
 #DEBUG_CXXFLAGS += -Og
 COVERAGE := 0
 ifeq ($(COVERAGE),1)
-YOSYS_CFGFLAGS += --coverage
+YOSYS_CFGFLAGS += -fprofile-instr-generate -fcoverage-mapping
 endif
 
 src/eqy_combine.so: src/eqy_combine.cc
@@ -68,16 +70,18 @@ test:
 
 coverage:
 	rm -rf coverage.info coverage_html .coverage coverage.lcov
+	rm -f *.profraw *.profdata
 	$(MAKE) COVERAGE_FILE="$$PWD/.coverage" EQY="coverage run -a $$PWD/src/eqy.py" -C examples/simple clean test
 	$(MAKE) COVERAGE_FILE="$$PWD/.coverage" EQY="coverage run -a $$PWD/src/eqy.py" -C examples/nerv clean test
 	$(MAKE) COVERAGE_FILE="$$PWD/.coverage" EQY="coverage run -a $$PWD/src/eqy.py" -C examples/risc16f84 clean test
 	$(MAKE) COVERAGE_FILE="$$PWD/.coverage" EQY="coverage run -a $$PWD/src/eqy.py" -C tests/python clean test
 	+cd tests/plugin && bash run-test.sh
-	lcov --capture -d . --no-external -o coverage.info --gcov-tool $$PWD/llvm-gcov.sh
+	llvm-profdata merge -sparse $(PWD)/coverage_*.profraw -o $(PWD)/eqy.profdata
+	llvm-cov export --object src/eqy_combine.so --object src/eqy_partition.so --object src/eqy_recode.so -instr-profile=$(PWD)/eqy.profdata -format=lcov --compilation-dir=. --ignore-filename-regex='.*/share/yosys/.*'  > coverage.info
+	rm -f *.profraw *.profdata
 	coverage report --omit=*/dist-packages/*
 	coverage lcov --omit=*/dist-packages/*
 	cat coverage.lcov >> coverage.info
-	genhtml coverage.info --output-directory coverage_html
 
 clean:
 	$(MAKE) -C docs clean
