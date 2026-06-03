@@ -40,8 +40,8 @@ coverage_html/
 *.app
 
 # Coverage info
-*.gcda
-*.gcno
+*.profraw
+*.profdata
 coverage.info
 coverage.lcov
 .coverage
