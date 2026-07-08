@@ -14,7 +14,7 @@ jobs:
       run: sudo apt-get install bison flex libreadline-dev tcl-dev libffi-dev
 
     - name: Checkout repository
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
 
     - name: Install OSS-Cad-Suite
       uses: YosysHQ/setup-oss-cad-suite@v4

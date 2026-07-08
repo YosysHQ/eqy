@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       
       - name: Install OSS-Cad-Suite
         uses: YosysHQ/setup-oss-cad-suite@v4
@@ -36,10 +36,10 @@ jobs:
     runs-on: [self-hosted, linux, x64, fast]
     steps:
       - name: Checkout EQY
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Checkout Yosys
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: 'YosysHQ/yosys'
           path: 'yosys'
@@ -65,7 +65,7 @@ jobs:
           cmake --build build --target install
 
       - name: Checkout SBY
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: 'YosysHQ/sby'
           path: 'sby'
