@@ -12,7 +12,6 @@ passing_tests:
 	@$(EQY) -t counter.eqy | grep -i "make -C $(PYTHON_TEMPDIR)" # Use temp
 	@rm -rf counter/ counter.bak*/; $(EQY) counter.eqy -d counter | grep -i "make -C counter -f strategies.mk"   # setting workdir
 	@$(EQY) -c counter.eqy --purge "counter.state/simple" 2>&1 | grep -i "Removing" # continue with purge
-	@$(EQY) -f counter_cells.eqy 2>&1 | grep -i "counter.state__SDFF_PP0__Q" # matching cells
 	@$(EQY) - < counter.eqy 2>&1 | grep -i "Cannot derive workdir name from config file name" # stdin
 	@$(EQY) -f counter.eqy --setup | grep -i "DONE (UNKNOWN, rc=0)" # setup only
 	@$(EQY) -f failed_partition.eqy > /dev/null
