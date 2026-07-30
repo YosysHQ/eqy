@@ -15,6 +15,7 @@ passing_tests:
 	@$(EQY) - < counter.eqy 2>&1 | grep -i "Cannot derive workdir name from config file name" # stdin
 	@$(EQY) -f counter.eqy --setup | grep -i "DONE (UNKNOWN, rc=0)" # setup only
 	@$(EQY) -f failed_partition.eqy > /dev/null
+	@$(EQY) -f sat_no_timeout.eqy 2>&1 | grep -i "DONE (PASS, rc=0)"
 
 failing_tests:
 	@$(EQY) 2>&1 | grep -i "No config file given"

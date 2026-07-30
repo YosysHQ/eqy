@@ -8,6 +8,7 @@ generate.eqy
 /picorv32_vivado/
 /timeout/
 /sat_timeout/
+/sat_no_timeout/
 /problem_occured/
 /failed_partition/
 /equivalence_problem/
