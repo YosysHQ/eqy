@@ -7,6 +7,7 @@ generate.eqy
 /splitnets/
 /picorv32_vivado/
 /timeout/
+/sat_timeout/
 /problem_occured/
 /failed_partition/
 /equivalence_problem/

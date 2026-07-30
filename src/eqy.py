@@ -855,8 +855,9 @@ class EqyDummyStrategy(EqyStrategy):
 
 
 class EqySatStrategy(EqyStrategy):
-    default_scfg = dict(depth=5)
+    default_scfg = dict(depth=5, timeout=None)
     parse_opt_depth = EqyStrategy.int_opt_parser
+    parse_opt_timeout = EqyStrategy.int_opt_parser
 
     def partition_supported(self, job, partition):
         if 'memory' in partition.attributes:
@@ -870,10 +871,13 @@ class EqySatStrategy(EqyStrategy):
                 yosys -ql run.log run.ys
                 if grep "SAT temporal induction proof finished - model found for base case: FAIL!" run.log > /dev/null ; then
                 \techo FAIL > status
-                \techo "Could not prove equivalence of partition '{partition.name}' using strategy '{self.name}'"
+                \techo "Could not prove equivalence of partition '{partition.name}' using strategy '{self.name}': partitions not equivalent"
                 elif grep "Reached maximum number of time steps -> proof failed." run.log > /dev/null ; then
                 \techo UNKNOWN > status
-                \techo "Could not prove equivalence of partition '{partition.name}' using strategy '{self.name}'"
+                \techo "Could not prove equivalence of partition '{partition.name}' using strategy '{self.name}': equivalence unknown"
+                elif grep "Interrupted SAT solver: TIMEOUT!" run.log > /dev/null ; then
+                \techo UNKNOWN > status
+                \techo "Could not prove equivalence of partition '{partition.name}' using strategy '{self.name}': timeout"
                 elif grep "Induction step proven: SUCCESS!" run.log > /dev/null ; then
                 \techo PASS > status
                 \techo "Proved equivalence of partition '{partition.name}' using strategy '{self.name}'"
@@ -896,6 +900,7 @@ class EqySatStrategy(EqyStrategy):
             print(f"setundef -anyseq gate.{partition.name}", file=ys_f)
             print(f"flatten -wb; dffunmap; opt_expr -keepdc -undriven; opt_clean", file=ys_f)
             print(f"sat -tempinduct -set-init-undef -set-def-formal -set-def-inputs -maxsteps {self.scfg.depth} " + \
+                    (f"-timeout {self.scfg.timeout} " if self.scfg.timeout else "") + \
                     f"-set-assumes -prove-asserts -show-public -dump_vcd trace.vcd miter", file=ys_f)
 
 

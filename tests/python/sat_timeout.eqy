@@ -1,0 +1,18 @@
+[options]
+
+[gold]
+read_verilog ../../examples/picorv32/picorv32.v
+prep -top picorv32
+memory_map -formal
+
+[gate]
+read_verilog ../../examples/picorv32/picorv32.v
+synth -top picorv32
+
+[collect *]
+group *
+
+[strategy simple]
+use sat
+depth 10
+timeout 1
