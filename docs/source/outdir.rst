@@ -101,4 +101,3 @@ strategy are ``UNKNOWN``, ``FAIL``, and ``ERROR``.
 
 The file ``strategies.mk`` is a Makefile that runs all the strategies
 within the ``strategies/`` directory.
-

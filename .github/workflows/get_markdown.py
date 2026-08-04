@@ -25,7 +25,7 @@ with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as fh:
             escape_chars = r'_*[]()~`>#+-=|{}.!'
             text =  re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', cl.getAttribute('filename'))
             print(f"| {text}   | `{perc/10}%`    |  {sign} |", file=fh)
-        
+
         print("", file=fh)
         if (perc_total<min_perc):
             print("**Minimum coverage requirement was not satisfied**", file=fh)

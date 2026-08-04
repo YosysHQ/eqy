@@ -48,7 +48,7 @@ prep -top nerv
 memory_map
 ```
 
-We use `read_verilog -sv` to load the file, `prep -top nerv` to synthesise the 
+We use `read_verilog -sv` to load the file, `prep -top nerv` to synthesise the
 design with `nerv` as top module, and then we use `memory_map` to turn the
 register file into DFFs.
 

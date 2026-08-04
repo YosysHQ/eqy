@@ -9,4 +9,3 @@ EQY itself is licensed under the ISC license:
 
 Note that the solvers and other components used by EQY come with their
 own license terms.
-

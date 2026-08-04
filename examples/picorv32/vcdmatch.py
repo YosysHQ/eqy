@@ -308,4 +308,3 @@ db.parse("test_gold.vcd", "gold", "testbench.uut")
 db.parse("test_gate.vcd", "gate", "testbench.uut")
 db.process()
 db.print()
-

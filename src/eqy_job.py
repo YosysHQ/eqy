@@ -24,9 +24,9 @@ signal.signal(signal.SIGTERM, force_shutdown)
 # def process_filename(filename):
 #     if filename.startswith("~/"):
 #         filename = os.environ['HOME'] + filename[1:]
-# 
+#
 #     filename = os.path.expandvars(filename)
-# 
+#
 #     return filename
 
 class EqyTask:

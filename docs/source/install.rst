@@ -39,7 +39,7 @@ commit has been confirmed to work with that Yosys release version.
 Parts of EQY are Yosys plugins. To be able to load the plugins, they must be
 compiled in the same environment as the Yosys binary you are using. If you
 would like to build EQY from source but use a precompiled Yosys binary, you can
-use the `Tabby CAD Plugin Build docker environment 
+use the `Tabby CAD Plugin Build docker environment
 <https://github.com/YosysHQ-GmbH/tabby-cad-plugin-build>`_ to compile the EQY
 plugins (the environment works for both Tabby and OSS CAD Suite Yosys).
 
@@ -59,4 +59,3 @@ Use these commands to build and install EQY:
    cd eqy
    make
    sudo make install
-

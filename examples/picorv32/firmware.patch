@@ -8,7 +8,7 @@ index dd2fbce..5178d90 100644
  TOOLCHAIN_PREFIX = $(RISCV_GNU_TOOLCHAIN_INSTALL_PREFIX)i/bin/riscv32-unknown-elf-
 -COMPRESSED_ISA = C
 +COMPRESSED_ISA =
- 
+
  # Add things like "export http_proxy=... https_proxy=..." here
  GIT_ENV = true
 diff --git a/firmware/start.S b/firmware/start.S
@@ -18,7 +18,7 @@ index d95f04c..6bcb936 100644
 @@ -5,15 +5,15 @@
  // binary, for any purpose, commercial or non-commercial, and by any
  // means.
- 
+
 -#define ENABLE_QREGS
 +//#define ENABLE_QREGS
  #define ENABLE_HELLO
@@ -27,15 +27,15 @@ index d95f04c..6bcb936 100644
 -#define ENABLE_MULTST
 +//#define ENABLE_MULTST
  #define ENABLE_STATS
- 
+
  #ifndef ENABLE_QREGS
 -#  undef ENABLE_RVTST
 +//#  undef ENABLE_RVTST
  #endif
- 
+
  // Only save registers in IRQ wrapper that are to be saved by the caller in
 @@ -40,8 +40,8 @@
- 
+
  reset_vec:
  	// no more than 16 bytes here !
 -	picorv32_waitirq_insn(zero)
@@ -43,11 +43,11 @@ index d95f04c..6bcb936 100644
 +	/* picorv32_waitirq_insn(zero) */
 +	/* picorv32_maskirq_insn(zero, zero) */
  	j start
- 
- 
+
+
 @@ -344,6 +344,47 @@ irq_stack:
   **********************************/
- 
+
  start:
 +	/* uniquely tag all register bits */
 +#define set_all_regs(v) \
@@ -91,7 +91,7 @@ index d95f04c..6bcb936 100644
 +	set_all_regs(0x55555555)
 +
  	/* zero-initialize all registers */
- 
+
  	addi x1, zero, 0
 @@ -392,7 +433,7 @@ start:
  #  define TEST(n) \
@@ -105,7 +105,7 @@ index d95f04c..6bcb936 100644
 @@ -444,6 +485,7 @@ start:
  	TEST(or)
  	TEST(and)
- 
+
 +	j skip_mul_div
  	TEST(mulh)
  	TEST(mulhsu)
@@ -113,10 +113,10 @@ index d95f04c..6bcb936 100644
 @@ -454,6 +496,7 @@ start:
  	TEST(rem)
  	TEST(remu)
- 
+
 +skip_mul_div:
  	TEST(simple)
- 
+
  	/* set stack pointer */
 diff --git a/testbench.v b/testbench.v
 index 9d8e249..d9dfad3 100644
@@ -124,7 +124,7 @@ index 9d8e249..d9dfad3 100644
 +++ b/testbench.v
 @@ -161,18 +161,18 @@ module picorv32_wrapper #(
  `endif
- 
+
  	picorv32_axi #(
 -`ifndef SYNTH_TEST
 -`ifdef SP_TEST
