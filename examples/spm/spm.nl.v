@@ -2267,4 +2267,3 @@ module spm (clk,
  sky130_fd_sc_hd__buf_2 output35 (.A(net35),
     .X(p));
 endmodule
-

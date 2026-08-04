@@ -15,7 +15,7 @@ html_theme_options: dict[str, str] = {
 # These folders are copied to the documentation's HTML output
 html_static_path = ['_static']
 
-# code blocks style 
+# code blocks style
 highlight_language = 'systemverilog'
 
 # generate section labels from their heading

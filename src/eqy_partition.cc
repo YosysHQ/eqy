@@ -712,7 +712,7 @@ struct Partition
 
 		dict<std::string, pool<int>> json_bits;
 		auto write_json_bits = [&](const char *name)->void {
-			json.name(name); 
+			json.name(name);
 			json.begin_object(); // bits name
 			json_bits.sort();
 			for (auto &it : json_bits) {

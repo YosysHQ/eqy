@@ -15,4 +15,3 @@ hardware equivalence checking.
    outdir.rst
    xprop.rst
    license.rst
-

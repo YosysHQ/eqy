@@ -82,4 +82,3 @@ module CSADD(clk, rst, x, y, sum);
         end
     end
 endmodule
-
