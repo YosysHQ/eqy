@@ -1130,7 +1130,7 @@ def make_scripts(args, cfg, job, strategies):
                 exit_with_error(f"No configured strategy supports partition {partition.name}")
             final_targets.append(prev_strategy)
 
-        with open(f"{args.workdir}/summary_targets.list", "w") as targets_f:
+        with open(f"{args.workdir}/summary_targets.list", "w", newline="\n") as targets_f:
             for target in final_targets:
                 print(target, file=targets_f)
 
