@@ -30,8 +30,7 @@ struct Partition;
 
 std::string increase_indent(const std::string &indent)
 {
-#ifndef NDEBUG
-	if (!log_force_debug)
+	if (!ys_debug())
 		return std::string();
 	if (indent.size() <= 40)
 		return indent + "  ";
@@ -39,9 +38,6 @@ std::string increase_indent(const std::string &indent)
 	if (sscanf(indent.c_str(), " %d", &i) == 1)
 		return stringf("%*s%d> ", 40, "", i+2);
 	return stringf("%*s%d> ", 40, "", GetSize(indent)+2);
-#else
-	return std::string();
-#endif
 }
 
 struct EqyPartitionWorker
