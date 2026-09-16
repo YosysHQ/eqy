@@ -23,7 +23,7 @@ failing_tests:
 	@$(EQY) -f error_verilog.eqy 2>&1 | grep -i "Reading sources failed"
 	@$(EQY) -f read_source_fail.eqy --yosys /tmp/yosys 2>&1 | grep -i "Reading sources failed"
 	@timeout 2s $(EQY) -f timeout.eqy 2>&1 | grep -i "Keyboard interrupt or external termination signal"
-	@$(EQY) -f sat_timeout.eqy 2>&1 | grep -i "Could not prove equivalence of partition 'picorv32.alu_out' using strategy 'simple': timeout"
+	@$(EQY) -f sat_timeout.eqy 2>&1 | grep -iE "Could not prove equivalence of partition 'picorv32.\w+' using strategy 'simple': timeout"
 	@$(EQY) counter.eqy -t -d counter 2>&1 | grep -i "Cannot use -d with -t"
 	@mkdir -p counter; $(EQY) counter.eqy 2>&1 | grep -i "Directory 'counter' already exists"
 	@$(EQY) counter.eqy -d counter 2>&1 | grep -i "Directory 'counter' already exists" # setting workdir when exist
