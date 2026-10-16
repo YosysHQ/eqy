@@ -78,34 +78,34 @@ struct EqyCombinePass : public Pass
 
 	void print_ids(FILE *file, Module *m)
 	{
-		fprintf(file, "%s .", unescape_id(m->name).c_str());
+		fprintf(file, "%s .", m->twines().unescaped_str(m->name).c_str());
 		for (string name : m->get_hdlname_attribute())
-			if (unescape_id(m->name) != name)
+			if (m->twines().unescaped_str(m->name) != name)
 				fprintf(file, " N=%s", name.c_str());
 		for (auto &a : m->attributes) {
 			if (a.first == ID::hdlname)
 				continue;
 			if (a.second.flags == RTLIL::CONST_FLAG_STRING)
-				fprintf(file, " A:%s=\"%s\"", unescape_id(a.first).c_str(), a.second.decode_string().c_str());
+				fprintf(file, " A:%s=\"%s\"", m->twines().unescaped_str(a.first).c_str(), a.second.decode_string().c_str());
 			else
-				fprintf(file, " A:%s=%d", unescape_id(a.first).c_str(), a.second.as_int());
+				fprintf(file, " A:%s=%d", m->twines().unescaped_str(a.first).c_str(), a.second.as_int());
 		}
 		fprintf(file, "\n");
 
 		for (auto c : m->cells())
 			if (c->name.isPublic())
 			{
-				fprintf(file, "%s %s c=%s", unescape_id(m->name).c_str(), unescape_id(c->name).c_str(), unescape_id(c->type).c_str());
+				fprintf(file, "%s %s c=%s", m->twines().unescaped_str(m->name).c_str(), m->twines().unescaped_str(c->name).c_str(), m->twines().unescaped_str(c->type).c_str());
 				for (string name : c->get_hdlname_attribute())
-					if (unescape_id(c->name) != name)
+					if (m->twines().unescaped_str(c->name) != name)
 						fprintf(file, " N=%s", name.c_str());
 				for (auto &a : c->attributes) {
 					if (a.first == ID::hdlname)
 						continue;
 					if (a.second.flags == RTLIL::CONST_FLAG_STRING)
-						fprintf(file, " A:%s=\"%s\"", unescape_id(a.first).c_str(), a.second.decode_string().c_str());
+						fprintf(file, " A:%s=\"%s\"", m->twines().unescaped_str(a.first).c_str(), a.second.decode_string().c_str());
 					else
-						fprintf(file, " A:%s=%d", unescape_id(a.first).c_str(), a.second.as_int());
+						fprintf(file, " A:%s=%d", m->twines().unescaped_str(a.first).c_str(), a.second.as_int());
 				}
 				fprintf(file, "\n");
 			}
@@ -113,22 +113,23 @@ struct EqyCombinePass : public Pass
 		for (auto w : m->wires())
 			if (w->name.isPublic())
 			{
-				fprintf(file, "%s %s w=%d:%d", unescape_id(m->name).c_str(), unescape_id(w->name).c_str(), w->width - 1 + w->start_offset, w->start_offset);
+				fprintf(file, "%s %s w=%d:%d", m->twines().unescaped_str(m->name).c_str(), m->twines().unescaped_str(w->name).c_str(), w->width - 1 + w->start_offset, w->start_offset);
 				for (string name : w->get_hdlname_attribute())
-					if (unescape_id(w->name) != name)
+					if (m->twines().unescaped_str(w->name) != name)
 						fprintf(file, " N=%s", name.c_str());
 				for (auto &a : w->attributes) {
 					if (a.first == ID::hdlname)
 						continue;
 					if (a.second.flags == RTLIL::CONST_FLAG_STRING)
-						fprintf(file, " A:%s=\"%s\"", unescape_id(a.first).c_str(), a.second.decode_string().c_str());
+						fprintf(file, " A:%s=\"%s\"", m->twines().unescaped_str(a.first).c_str(), a.second.decode_string().c_str());
 					else
-						fprintf(file, " A:%s=%d", unescape_id(a.first).c_str(), a.second.as_int());
+						fprintf(file, " A:%s=%d", m->twines().unescaped_str(a.first).c_str(), a.second.as_int());
 				}
 				if (w->port_id)
 					fprintf(file, " P=%s%s", w->port_input ? "I" : "", w->port_output ? "O" : "");
 				fprintf(file, "\n");
 			}
+		fclose(file);
 	}
 
 	void execute(std::vector<std::string> args, Design *design) override
@@ -171,8 +172,8 @@ struct EqyCombinePass : public Pass
 			log_cmd_error("No \"gold\" top module found!\n");
 		if (gate_design->top_module() == nullptr)
 			log_cmd_error("No \"gate\" top module found!\n");
-		IdString gold_top = gold_design->top_module()->name;
-		IdString gate_top = gate_design->top_module()->name;
+		std::string gold_top = gold_design->top_module()->name.unescape();
+		std::string gate_top = gate_design->top_module()->name.unescape();
 		if (gold_top != gate_top)
 			log_error("Top modules of gold and gate do not have the same name.\n");
 
@@ -190,16 +191,12 @@ struct EqyCombinePass : public Pass
 
 		for (auto m : gold_design->modules())
 		{
-			Module *gold_m = m->clone();
-			gold_m->attributes.erase("\\top");
-			gold_m->name = "\\gold." + unescape_id(gold_m->name);
-			design->add(gold_m);
+			Module *gold_m = m->clone(design, design->twines().add("\\gold." + m->name.unescape()));
+			gold_m->attributes.erase(ID(top));
 			if (!gate_design->module(m->name))
 				log_error("Unmatched module exists in gold that does not exist in gate. This should not happen. Please report this bug.\n");
-			Module *gate_m = gate_design->module(m->name)->clone();
-			gate_m->attributes.erase("\\top");
-			gate_m->name = "\\gate." + unescape_id(gate_m->name);
-			design->add(gate_m);
+			Module *gate_m = gate_design->module(m->name)->clone(design, design->twines().add("\\gate." + m->name.unescape()));
+			gate_m->attributes.erase(ID(top));
 			if (gold_ids) print_ids(gold_ids, m);
 		}
 
@@ -218,15 +215,15 @@ struct EqyCombinePass : public Pass
 		{
 			for (auto cell : mod->cells())
 			{
-				IdString new_type = mod->name.substr(0, 6) + unescape_id(cell->type); //no comment
+				auto new_type = design->twines().add(mod->name.substr(0, 6) + design->twines().unescaped_str(cell->type)); //no comment
 				if (mod->design->module(new_type))
 					cell->type = new_type;
 			}
 		}
 
-		Pass::call(design, std::vector<std::string>({"miter", "-equiv", "-ignore_gold_x", "-make_assert", "\\gold." + unescape_id(gold_top), "\\gate." + unescape_id(gold_top), "miter"}));
+		Pass::call(design, std::vector<std::string>({"miter", "-equiv", "-ignore_gold_x", "-make_assert", "\\gold." + gold_top, "\\gate." + gold_top, "miter"}));
 
-		design->module("\\miter")->set_bool_attribute("\\top");
+		design->module("\\miter")->set_bool_attribute(ID(top));
 
 	}
 } EqyCombinePass;

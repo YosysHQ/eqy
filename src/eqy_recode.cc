@@ -83,8 +83,8 @@ struct EqyRecodePass : public Pass
 		if (design->top_module() == nullptr)
 			log_cmd_error("No \"gate\" top module found!\n");
 
-		IdString gold_top = gold_design->top_module()->name;
-		IdString gate_top = design->top_module()->name;
+		std::string gold_top = gold_design->top_module()->name.unescape();
+		std::string gate_top = design->top_module()->name.unescape();
 		if (gold_top != gate_top)
 			log_error("Top modules of gold and gate do not have the same name.\n");
 
@@ -99,24 +99,23 @@ struct EqyRecodePass : public Pass
 		}
 
 		for (auto mod : recode_data) {
-			IdString module_name = RTLIL::escape_id(mod.first);
-			Module *gate_m = design->module(module_name);
+			Module *gate_m = design->module(design->twines().add("\\" + mod.first));
 			if (!gate_m)
 				log_error("Module '%s' not found in gate.\n", mod.first.c_str());
-			Module *gold_m = gold_design->module(module_name);
+			Module *gold_m = gold_design->module(gold_design->twines().add("\\" + mod.first));
 			if (!gold_m)
 				log_error("Module '%s' not found in gold.\n", mod.first.c_str());
 			for (auto entity : mod.second) {
-				IdString name = RTLIL::escape_id(entity.first);
-				IdString new_name = NEW_ID;
+				PooledName name = PooledName{design, design->twines().add("\\" + entity.first)};
+				TwineSpec new_name = NEW_ID;
 				Wire *gate_w = gate_m->wire(name);
 				if (!gate_w)
 					log_error("Wire '%s' not found in gate.\n", entity.first.c_str());
-				Wire *gold_w = gold_m->wire(name);
+				Wire *gold_w = gold_m->wire(PooledName{design, design->twines().add("\\" + entity.first)});
 				if (!gold_w)
 					log_error("Wire '%s' not found in gold.\n", entity.first.c_str());
 				gate_m->rename(gate_w, new_name);
-				gate_w = gate_m->wire(new_name);
+				gate_w = gate_m->wire(design->twines().find(new_name));
 				Wire *new_wire = gate_m->addWire(name, gold_w->width);
 				new_wire->start_offset = gold_w->start_offset;
 				new_wire->upto = gold_w->upto;
@@ -140,7 +139,7 @@ struct EqyRecodePass : public Pass
 				RTLIL::Wire *a_wire = gate_m->addWire(NEW_ID);
 				gate_m->addEq(NEW_ID, sig, Const(State::S0, sig.size()), a_wire);
 
-				std::string assert_name = stringf("$recode_missing$%s", log_id(new_name));
+				std::string assert_name = stringf("$recode_missing$%s", new_name.content_str());
 				auto assert_cell = gate_m->addAssert(assert_name, gate_m->Not(NEW_ID,a_wire), State::S1);
 				assert_cell->set_bool_attribute(ID::keep);
 
