@@ -30,12 +30,12 @@ struct EqyRecodePass : public Pass
 		dict<std::string, dict<std::string, std::vector<std::pair<std::string, std::string>>>> matched_ids;
 		std::ifstream matched_file(filename.c_str());
 		if (!matched_file)
-			log_error("Cannot open file '%s'\n", filename.c_str());
+			log_error("Cannot open file '%s'\n", filename);
 		std::string line;
 		for (int linenr = 1; std::getline(matched_file, line); linenr++) {
 			std::vector<std::string> things = split_tokens(line);
 			if (things.size() != 4)
-				log_error("Malformed line %d in file %s\n", linenr, filename.c_str());
+				log_error("Malformed line %d in file %s\n", linenr, filename);
 			matched_ids[things[0]][things[1]].push_back(std::make_pair(things[2], things[3]));
 		}
 		return matched_ids;
@@ -83,8 +83,8 @@ struct EqyRecodePass : public Pass
 		if (design->top_module() == nullptr)
 			log_cmd_error("No \"gate\" top module found!\n");
 
-		IdString gold_top = gold_design->top_module()->name;
-		IdString gate_top = design->top_module()->name;
+		std::string gold_top = gold_design->top_module()->name.str();
+		std::string gate_top = design->top_module()->name.str();
 		if (gold_top != gate_top)
 			log_error("Top modules of gold and gate do not have the same name.\n");
 
@@ -99,22 +99,22 @@ struct EqyRecodePass : public Pass
 		}
 
 		for (auto mod : recode_data) {
-			IdString module_name = RTLIL::escape_id(mod.first);
+			std::string module_name = RTLIL::escape_id(mod.first);
 			Module *gate_m = design->module(module_name);
 			if (!gate_m)
-				log_error("Module '%s' not found in gate.\n", mod.first.c_str());
+				log_error("Module '%s' not found in gate.\n", mod.first);
 			Module *gold_m = gold_design->module(module_name);
 			if (!gold_m)
-				log_error("Module '%s' not found in gold.\n", mod.first.c_str());
+				log_error("Module '%s' not found in gold.\n", mod.first);
 			for (auto entity : mod.second) {
-				IdString name = RTLIL::escape_id(entity.first);
-				IdString new_name = NEW_ID;
+				std::string name = RTLIL::escape_id(entity.first);
+				IdString new_name = gate_m->twines().add(NEW_ID);
 				Wire *gate_w = gate_m->wire(name);
 				if (!gate_w)
-					log_error("Wire '%s' not found in gate.\n", entity.first.c_str());
+					log_error("Wire '%s' not found in gate.\n", entity.first);
 				Wire *gold_w = gold_m->wire(name);
 				if (!gold_w)
-					log_error("Wire '%s' not found in gold.\n", entity.first.c_str());
+					log_error("Wire '%s' not found in gold.\n", entity.first);
 				gate_m->rename(gate_w, new_name);
 				gate_w = gate_m->wire(new_name);
 				Wire *new_wire = gate_m->addWire(name, gold_w->width);
@@ -127,9 +127,9 @@ struct EqyRecodePass : public Pass
 				size_t gold_size = gold_w->width;
 				for (auto map : entity.second) {
 					if (gate_size != map.second.size())
-						log_error("Mapping gate value '%s' not proper width.\n", map.second.c_str());
+						log_error("Mapping gate value '%s' not proper width.\n", map.second);
 					if (gold_size != map.first.size())
-						log_error("Mapping gold value '%s' not proper width.\n", map.first.c_str());
+						log_error("Mapping gold value '%s' not proper width.\n", map.first);
 					RTLIL::Wire *y_wire = gate_m->addWire(NEW_ID);
 					gate_m->addEq(NEW_ID, gate_w, Const::from_string(map.second), y_wire);
 					val.append(map.first);
@@ -140,7 +140,7 @@ struct EqyRecodePass : public Pass
 				RTLIL::Wire *a_wire = gate_m->addWire(NEW_ID);
 				gate_m->addEq(NEW_ID, sig, Const(State::S0, sig.size()), a_wire);
 
-				std::string assert_name = stringf("$recode_missing$%s", log_id(new_name));
+				std::string assert_name = stringf("$recode_missing$%s", gate_w->name);
 				auto assert_cell = gate_m->addAssert(assert_name, gate_m->Not(NEW_ID,a_wire), State::S1);
 				assert_cell->set_bool_attribute(ID::keep);
 

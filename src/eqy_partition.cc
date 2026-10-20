@@ -171,7 +171,7 @@ struct EqyPartitionWorker
 		if (!gold_bit.wire)
 			return;
 
-		log_debug("%sbit match: %s <-> %s\n", indent.c_str(), log_signal(gold_bit), log_signal(gate_bit));
+		log_debug("%sbit match: %s <-> %s\n", indent, log_signal(gold_bit), log_signal(gate_bit));
 
 		if (!gate_bit.wire) {
 			if (!constants.count(gold_bit))
@@ -217,7 +217,7 @@ struct EqyPartitionWorker
 
 	void add_match(SigSpec gold_sig, SigSpec gate_sig, std::string indent = "")
 	{
-		log_debug("%ssignal match: %s <-> %s\n", indent.c_str(), log_signal(gold_sig), log_signal(gate_sig));
+		log_debug("%ssignal match: %s <-> %s\n", indent, log_signal(gold_sig), log_signal(gate_sig));
 		for (int i = 0; i < GetSize(gold_sig) && i < GetSize(gate_sig); i++)
 			add_match(gold_sig[i], gate_sig[i], increase_indent(indent));
 	}
@@ -225,17 +225,17 @@ struct EqyPartitionWorker
 	void add_match(Cell *gold_cell, Cell *gate_cell, std::string indent = "")
 	{
 		if (gold_matched_cells.count(gold_cell) && gold_matched_cells.at(gold_cell) != gate_cell)
-			log_error("conflicting matches for gold cell %s: %s vs %s\n", log_id(gold_cell),
-					log_id(gold_matched_cells.at(gold_cell)), log_id(gate_cell));
+			log_error("conflicting matches for gold cell %s: %s vs %s\n", gold_cell,
+					gold_matched_cells.at(gold_cell), gate_cell);
 
 		if (gate_matched_cells.count(gate_cell) && gate_matched_cells.at(gate_cell) != gold_cell)
-			log_error("conflicting matches for gate cell %s: %s vs %s\n", log_id(gate_cell),
-					log_id(gate_matched_cells.at(gate_cell)), log_id(gold_cell));
+			log_error("conflicting matches for gate cell %s: %s vs %s\n", gate_cell,
+					gate_matched_cells.at(gate_cell), gold_cell);
 
 		gold_matched_cells[gold_cell] = gate_cell;
 		gate_matched_cells[gate_cell] = gold_cell;
 
-		log_debug("%scell match: %s <-> %s\n", indent.c_str(), log_id(gold_cell), log_id(gate_cell));
+		log_debug("%scell match: %s <-> %s\n", indent, gold_cell, gate_cell);
 
 		for (auto &conn : gold_cell->connections())
 			if (gate_cell->connections().count(conn.first))
@@ -249,7 +249,7 @@ struct EqyPartitionWorker
 			return;
 		match_group_names.insert(group);
 
-		log_debug("%sid match: %s <-> %s\n", indent.c_str(), log_id(gold_id), log_id(gate_id));
+		log_debug("%sid match: %s <-> %s\n", indent, PooledName(gold, gold_id), PooledName(gate, gate_id));
 
 		Cell *gold_cell = gold->cell(gold_id);
 		Cell *gate_cell = gate->cell(gate_id);
@@ -257,9 +257,9 @@ struct EqyPartitionWorker
 		if (gold_cell || gate_cell)
 		{
 			if (!gold_cell)
-				log_error("Can't find cell %s in gold circuit.\n", log_id(gold_id));
+				log_error("Can't find cell %s in gold circuit.\n", PooledName(gold, gold_id));
 			if (!gate_cell)
-				log_error("Can't find cell %s in gate circuit.\n", log_id(gate_id));
+				log_error("Can't find cell %s in gate circuit.\n", PooledName(gate, gate_id));
 
 			add_match(gold_cell, gate_cell, increase_indent(indent));
 			return;
@@ -271,9 +271,9 @@ struct EqyPartitionWorker
 		if (gold_wire || gate_wire)
 		{
 			if (!gold_wire)
-				log_error("Can't find wire %s in gold circuit.\n", log_id(gold_id));
+				log_error("Can't find wire %s in gold circuit.\n", PooledName(gold, gold_id));
 			if (!gate_wire)
-				log_error("Can't find wire %s in gate circuit.\n", log_id(gate_id));
+				log_error("Can't find wire %s in gate circuit.\n", PooledName(gate, gate_id));
 
 			add_match(SigSpec(gold_wire), SigSpec(gate_wire), increase_indent(indent));
 			return;
@@ -609,7 +609,7 @@ struct Partition
 				}
 			}
 
-			log_debug("%sadd_bit_f %s %s%s%s: %s%s\n", indent.c_str(),
+			log_debug("%sadd_bit_f %s %s%s%s: %s%s\n", indent,
 					log_signal(bit), in_gold ? "gold" : "gate",
 					isoutput ? " [output]" : "", isinput ? " [input]" : "",
 					insert_bit ? "insert" : "skip", run_other ? "+" : "");
@@ -633,7 +633,7 @@ struct Partition
 			auto &gg_cells = in_gold ? gold_cells : gate_cells;
 			bool insert_cell = !gg_cells.count(cell);
 
-			log_debug("%sadd_cell_f %s %s: %s\n", indent.c_str(), log_id(cell),
+			log_debug("%sadd_cell_f %s %s: %s\n", indent, cell,
 					in_gold ? "gold" : "gate", insert_cell ? "insert" : "skip");
 
 			if (!insert_cell)
@@ -687,24 +687,24 @@ struct Partition
 		}
 	}
 
-	Design *write(IdString partname, const std::string &filename_prefix, bool &xbits_partition, bool fragment = false)
+	Design *write(const std::string &partname, const std::string &filename_prefix, bool &xbits_partition, bool fragment = false)
 	{
 		xbits_partition = false;
 
-		log("Writing %s %d as %s.\n", fragment ? "fragment" : "partition", index, log_id(partname));
+		log("Writing %s %d as %s.\n", fragment ? "fragment" : "partition", index, RTLIL::unescape_id(partname));
 
 		PrettyJson json;
 		std::string filename = filename_prefix + ".json";
 
 		if (!json.write_to_file(filename))
-			log_error("Can't open file `%s' for writing: %s\n", filename.c_str(), strerror(errno));
+			log_error("Can't open file `%s' for writing: %s\n", filename, strerror(errno));
 
 		json.begin_object(); // top-level
 
 		json.name(fragment ? "fragment" : "partition");
 		json.begin_object(); // fragment/partition
 		json.entry("index", index);
-		json.entry("name", log_id(partname));
+		json.entry("name", RTLIL::unescape_id(partname).c_str());
 
 		dict<std::string, pool<int>> json_bits;
 		auto write_json_bits = [&](const char *name)->void {
@@ -747,14 +747,14 @@ struct Partition
 		Module *mod_gold = partdesign->addModule("\\gold." + partname.substr(1));
 		Module *mod_gate = partdesign->addModule("\\gate." + partname.substr(1));
 
-		std::vector<pair<int, IdString>> pi_layout, cp_layout, mp_layout, po_layout;
+		std::vector<pair<int, std::string>> pi_layout, cp_layout, mp_layout, po_layout;
 
 		auto copy_mod_contents = [&](bool in_gold, const SigSpec &pi, const SigSpec &cp,
 				const SigSpec &mp, const SigSpec &po, const SigSig &conn)->void
 		{
 			json.name(stringf("%s_module", in_gold ? "gold" : "gate").c_str());
 			json.begin_object(); // {gold,gate}_module
-			json.entry("name", log_id(mod_gold));
+			json.entry("name", mod_gold->name.unescape().c_str());
 
 			// Module *in_mod = in_gold ? gold : gate;
 			Module *out_mod = in_gold ? mod_gold : mod_gate;
@@ -789,8 +789,8 @@ struct Partition
 					continue;
 				log_debug("  %s partition bit: %s\n", in_gold ? "gold" : "gate", log_signal(bit));
 				if (!mapped_wires.count(w)) {
-					Wire *ww = out_mod->addWire(w->name, GetSize(w));
-					log_debug("  %s partition wire: %s\n", in_gold ? "gold" : "gate", log_id(w));
+					Wire *ww = out_mod->addWire(out_mod->twines().copy_from(w->twines(), w->name), GetSize(w));
+					log_debug("  %s partition wire: %s\n", in_gold ? "gold" : "gate", w);
 					// TBD: Copy some of the wire metadata
 					mapped_wires[w] = ww;
 				}
@@ -817,10 +817,11 @@ struct Partition
 
 			for (auto c : gg_cells)
 			{
-				Cell *cc = out_mod->addCell(c->name, c->type);
-				log_debug("  %s partition cell: %s\n", in_gold ? "gold" : "gate", log_id(cc));
+				Cell *cc = out_mod->addCell(out_mod->twines().copy_from(c->twines(), c->name),
+						out_mod->twines().copy_from(c->twines(), c->type));
+				log_debug("  %s partition cell: %s\n", in_gold ? "gold" : "gate", cc);
 				// TBD: Copy some of the cell metadata
-				cc->parameters = c->parameters;
+				RTLIL::copy_attr_dict(cc->parameters, c->parameters, c->module->design, partdesign);
 
 				bool is_reg = c->is_builtin_ff();
 				for (auto &conn : c->connections()) {
@@ -849,9 +850,9 @@ struct Partition
 							out_initvals.set_init(out_bit, initval);
 						}
 					}
-					log_debug("    port %s: %s => %s => %s\n", log_id(conn.first), log_signal(conn.second),
+					log_debug("    port %s: %s => %s => %s\n", PooledName(c->module, conn.first), log_signal(conn.second),
 							log_signal(sigmap(conn.second)), log_signal(s));
-					cc->setPort(conn.first, s);
+					cc->setPort(out_mod->twines().copy_from(c->twines(), conn.first), s);
 				}
 			}
 
@@ -874,7 +875,7 @@ struct Partition
 				out_po.append(bit.is_wire() ? mapped_bits.at(bit) : bit);
 
 			int port_idx = 0;
-			auto create_segments = [&](const std::vector<pair<int, IdString>> &layout, bool port_input, bool port_output) {
+			auto create_segments = [&](const std::vector<pair<int, std::string>> &layout, bool port_input, bool port_output) {
 				SigSpec segments;
 				for (auto element : layout) {
 					Wire *w = out_mod->addWire(element.second, element.first);
@@ -1046,13 +1047,13 @@ struct Partition
 		sort_sig_pair(gold_mp, gate_mp);
 		sort_sig_pair(gold_po, gate_po);
 
-		auto create_layout = [&](std::vector<pair<int, IdString>> &layout, const SigSpec &sig, const char *prefix) {
+		auto create_layout = [&](std::vector<pair<int, std::string>> &layout, const SigSpec &sig, const char *prefix) {
 			for (auto chunk : sig.chunks()) {
 				log_assert(chunk.wire);
-				IdString name = chunk.width == chunk.wire->width ?
-						stringf("%s%s", prefix, chunk.wire->name.c_str()+1) : chunk.width == 1 ?
-						stringf("%s%s__%d", prefix, chunk.wire->name.c_str()+1, chunk.offset) :
-						stringf("%s%s__%d_%d", prefix, chunk.wire->name.c_str()+1, chunk.offset+chunk.width-1, chunk.offset);
+				std::string name = chunk.width == chunk.wire->width ?
+						stringf("%s%s", prefix, chunk.wire->name.str().c_str()+1) : chunk.width == 1 ?
+						stringf("%s%s__%d", prefix, chunk.wire->name.str().c_str()+1, chunk.offset) :
+						stringf("%s%s__%d_%d", prefix, chunk.wire->name.str().c_str()+1, chunk.offset+chunk.width-1, chunk.offset);
 				layout.emplace_back(chunk.width, name);
 			}
 		};
@@ -1212,7 +1213,7 @@ struct Partition
 			vlog_file << "endmodule\n";
 
 			for (auto gold : {true, false}) {
-				vlog_file << stringf("module %s (\n", (gold ? mod_gold : mod_gate)->name.c_str());
+				vlog_file << stringf("module %s (\n", (gold ? mod_gold : mod_gate)->name.str().c_str());
 				port_decls.clear();
 				for (auto it : pi_layout)
 					port_decls.push_back(stringf("input  [%3d:0] %s", it.first-1, it.second.c_str()));
@@ -1394,7 +1395,7 @@ void EqyPartitionWorker::merge_partitions()
 		std::string message = "Executing rule '";
 		for (int i = 0; i < GetSize(rule); i++)
 			message += (i ? " " : "") + rule[i];
-		log("%s'.\n", message.c_str());
+		log("%s'.\n", message);
 
 		if (rule[0] == "name" && GetSize(rule) == 3) {
 			for (auto bit : gold_sigmap(gold->wire("\\" + rule[1]))) {
@@ -1551,7 +1552,7 @@ void EqyPartitionWorker::merge_partitions()
 		message = "Malformed partition rule:";
 		for (auto &word : rule)
 			message += " " + word;
-		log_error("%s\n", message.c_str());
+		log_error("%s\n", message);
 	}
 
 	auto exec_amend = [&]() -> bool {
@@ -1710,7 +1711,7 @@ void EqyPartitionWorker::merge_partitions()
 			continue;
 
 		if (partition->name_priority) {
-			log("Partition %d already has a name: %s\n", partition->index, partition->names.front().c_str());
+			log("Partition %d already has a name: %s\n", partition->index, partition->names.front());
 			continue;
 		}
 
@@ -1755,11 +1756,11 @@ void EqyPartitionWorker::merge_partitions()
 				if (extra_idx)
 					name += stringf("_%d", extra_idx);
 				if (name_database.count(name)) {
-					log_debug("  name '%s' is already taken\n", name.c_str());
+					log_debug("  name '%s' is already taken\n", name);
 					continue;
 				}
 
-				log("Automatically naming partition %d '%s' using a PO name: %s\n", partition->index, name.c_str(), std::get<2>(it).c_str());
+				log("Automatically naming partition %d '%s' using a PO name: %s\n", partition->index, name, std::get<2>(it));
 				partition->name_priority = ++name_priority;
 				name_database[std::get<1>(it)] = partition->index;
 				partition->names.push_back(std::get<1>(it));
@@ -1810,14 +1811,14 @@ void EqyPartitionWorker::merge_partitions()
 		}
 		if (!hidden_outbits.empty())
 			label += stringf(", and %d more bits", GetSize(hidden_outbits));
-		log("     %3d: %s\n", p->index, label.c_str());
+		log("     %3d: %s\n", p->index, label);
 	}
 	log("  Partitions:\n");
 	for (auto &p_ptr : partitions) {
 		auto p = p_ptr.get();
 		if (p->superseded)
 			continue;
-		log("     %3d: %s\n", p->index, p->names.front().c_str());
+		log("     %3d: %s\n", p->index, p->names.front());
 	}
 	log("  Fragment-Partition-Matrix:\n");
 	log("          ");
@@ -1887,7 +1888,7 @@ void EqyPartitionWorker::merge_partitions()
 			}
 			log(".");
 		}
-		log("  %s\n", p->names.front().c_str());
+		log("  %s\n", p->names.front());
 	}
 	log("  Legend for Fragment-Partition-Matrix:\n");
 	log("      #  .... partition is this single fragment\n");
@@ -1919,7 +1920,7 @@ void EqyPartitionWorker::write(bool fragments, std::ofstream &list_file)
 				partition->full_part ? "modules" : fragments ? "fragments" : "partitions", partname.c_str());
 
 		bool xbits_partition;
-		IdString partid = "\\" + partname;
+		std::string partid = "\\" + partname;
 		Design *partdesign = partition->write(partid, filename_prefix, xbits_partition, fragments);
 
 		pool<SigBit> unused_gold_inputs = partition->inbits;
@@ -2002,18 +2003,18 @@ struct EqyPartitionPass : public Pass
 				num_gold_modules++;
 				Module *gate = design->module("\\gate." + gold->name.substr(6));
 				if (!gate)
-					log_error("Could not find matching gate for module %s\n", log_id(gold));
-				log_header(design, "Processing module pair %s / %s.\n", log_id(gold), log_id(gate));
+					log_error("Could not find matching gate for module %s\n", gold);
+				log_header(design, "Processing module pair %s / %s.\n", gold, gate);
 				log_push();
 
 				EqyPartitionWorker worker(gold, gate);
 
 				// Register match points
-				log_header(design, "Processing matched IDs for module %s.\n", gold->name.substr(6).c_str());
+				log_header(design, "Processing matched IDs for module %s.\n", gold->name.substr(6));
 				if (!matched_ids.count(gold->name.substr(6)))
-					log_error("No matched IDs for module %s.\n", gold->name.substr(6).c_str());
+					log_error("No matched IDs for module %s.\n", gold->name.substr(6));
 				for (auto &it : matched_ids.at(gold->name.substr(6)))
-					worker.add_match(IdString(RTLIL::escape_id(it.first)), IdString(RTLIL::escape_id(it.second)));
+					worker.add_match(design->twines().add(RTLIL::escape_id(it.first)), design->twines().add(RTLIL::escape_id(it.second)));
 
 				// Force ports to be match points
 				for (auto w : gold->wires())
@@ -2025,7 +2026,7 @@ struct EqyPartitionPass : public Pass
 						worker.add_rule(line);
 
 #if 0
-				log_header(design, "Collect databases for module %s:\n", gold->name.substr(6).c_str());
+				log_header(design, "Collect databases for module %s:\n", gold->name.substr(6));
 				for (auto &bit : worker.bind_database) {
 					log("bind %s\n", log_signal(bit));
 				}
@@ -2040,26 +2041,26 @@ struct EqyPartitionPass : public Pass
 				}
 #endif
 
-				log_header(design, "Create fragment partitions for module %s.\n", gold->name.substr(6).c_str());
+				log_header(design, "Create fragment partitions for module %s.\n", gold->name.substr(6));
 				worker.create_partitions();
 				worker.check_integrity();
 
-				log_header(design, "Execute partitioning commands for module %s.\n", gold->name.substr(6).c_str());
+				log_header(design, "Execute partitioning commands for module %s.\n", gold->name.substr(6));
 				worker.merge_partitions();
 				//worker.check_integrity();
 
 				if (write_fragments) {
-					log_header(design, "Write fragments for module %s.\n", gold->name.substr(6).c_str());
+					log_header(design, "Write fragments for module %s.\n", gold->name.substr(6));
 					worker.write(true, fragment_list);
 				}
 
-				log_header(design, "Write partitions for module %s.\n", gold->name.substr(6).c_str());
+				log_header(design, "Write partitions for module %s.\n", gold->name.substr(6));
 				worker.create_full_partition();
 				worker.write(false, partition_list);
 				log_pop();
 			}
 			else if (!gold->name.begins_with("\\gate.") && gold->name != "\\miter")
-				log_error("Found module %s that is neither gate nor gold nor miter. Was this design created with eqy_combine?\n", log_id(gold));
+				log_error("Found module %s that is neither gate nor gold nor miter. Was this design created with eqy_combine?\n", gold);
 		}
 		if (GetSize(design->modules_) != 2 * num_gold_modules + 1)
 			log_error("Mismatched number of gate and gold modules. Was this design created with eqy_combine?\n");
@@ -2070,14 +2071,14 @@ struct EqyPartitionPass : public Pass
 		dict<std::string, std::vector<std::pair<std::string, std::string>>> matched_ids;
 		std::ifstream matched_file(filename.c_str());
 		if (!matched_file)
-			log_error("Cannot open file '%s'\n", filename.c_str());
+			log_error("Cannot open file '%s'\n", filename);
 		std::string line;
 		for (int linenr = 1; std::getline(matched_file, line); linenr++) {
 			std::vector<std::string> things = split_tokens(line);
 			if (things.size() == 0 || things[0] == "#")
 				continue;
 			if (things.size() != 3)
-				log_error("Malformed line %d in file %s\n", linenr, filename.c_str());
+				log_error("Malformed line %d in file %s\n", linenr, filename);
 			matched_ids[things[0]].push_back(std::make_pair(things[1], things[2]));
 		}
 		return matched_ids;
@@ -2089,7 +2090,7 @@ struct EqyPartitionPass : public Pass
 
 		std::ifstream partition_names_file(filename.c_str());
 		if (!partition_names_file)
-			log_error("Cannot open file '%s'\n", filename.c_str());
+			log_error("Cannot open file '%s'\n", filename);
 		std::string line;
 		for (int linenr=1; std::getline(partition_names_file, line); linenr++) {
 			std::vector<std::string> things = split_tokens(line);
@@ -2108,7 +2109,7 @@ struct EqyPartitionPass : public Pass
 				partition_ids[modname].push_back(things);
 				continue;
 			}
-			log_error("Malformed line %d in file %s\n", linenr, filename.c_str());
+			log_error("Malformed line %d in file %s\n", linenr, filename);
 		}
 		return partition_ids;
 	}
