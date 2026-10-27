@@ -76,7 +76,7 @@ struct EqyRecodePass : public Pass
 		if (saved_designs.find("gold") == saved_designs.end())
 			log_error("Design \"gold\" not found in saved designs.\n");
 
-		Design *gold_design = saved_designs.at("gold");
+		Design *gold_design = saved_designs.at("gold").get();
 
 		if (gold_design->top_module() == nullptr)
 			log_cmd_error("No \"gold\" top module found!\n");
