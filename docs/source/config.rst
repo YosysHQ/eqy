@@ -55,7 +55,7 @@ Recode sections
 ---------------
 
 Recode sections contain encodings for FSM state registers, for the cases when
-the sythesis tool changes those encodings. (Alternatively the state registers
+the synthesis tool changes those encodings. (Alternatively the state registers
 can be excluded as match points and strategies for sequential equivalence
 checking can be employed for proving equivalence of the FSM as a whole.)
 
@@ -64,7 +64,7 @@ name from the (gold) design and the name of a wire within that module. (Those
 arguments are actually both regular expressions, but are rarely used to match
 more than one entity.)
 
-The section itself listst binary representation of values in the gold design
+The section itself lists binary representation of values in the gold design
 and their corresponding gate encodings. Values not listed should never be
 produced by the gold design.
 
@@ -74,6 +74,23 @@ produced by the gold design.
    00 001
    01 010
    10 100
+
+The section can also include an optional fallback line ``* <gate value>``.
+When EQY partitions the design and cuts at a recoded state register,
+the solver may pick gold values that are not listed. Without a fallback,
+such values become undefined, which can make the partition fail. At most
+one fallback line is allowed, and its value must have the width of the gate wire.
+By providing a fallback line, unlisted gold values are mapped to the given
+gate value.
+
+.. code-block:: text
+
+   [recode mytest state]
+   00 001
+   01 010
+   10 100
+   * 001
+
 
 Match sections
 --------------

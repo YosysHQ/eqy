@@ -117,6 +117,17 @@ struct EqyRecodePass : public Pass
 					log_error("Wire '%s' not found in gold.\n", entity.first);
 				gate_m->rename(gate_w, new_name);
 				gate_w = gate_m->wire(new_name);
+
+				Wire *enc_wire = gate_m->addWire(NEW_ID, gate_w->width);
+				for (auto cell : gate_m->cells()) {
+					for (auto conn : cell->connections()) {
+						if (cell->input(conn.first)) {
+							conn.second.replace(gate_w, enc_wire);
+							cell->setPort(conn.first, conn.second);
+						}
+					}
+				}
+
 				Wire *new_wire = gate_m->addWire(name, gold_w->width);
 				new_wire->start_offset = gold_w->start_offset;
 				new_wire->upto = gold_w->upto;
@@ -128,6 +139,7 @@ struct EqyRecodePass : public Pass
 				for (auto map : entity.second) {
 					if (gate_size != map.second.size())
 						log_error("Mapping gate value '%s' not proper width.\n", map.second);
+					if (map.first == "*") continue;
 					if (gold_size != map.first.size())
 						log_error("Mapping gold value '%s' not proper width.\n", map.first);
 					RTLIL::Wire *y_wire = gate_m->addWire(NEW_ID);
@@ -136,6 +148,9 @@ struct EqyRecodePass : public Pass
 					sig.append(y_wire);
 				}
 				sig.reverse();
+				if (sig.empty()) {
+					log_error("No recode values for wire '%s', only fallback was given.\n", entity.first);
+				}
 
 				RTLIL::Wire *a_wire = gate_m->addWire(NEW_ID);
 				gate_m->addEq(NEW_ID, sig, Const(State::S0, sig.size()), a_wire);
@@ -145,6 +160,30 @@ struct EqyRecodePass : public Pass
 				assert_cell->set_bool_attribute(ID::keep);
 
 				gate_m->addPmux(NEW_ID, RTLIL::Const(State::Sx, gold_size), Const::from_string(val), sig, new_wire);
+
+				SigSpec sig_enc;
+				std::string val_enc;
+				for (auto map : entity.second) {
+					if (map.first == "*") continue;
+					RTLIL::Wire *y_wire = gate_m->addWire(NEW_ID);
+					gate_m->addEq(NEW_ID, new_wire, Const::from_string(map.first), y_wire);
+					val_enc.append(map.second);
+					sig_enc.append(y_wire);
+				}
+				sig_enc.reverse();
+
+				RTLIL::Const fallback = RTLIL::Const(State::Sx, gate_size);
+				bool has_fallback = false;
+				for (auto map : entity.second) {
+					if (map.first != "*") continue;
+					if (has_fallback) {
+						log_error("Multiple fallback values for wire '%s'.\n", entity.first);
+					}
+					fallback = RTLIL::Const::from_string(map.second);
+					has_fallback = true;
+				}
+
+				gate_m->addPmux(NEW_ID, fallback, Const::from_string(val_enc), sig_enc, enc_wire);
 			}
 		}
 	}

@@ -19,6 +19,7 @@ prep -top top
 0010 01
 0100 10
 1000 11
+* 11
 
 [strategy simple]
 use sat
